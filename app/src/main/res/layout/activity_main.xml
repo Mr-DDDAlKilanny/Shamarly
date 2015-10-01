@@ -1,14 +1,11 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
-    android:layout_height="match_parent" android:background="#0099cc" tools:context=".MainActivity">
-
-    <!-- The primary full-screen view. This can be replaced with whatever view
-         is needed to present your content, e.g. VideoView, SurfaceView,
-         TextureView, etc. -->
-    <TextView android:id="@+id/fullscreen_content" android:layout_width="match_parent"
-        android:layout_height="match_parent" android:keepScreenOn="true" android:textColor="#33b5e5"
-        android:textStyle="bold" android:textSize="50sp" android:gravity="center"
-        android:text="@string/dummy_content" />
+    android:layout_height="match_parent" tools:context=".MainActivity"
+    android:keepScreenOn="true">
+    <android.support.v4.view.ViewPager
+        android:id="@+id/animator"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
     <!-- This FrameLayout insets its children based on system windows using
          android:fitsSystemWindows. -->
@@ -21,11 +18,35 @@
             android:background="@color/black_overlay" android:orientation="horizontal"
             tools:ignore="UselessParent">
 
-            <Button android:id="@+id/dummy_button" style="?metaButtonBarButtonStyle"
+            <Button android:id="@+id/bookmarkBtn" style="?metaButtonBarButtonStyle"
                 android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:text="@string/dummy_button" />
-
+                android:layout_weight="1" android:background="@drawable/abc_btn_rating_star_off_mtrl_alpha" />
+            <Button android:id="@+id/gotoBtn" style="?metaButtonBarButtonStyle"
+                android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:background="@android:drawable/ic_menu_directions"/>
+            <Button android:id="@+id/listen" style="?metaButtonBarStyle"
+                android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:background="@drawable/abc_ic_go_search_api_mtrl_alpha" />
+            <Button android:id="@+id/tafseer" style="?metaButtonBarStyle"
+                android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:background="@android:drawable/ic_menu_help"/>
+            <Button android:id="@+id/setting" style="?metaButtonBarStyle"
+                android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:background="@android:drawable/ic_menu_manage"/>
         </LinearLayout>
     </FrameLayout>
 
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone"
+        android:indeterminateDrawable="@drawable/progress" >
+    </ProgressBar>
 </FrameLayout>

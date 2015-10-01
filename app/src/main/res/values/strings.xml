@@ -1,6 +1,5 @@
 <resources>
-    <string name="app_name">ShamarlyMushaf</string>
-
-    <string name="dummy_button">Dummy Button</string>
-    <string name="dummy_content">DUMMY\nCONTENT</string>
+    <string name="app_name">مصحف الشمرلي</string>
+    <string name="title_activity_search">البحث</string>
+    <string name="downloadPage">https://archive.org/download/shamerly/%03d.png</string>
 </resources>

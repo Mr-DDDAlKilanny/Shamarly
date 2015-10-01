@@ -1,5 +1,6 @@
 <resources>
-
     <color name="black_overlay">#66000000</color>
-
+    <color name="color_preloader_start">#ffffff</color>
+    <color name="color_preloader_center">#ffff00</color>
+    <color name="color_preloader_end">#000000</color>
 </resources>

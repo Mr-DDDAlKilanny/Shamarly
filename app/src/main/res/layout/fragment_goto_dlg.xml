@@ -1,0 +1,132 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    style="@android:style/Animation.Dialog">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="ذهاب إلى"
+        android:id="@+id/textView"
+        android:layout_centerHorizontal="true" />
+
+    <TabHost
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/tabHost"
+        android:layout_below="@+id/textView"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <TabWidget
+                android:id="@android:id/tabs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+            </TabWidget>
+
+            <FrameLayout
+                android:id="@android:id/tabcontent"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <LinearLayout android:id="@+id/الرقم"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:weightSum="6">
+                    <TextView
+                        android:text="أدخل أحد الحقول التالية"
+                        android:layout_width="fill_parent"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content" />
+                    <EditText android:gravity="right"
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:ems="10"
+                        android:layout_weight="1"
+                        android:layout_marginTop="20px"
+                        android:id="@+id/editTextPageNum"
+                        android:editable="true"
+                        android:hint="رقم الصفحة..."/>
+                    <Spinner android:id="@+id/juzNumber"
+                        android:layout_marginTop="30px"
+                        android:layout_weight="1"
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content"></Spinner>
+                    <Spinner android:id="@+id/hizbNumber"
+                        android:layout_width="fill_parent"
+                        android:paddingTop="30px"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"></Spinner>
+                    <LinearLayout
+                        android:layout_marginTop="30px"
+                        android:layout_weight="1"
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content">
+                        <EditText android:gravity="right"
+                            android:layout_width="0dip"
+                            android:layout_weight="0.50"
+                            android:layout_height="wrap_content"
+                            android:inputType="number"
+                            android:ems="10"
+                            android:id="@+id/editTextAyahNum"
+                            android:editable="true"
+                            android:hint="رقم الآية..."/>
+                        <EditText android:gravity="right"
+                            android:layout_width="0dip"
+                            android:layout_weight="0.50"
+                            android:layout_height="wrap_content"
+                            android:inputType="number"
+                            android:ems="10"
+                            android:id="@+id/editTextSuraNum"
+                            android:editable="true"
+                            android:hint="رقم السورة..."/>
+                    </LinearLayout>
+                    <Button
+                        android:layout_weight="1"
+                        android:layout_width="fill_parent"
+                        android:layout_marginTop="30px"
+                        android:layout_height="wrap_content"
+                        android:text="ذهاب"
+                        android:id="@+id/buttonGoto" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/السورة"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical">
+                    <ListView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/listViewSurah"
+                        android:headerDividersEnabled="false"
+                        android:clickable="false"
+                        android:drawSelectorOnTop="true" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/المحفوظات"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical">
+                    <ListView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/listViewBookmarks"
+                        android:headerDividersEnabled="false"
+                        android:clickable="false"
+                        android:drawSelectorOnTop="true" />
+                </LinearLayout>
+            </FrameLayout>
+        </LinearLayout>
+    </TabHost>
+
+</RelativeLayout>
