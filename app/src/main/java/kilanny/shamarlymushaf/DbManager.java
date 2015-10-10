@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -23,9 +24,19 @@ import java.util.zip.ZipInputStream;
  */
 public class DbManager extends SQLiteOpenHelper {
     public static final String DATABASE_NAME = "shamerly.db";
+    private static DbManager instance;
 
-    public DbManager(Context context) {
+    private DbManager(Context context) {
         super(new MyDbContext(context), DATABASE_NAME , null, 1);
+    }
+
+    public static DbManager getInstance() {
+        return instance;
+    }
+
+    public static void init(Context context) {
+        if (instance == null)
+            instance = new DbManager(context);
     }
 
     @Override
@@ -38,7 +49,7 @@ public class DbManager extends SQLiteOpenHelper {
 
     public String getTafseer(int sura, int ayah) {
         SQLiteDatabase db = this.getWritableDatabase();
-        Cursor cursor = db.rawQuery(String.format(
+        Cursor cursor = db.rawQuery(String.format(Locale.US,
                 "select tafseer from mushaf where sura = %d and ayah = %d", sura, ayah), null);
         cursor.moveToFirst();
         if (cursor.isAfterLast() == false) {
@@ -78,7 +89,7 @@ public class DbManager extends SQLiteOpenHelper {
                     h += lineHeight;
                     w = brx;
                 } else {
-                    item.rects.add(new RectF(x, h, w, h + lineHeight));
+                    item.rects.add(new RectF(x, h, w, y + 55));
                     break;
                 }
             }
@@ -111,7 +122,7 @@ public class DbManager extends SQLiteOpenHelper {
 
     public int getPage(int sura, int ayah) {
         SQLiteDatabase db = this.getWritableDatabase();
-        Cursor cursor = db.rawQuery(String.format(
+        Cursor cursor = db.rawQuery(String.format(Locale.US,
                 "select page from mushaf where sura = %d and ayah = %d", sura, ayah), null);
         cursor.moveToFirst();
         if (cursor.isAfterLast() == false) {

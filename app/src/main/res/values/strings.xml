@@ -1,5 +1,34 @@
 <resources>
     <string name="app_name">مصحف الشمرلي</string>
+    <string name="title_activity_settings">الإعدادات</string>
     <string name="title_activity_search">البحث</string>
-    <string name="downloadPage">https://archive.org/download/shamerly/%03d.png</string>
+    <string name="downloadPage_low">https://archive.org/download/shamraly/%03d.png</string>
+    <string name="downloadPage_high">https://archive.org/download/shamerly/%03d.png</string>
+    <string name="title_activity_welcome">WelcomeActivity</string>
+    <string name="help_text">
+        بسم الله الرحمن الرحيم\n
+        الحمد لله رب العالمين والصلاة والسلام على نبينا محمد وعلى آله وصحبه أجمعين\n
+        هذا مصحف الشمرلي الشائع في مصر وغيرها من البلدان\n
+        يقدم إليكم مع ميزة البحث والتلاوة والتفسير\n
+        نسأل الله تعالى القبول والنفع به\n
+\n
+        لتحميل المصحف، حدد الجودة المطلوبة حسب المساحة المتوفرة بجهازك\n
+        يجب تحميل المصحف كاملا قبل بدء استخدام التطبيق\n
+\n
+        لعرض الخيارات، تقوم بلمس شاشة المصحف\n
+        فيظهر شريط بالأسفل يحتوي على أزرار:\n
+        ميزة تكرار التلاوة\n
+        التفسير\n
+        التلاوة\n
+        ذهاب إلى الصفحة أو السورة\n
+        تعليم الصفحة\n
+
+        لتلاوة آية معينة، أو عرض تفسيرها، تقوم بالضغط على الآية\n
+        في المصحف ضغطا مطولا، فيتم تظليل الآية المحددة، ويظهر الشريط السفلي\n
+        ثم تضغط على زر التلاوة أو التفسير\n
+\n
+        ويمكن تغيير إعدادات الخط والتلاوة والتظليل من شاشة الإعدادات\n
+\n
+        ويمكن البحث عن كلمة أو آية أو جزء منها من شاشة البحث\n
+    </string>
 </resources>

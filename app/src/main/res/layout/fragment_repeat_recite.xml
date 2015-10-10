@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:weightSum="5"
+    style="@android:style/Theme.DeviceDefault.Light">
+    <TextView
+        android:layout_weight="1"
+        android:text="من"
+        android:textSize="20dp"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent" />
+    <LinearLayout
+        android:weightSum="2"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent">
+        <EditText android:gravity="right"
+            android:layout_weight="1"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:inputType="number"
+            android:ems="10"
+            android:id="@+id/fromAyah"
+            android:editable="true"
+            android:hint="رقم الآية..."/>
+        <Spinner android:id="@+id/fromSurah"
+            android:layout_marginTop="30px"
+            android:layout_weight="1"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_weight="1"
+        android:text="إلى"
+        android:textSize="20dp"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent" />
+    <LinearLayout
+        android:weightSum="2"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent">
+        <EditText android:gravity="right"
+            android:layout_weight="1"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:inputType="number"
+            android:ems="10"
+            android:id="@+id/toAyah"
+            android:editable="true"
+            android:hint="رقم الآية..."/>
+        <Spinner android:id="@+id/toSurah"
+            android:layout_marginTop="30px"
+            android:layout_weight="1"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/buttonStartRecite"
+        android:layout_weight="1"
+        android:text="بدء التكرار"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent" />
+
+</LinearLayout>

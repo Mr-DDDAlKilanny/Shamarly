@@ -1,0 +1,59 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory
+        android:summary="إعدادات التلاوة والتظليل"
+        android:title="التلاوة والتظليل" >
+        <ListPreference
+            android:key="listReciters"
+            android:title="القارئ"
+            android:summary="اختيار القارئ لتشغيل التلاوات"
+            android:entries="@array/reciter_names"
+            android:entryValues="@array/reciter_values"
+            android:defaultValue="@string/defaultReciter" />
+        <ListPreference
+        android:entries="@array/listOptions"
+        android:entryValues="@array/listValues"
+        android:key="listSelectionColor"
+        android:summary="تحديد لون تظليل الآية المحددة"
+        android:title="لون التظليل"
+        android:defaultValue="@string/yellow" />
+        <CheckBoxPreference
+            android:key="playContinues"
+            android:title="التشغيل المستمر"
+            android:summary="عدم التوقف بعد تشغيل تلاوة الآية المحددة"
+            android:defaultValue="false"
+            />
+        <CheckBoxPreference
+            android:key="backToBegin"
+            android:title="العودة إلى سورة الفاتحة"
+            android:summary="بعد تلاوة سورة الناس لا تقف بل عد إلى الفاتحة"
+            android:defaultValue="true"
+            />
+        <CheckBoxPreference
+            android:key="nightMode"
+            android:title="الوضع الليلي"
+            android:summary="تفعيل الوضع الليلي للقراءة (يحتاج إلى إعادة تشغيل التطبيق)"
+            android:defaultValue="false" />
+        </PreferenceCategory>
+    <PreferenceCategory android:title="التفسير" android:summary="إعدادات التفسير">
+        <ListPreference
+            android:key="fontSize"
+            android:title="حجم الخط"
+            android:summary="تحديد حجم الخط المستخدم في التفسير"
+            android:entries="@array/fontSizes"
+            android:entryValues="@array/fontSizes"
+            />
+        <CheckBoxPreference
+            android:key="fontBold"
+            android:title="خط غامق"
+            android:summary="استخدام خط غامق"
+            android:defaultValue="false" />
+    </PreferenceCategory>
+
+    <!-- This preference simply launches an intent when selected. Use this UI sparingly, per
+         design guidelines. -->
+    <!--<Preference android:title="Click me">
+
+        <intent android:action="android.settings.SYNC_SETTINGS" />
+    </Preference>-->
+
+</PreferenceScreen>

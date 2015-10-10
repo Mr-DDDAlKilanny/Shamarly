@@ -3,6 +3,11 @@ package kilanny.shamarlymushaf;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.support.v4.view.PagerAdapter;
@@ -18,7 +23,7 @@ public class FullScreenImageAdapter extends PagerAdapter {
     private final MainActivity _activity;
     private LayoutInflater inflater;
     private int actualPages = 0;
-    public static final int MAX_PAGE = 5;
+    public static final int MAX_PAGE = 522;
 
     // constructor
     public FullScreenImageAdapter(MainActivity activity, int actualPages) {
@@ -43,6 +48,7 @@ public class FullScreenImageAdapter extends PagerAdapter {
         inflater = (LayoutInflater) _activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         View viewLayout = inflater.inflate(R.layout.layout_fullscreen_image, container, false);
         imgDisplay = (QuranImageView) viewLayout.findViewById(R.id.quranPage);
+        imgDisplay.pref = _activity.pref;
         if (position > 1)
             imgDisplay.currentPage = _activity.db.getPage(position);
         Bitmap bitmap;

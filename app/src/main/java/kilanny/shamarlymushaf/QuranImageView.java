@@ -1,6 +1,8 @@
 package kilanny.shamarlymushaf;
 
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -14,14 +16,21 @@ import android.widget.ImageView;
  */
 public class QuranImageView extends ImageView {
 
-    private final int[] colors = { Color.YELLOW, Color.BLUE, Color.GREEN, Color.CYAN, Color.GRAY, Color.RED };
+    private int[] colors;
     private Paint rectPaint;
     Page currentPage;
     int selectedAyahIndex = -2;
+    private int drawColor;
+    SharedPreferences pref;
+    private Resources res = getResources();
 
     private void init() {
         rectPaint = new Paint();
         rectPaint.setStyle(Paint.Style.FILL);
+        String[] arr = res.getStringArray(R.array.listValues);
+        colors = new int[arr.length];
+        for (int i = 0; i < arr.length; ++i)
+            colors[i] = Color.parseColor(arr[i]);
     }
 
     public QuranImageView(Context context) {
@@ -39,6 +48,11 @@ public class QuranImageView extends ImageView {
         init();
     }
 
+    private void initPrefs() {
+        drawColor = Color.parseColor(pref.getString("listSelectionColor",
+                res.getString(R.string.yellow)));
+    }
+
     @Override
     public void setImageBitmap(Bitmap bm) {
         super.setImageBitmap(bm);
@@ -48,6 +62,7 @@ public class QuranImageView extends ImageView {
     public void draw(Canvas canvas) {
         super.draw(canvas);
         if (currentPage != null) {
+            initPrefs();
             if (selectedAyahIndex == -1) {
                 int idx = 0;
                 for (Ayah a : currentPage.ayahs) {
@@ -59,7 +74,7 @@ public class QuranImageView extends ImageView {
                 }
             } else if (selectedAyahIndex >= 0) {
                 Ayah a = currentPage.ayahs.get(selectedAyahIndex);
-                rectPaint.setColor(colors[0]);
+                rectPaint.setColor(drawColor);
                 rectPaint.setAlpha(125);
                 for (RectF rect : a.rects)
                     canvas.drawRect(getScaledRectFromImageRect(rect), rectPaint);

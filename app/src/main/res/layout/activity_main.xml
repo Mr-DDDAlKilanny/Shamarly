@@ -28,15 +28,15 @@
             <Button android:id="@+id/listen" style="?metaButtonBarStyle"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:background="@drawable/abc_ic_go_search_api_mtrl_alpha" />
+                android:background="@android:drawable/ic_media_play" />
             <Button android:id="@+id/tafseer" style="?metaButtonBarStyle"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:background="@android:drawable/ic_menu_help"/>
-            <Button android:id="@+id/setting" style="?metaButtonBarStyle"
+            <Button android:id="@+id/repeat" style="?metaButtonBarStyle"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:background="@android:drawable/ic_menu_manage"/>
+                android:background="@android:drawable/ic_menu_revert"/>
         </LinearLayout>
     </FrameLayout>
 

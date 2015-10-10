@@ -81,7 +81,8 @@ public class SystemUiHiderHoneycomb extends SystemUiHiderBase {
      */
     @Override
     public void hide() {
-        mAnchorView.setSystemUiVisibility(mHideFlags);
+        //mAnchorView.setSystemUiVisibility(mHideFlags);
+        mSystemUiVisibilityChangeListener.onSystemUiVisibilityChange(mHideFlags);
     }
 
     /**
@@ -89,7 +90,8 @@ public class SystemUiHiderHoneycomb extends SystemUiHiderBase {
      */
     @Override
     public void show() {
-        mAnchorView.setSystemUiVisibility(mShowFlags);
+        //mAnchorView.setSystemUiVisibility(mShowFlags);
+        mSystemUiVisibilityChangeListener.onSystemUiVisibilityChange(mShowFlags);
     }
 
     /**

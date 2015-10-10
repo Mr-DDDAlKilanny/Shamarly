@@ -1,5 +1,15 @@
-<ListView xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:id="@android:id/list"
-    tools:context="kilanny.shamarlymushaf.SearchActivity" />
+    tools:context="kilanny.shamarlymushaf.SearchActivity">
+    <SearchView
+        android:queryHint="كلمة أو جزء من آية..."
+        android:id="@+id/searchTextView"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"></SearchView>
+    <ListView
+        android:layout_below="@id/searchTextView"
+        android:id="@+id/listViewResults"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"></ListView>
+</RelativeLayout>

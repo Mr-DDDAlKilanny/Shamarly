@@ -10,6 +10,19 @@ import java.util.ArrayList;
 class SearchResult {
     public int page, surah, ayah;
     public String text;
+
+    @Override
+    public String toString() {
+        if (text.length() < 100)
+            return text;
+        int idx = 99;
+        while (idx < text.length() && !Character.isWhitespace(text.charAt(idx)))
+            ++idx;
+        return "سورة "
+                + WelcomeActivity.surahs[surah - 1].name
+                + " " + ayah + "\n"
+                + text.substring(0, idx);
+    }
 }
 
 class Ayah {

@@ -1,6 +1,177 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Shamerly>
-    <Surahs>
-        <sura index="1" name="الفاتحة" page="2" />
-    </Surahs>
+    <hizb index="1" page="2" />
+    <surah index="1" name="الفاتحة" page="2" />
+    <surah index="2" name="البقرة" page="3" />
+    <hizb index="2" page="12" />
+    <hizb index="3" page="20" />
+    <hizb index="4" page="28" />
+    <hizb index="5" page="36" />
+    <surah index="3" name="ال عمران" page="42" />
+    <hizb index="6" page="44" />
+    <hizb index="7" page="52" />
+    <hizb index="8" page="60" />
+    <surah index="4" name="النساء" page="64" />
+    <hizb index="9" page="68" />
+    <hizb index="10" page="76" />
+    <hizb index="11" page="84" />
+    <surah index="5" name="المائدة" page="87" />
+    <hizb index="12" page="92" />
+    <hizb index="13" page="99" />
+    <surah index="6" name="الانعام" page="105" />
+    <hizb index="14" page="108" />
+    <hizb index="15" page="116" />
+    <surah index="7" name="الاعراف" page="123" />
+    <hizb index="16" page="123" />
+    <hizb index="17" page="132" />
+    <hizb index="18" page="141" />
+    <surah index="8" name="الانفال" page="145" />
+    <hizb index="19" page="148" />
+    <surah index="9" name="التوبة" page="153" />
+    <hizb index="20" page="157" />
+    <hizb index="21" page="164 " />
+    <surah index="10" name="يونس" page="169" />
+    <hizb index="22" page="172" />
+    <surah index="11" name="هود" page="181" />
+    <hizb index="23" page="181" />
+    <hizb index="24" page="189" />
+    <surah index="12" name="يوسف" page="193" />
+    <hizb index="25" page="199" />
+    <surah index="13" name="الرعد" page="205" />
+    <hizb index="26" page="207" />
+    <surah index="14" name="ابراهيم" page="210" />
+    <surah index="15" name="الحجر" page="216 " />
+    <hizb index="27" page="216" />
+    <surah index="16" name="النحل" page="221" />
+    <hizb index="28" page="225" />
+    <surah index="17" name="الاسراء" page="233" />
+    <hizb index="29" page="233" />
+    <hizb index="30" page="242" />
+    <surah index="18" name="الكهف" page="243" />
+    <hizb index="31" page="250" />
+    <surah index="19" name="مريم" page="253" />
+    <surah index="20" name="طه" page="260" />
+    <hizb index="32" page="260" />
+    <surah index="21" name="الانبياء" page="268" />
+    <hizb index="33" page="268" />
+    <surah index="22" name="الحج" page="276" />
+    <hizb index="34" page="276" />
+    <surah index="23" name="المؤمنون" page="284" />
+    <hizb index="35" page="284" />
+    <surah index="24" name="النور" page="291" />
+    <hizb index="36" page="293" />
+    <surah index="25" name="الفرقان" page="300" />
+    <hizb index="37" page="302" />
+    <surah index="26" name="الشعراء" page="306" />
+    <hizb index="38" page="310" />
+    <surah index="27" name="النمل" page="315" />
+    <hizb index="39" page="320" />
+    <surah index="28" name="القصص" page="323" />
+    <hizb index="40" page="328" />
+    <surah index="29" name="العنكبوت" page="332" />
+    <hizb index="41" page="336" />
+    <surah index="30" name="الروم" page="338" />
+    <surah index="31" name="لقمان" page="344" />
+    <hizb index="42" page="345" />
+    <surah index="32" name="السجدة" page="347" />
+    <surah index="33" name="الاحزاب" page="350" />
+    <hizb index="43" page="353" />
+    <surah index="34" name="سبأ" page="358" />
+    <hizb index="44" page="361" />
+    <surah index="35" name="فاطر" page="364" />
+    <surah index="36" name="يس" page="369" />
+    <hizb index="45" page="370" />
+    <surah index="37" name="الصافات" page="374" />
+    <hizb index="46" page="379" />
+    <surah index="38" name="ص" page="380" />
+    <surah index="39" name="الزمر" page="385" />
+    <hizb index="47" page="388" />
+    <surah index="40" name="غافر" page="392" />
+    <hizb index="48" page="396" />
+    <surah index="41" name="فصلت" page="400" />
+    <hizb index="49" page="404" />
+    <surah index="42" name="الشورى" page="405" />
+    <surah index="43" name="الزخرف" page="411" />
+    <hizb index="50" page="412" />
+    <surah index="44" name="الدخان" page="417" />
+    <surah index="45" name="الجاثية" page="419" />
+    <surah index="46" name="الاحقاف" page="423" />
+    <hizb index="51" page="423" />
+    <surah index="47" name="محمد" page="427" />
+    <surah index="48" name="الفتح" page="430" />
+    <hizb index="52" page="432" />
+    <surah index="49" name="الحجرات" page="434" />
+    <surah index="50" name="ق" page="437" />
+    <surah index="51" name="الذاريات" page="439" />
+    <hizb index="53" page="440" />
+    <surah index="52" name="الطور" page="442" />
+    <surah index="53" name="النجم" page="444" />
+    <surah index="54" name="القمر" page="447" />
+    <surah index="55" name="الرحمن" page="449 " />
+    <hizb index="54" page="449" />
+    <surah index="56" name="الواقعة" page="452" />
+    <surah index="57" name="الحديد" page="455 " />
+    <surah index="58" name="المجادلة" page="459" />
+    <hizb index="55" page="459" />
+    <surah index="59" name="الحشر" page="462" />
+    <surah index="60" name="الممتحنة" page="465" />
+    <surah index="61" name="الصف" page="468" />
+    <surah index="62" name="الجمعة" page="469" />
+    <hizb index="56" page="469" />
+    <surah index="63" name="المنافقون" page="471" />
+    <surah index="64" name="التغابن" page="472" />
+    <surah index="65" name="الطلاق" page="474" />
+    <surah index="66" name="التحريم" page="476" />
+    <surah index="67" name="الملك" page="478" />
+    <hizb index="57" page="478" />
+    <surah index="68" name="القلم" page="480" />
+    <surah index="69" name="الحاقة" page="482 " />
+    <surah index="70" name="المعارج" page="484" />
+    <surah index="71" name="نوح" page="486" />
+    <surah index="72" name="الجن" page="488" />
+    <hizb index="58" page="488" />
+    <surah index="73" name="المزمل" page="490" />
+    <surah index="74" name="المدثر" page="491" />
+    <surah index="75" name="القيامة" page="493" />
+    <surah index="76" name="الانسان" page="495" />
+    <surah index="77" name="المرسلات" page="497" />
+    <surah index="78" name="النبأ" page="498" />
+    <hizb index="59" page="498" />
+    <surah index="79" name="النازعات" page="500" />
+    <surah index="80" name="عبس" page="501" />
+    <surah index="81" name="التكوير" page="502" />
+    <surah index="82" name="الانفطار" page="503" />
+    <surah index="83" name="المطففين" page="504" />
+    <surah index="84" name="الانشقاق" page="505" />
+    <surah index="85" name="البروج" page="506" />
+    <surah index="86" name="الطارق" page="507" />
+    <surah index="87" name="الاعلى" page="508" />
+    <hizb index="60" page="508" />
+    <surah index="88" name="الغاشية" page="509" />
+    <surah index="89" name="الفجر" page="510" />
+    <surah index="90" name="البلد" page="511" />
+    <surah index="91" name="الشمس" page="512" />
+    <surah index="92" name="الليل" page="512" />
+    <surah index="93" name="الضحى" page="513" />
+    <surah index="94" name="الشرح" page="514" />
+    <surah index="95" name="التين" page="514" />
+    <surah index="96" name="العلق" page="514" />
+    <surah index="97" name="القدر" page="515" />
+    <surah index="98" name="البينة" page="516" />
+    <surah index="99" name="الزلزلة" page="516" />
+    <surah index="100" name="العاديات" page="517" />
+    <surah index="101" name="القارعة" page="517" />
+    <surah index="102" name="التكاثر" page="518" />
+    <surah index="103" name="العصر" page="518" />
+    <surah index="104" name="الهمزة" page="519" />
+    <surah index="105" name="الفيل" page="519" />
+    <surah index="106" name="قريش" page="520" />
+    <surah index="107" name="الماعون" page="520" />
+    <surah index="108" name="الكوثر" page="520" />
+    <surah index="109" name="الكافرون" page="521" />
+    <surah index="110" name="النصر" page="521" />
+    <surah index="111" name="المسد" page="521" />
+    <surah index="112" name="الاخلاص" page="522" />
+    <surah index="113" name="الفلق" page="522" />
+    <surah index="114" name="الناس" page="522" />
 </Shamerly>
