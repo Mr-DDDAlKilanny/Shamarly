@@ -1,8 +1,11 @@
 package kilanny.shamarlymushaf;
 
 import android.os.Bundle;
+import android.preference.Preference;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceFragment;
+import android.widget.Button;
+import android.widget.ListView;
 
 /**
  * Created by Yasser on 10/02/2015.

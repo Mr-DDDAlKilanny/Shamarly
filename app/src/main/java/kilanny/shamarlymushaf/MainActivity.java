@@ -4,13 +4,9 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.NotificationManager;
-import android.app.ProgressDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.XmlResourceParser;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -18,23 +14,17 @@ import android.graphics.Color;
 import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Paint;
-import android.graphics.Point;
-import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.preference.PreferenceManager;
-import android.support.v4.app.NotificationCompat;
+import android.support.annotation.Nullable;
 import android.support.v4.view.ViewPager;
-import android.util.DisplayMetrics;
-import android.util.Log;
 import android.util.TypedValue;
-import android.view.Display;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
@@ -42,16 +32,12 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TabHost;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -61,12 +47,8 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Locale;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -116,128 +98,9 @@ public class MainActivity extends Activity {
                 0.0f, 0.0f, 0.0f, 1.0f, 0.0f
         }));
 
-    private static final int[] AYAH_COUNT = {
-            7,
-            286,
-            200,
-            176,
-            120,
-            165,
-            206,
-            75,
-            129,
-            109,
-            123,
-            111,
-            43,
-            52,
-            99,
-            128,
-            111,
-            110,
-            98,
-            135,
-            112,
-            78,
-            118,
-            64,
-            77,
-            227,
-            93,
-            88,
-            69,
-            60,
-            34,
-            30,
-            73,
-            54,
-            45,
-            83,
-            182,
-            88,
-            75,
-            85,
-            54,
-            53,
-            89,
-            59,
-            37,
-            35,
-            38,
-            29,
-            18,
-            45,
-            60,
-            49,
-            62,
-            55,
-            78,
-            96,
-            29,
-            22,
-            24,
-            13,
-            14,
-            11,
-            11,
-            18,
-            12,
-            12,
-            30,
-            52,
-            52,
-            44,
-            28,
-            28,
-            20,
-            56,
-            40,
-            31,
-            50,
-            40,
-            46,
-            42,
-            29,
-            19,
-            36,
-            25,
-            22,
-            17,
-            19,
-            26,
-            30,
-            20,
-            15,
-            21,
-            11,
-            8,
-            8,
-            19,
-            5,
-            8,
-            8,
-            11,
-            11,
-            8,
-            3,
-            9,
-            5,
-            4,
-            7,
-            3,
-            6,
-            3,
-            5,
-            4,
-            5,
-            6
-    };
-
     public static final String SHOW_PAGE_MESSAGE = "kilanny.shamarlymushaf.MainActivity.showPage";
-    private static boolean active = false;
     private FullScreenImageAdapter adapter;
     private ViewPager viewPager;
-    private final String settingFilename = "myfile";
     private Setting setting;
     SharedPreferences pref;
     public final DbManager db;
@@ -247,23 +110,15 @@ public class MainActivity extends Activity {
     private boolean allPagePlay = false;
     private boolean autoSwipPage = false;
     private Typeface tradionalArabicFont, tradionalArabicBoldFont;
-    public static MainActivity instance;
 
     public MainActivity() {
-        DbManager.init(instance = this);
+        DbManager.init(this);
         db = DbManager.getInstance();
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        active = true;
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        active = false;
         stopPlayback();
     }
 
@@ -281,39 +136,15 @@ public class MainActivity extends Activity {
         }
     }
 
-    private int getNumExistingPages() {
-        int num = 0;
-        for (int i = 1; i <= FullScreenImageAdapter.MAX_PAGE; ++i) {
-            if (pageExists(i))
-                ++num;
-        }
-        return num;
-    }
-
-    private String getReciteUrl(String name, int sura, int ayah) {
-        return String.format(Locale.US, "http://www.everyayah.com/data/%s/%03d%03d.mp3", name, sura, ayah);
-    }
-
-    private void showNotification() {
-        NotificationCompat.Builder mBuilder =
-                new NotificationCompat.Builder(this)
-                        .setSmallIcon(R.mipmap.ic_launcher)
-                        .setContentTitle("Thumb File Deleted")
-                        .setContentText("A thumb file with size has been deleted");
-        NotificationManager mNotificationManager =
-                (NotificationManager) this.getSystemService(Context.NOTIFICATION_SERVICE);
-// mId allows you to update the notification later on.
-        mNotificationManager.notify(1992, mBuilder.build());
-    }
-
     private void initViewPagerAdapter() {
-        int num = getNumExistingPages();
-        adapter = new FullScreenImageAdapter(this, num);
+        //int num = getNumExistingPages();
+        adapter = new FullScreenImageAdapter(this);
         viewPager.setAdapter(adapter);
         // displaying selected image first
         Intent i = getIntent();
         int page = i.getIntExtra(SHOW_PAGE_MESSAGE, -1);
-        showPage(page == -1 ? setting.page : page);
+        page = page == -1 ? setting.page : page;
+        showPage(page);
     }
 
     private QuranImageView getCurrentPage() {
@@ -373,14 +204,18 @@ public class MainActivity extends Activity {
                     @Override
                     public void onLongPress(MotionEvent e) {
                         super.onLongPress(e);
-                        QuranImageView imageView = getCurrentPage();
-                        Ayah a = imageView.getAyahAtPos(e.getX(), e.getY());
-                        if (a != null) {
-                            imageView.selectedAyahIndex = imageView.currentPage.ayahs.indexOf(a);
-                            imageView.invalidate();
-                            stopPlayback();
-                            mSystemUiHider.show();
-                        }
+                        //if (adapter.getCount() < FullScreenImageAdapter.MAX_PAGE)
+                        //    downloadAll();
+                        //else {
+                            QuranImageView imageView = getCurrentPage();
+                            Ayah a = imageView.getAyahAtPos(e.getX(), e.getY());
+                            if (a != null) {
+                                imageView.selectedAyahIndex = imageView.currentPage.ayahs.indexOf(a);
+                                imageView.invalidate();
+                                stopPlayback();
+                                mSystemUiHider.show();
+                            }
+                        //}
                     }
 
                     @Override
@@ -390,15 +225,15 @@ public class MainActivity extends Activity {
                         } else {
                             mSystemUiHider.show();
                         }
-                        if (adapter.getCount() < FullScreenImageAdapter.MAX_PAGE)
-                            downloadAll();
-                        else {
+                        //if (adapter.getCount() < FullScreenImageAdapter.MAX_PAGE)
+                        //    downloadAll();
+                        //else {
                             QuranImageView imageView = getCurrentPage();
                             if (imageView.selectedAyahIndex >= -1) {
                                 imageView.selectedAyahIndex = -2;
                                 imageView.invalidate();
                             }
-                        }
+                        //}
                         return false;
                     }
                 });
@@ -423,7 +258,7 @@ public class MainActivity extends Activity {
                 else autoSwipPage = false;
                 setting.page = adapter.getCount() - position;
                 setBookmarkMenuItem(setting.isBookmarked(setting.page));
-                saveSettings();
+                setting.save(MainActivity.this);
                 if (last != null) {
                     last.selectedAyahIndex = -2;
                     last.invalidate();
@@ -432,6 +267,19 @@ public class MainActivity extends Activity {
                     last = getCurrentPage();
                 } catch (Exception ex) {
 
+                }
+                // find hizb-juz
+                for (int i = 1; i < WelcomeActivity.hizbs.length; ++i) {
+                    int val = (int) WelcomeActivity.hizbs[i].value;
+                    if (val == setting.page) {
+                        String txt;
+                        if (i % 2 == 1)
+                            txt = WelcomeActivity.juzs[1 + i / 2].name;
+                        else
+                            txt = WelcomeActivity.hizbs[i].name;
+                        Toast.makeText(MainActivity.this, txt, Toast.LENGTH_SHORT).show();
+                        break;
+                    } else if (val > setting.page) break;
                 }
             }
         });
@@ -472,7 +320,7 @@ public class MainActivity extends Activity {
         tabHost.addTab(tab3);
         //EditText txt = (EditText) dialog.findViewById(R.id.editTextPageNum);
         //txt.setText("" + setting.page);
-        dialog.setTitle("ذهاب إلى الصفحة");
+        dialog.setTitle("ذهاب إلى");
         final ListView l = (ListView) dialog.findViewById(R.id.listViewSurah);
         l.setAdapter(new ArrayAdapter<>(this,
                 android.R.layout.simple_list_item_1, android.R.id.text1, WelcomeActivity.surahs));
@@ -535,7 +383,14 @@ public class MainActivity extends Activity {
                         String a = ayah.getText().toString().trim();
                         if (!s.isEmpty() && !a.isEmpty()) {
                             dialog.dismiss();
-                            showPage(db.getPage(Integer.parseInt(s), Integer.parseInt(a)));
+                            int ss = Integer.parseInt(s);
+                            int aa = Integer.parseInt(a);
+                            if (ss < 1 || ss > Utils.AYAH_COUNT.length)
+                                showError("رقم السورة غير صحيح");
+                            else if (aa < 1 || aa > Utils.AYAH_COUNT[ss - 1])
+                                showError("رقم الآية غير صحيح");
+                            else
+                                showPage(db.getPage(ss, aa));
                         } else if (!s.isEmpty() || !a.isEmpty()) {
                             showError("الحقلان السورة والآية مطلوبان معا");
                         } else {
@@ -612,6 +467,8 @@ public class MainActivity extends Activity {
             if (image.selectedAyahIndex < 0) {
                 currentAyaxIndex.setData(image.selectedAyahIndex = 0);
                 image.invalidate();
+            } else if (pref.getBoolean("playContinues", false)) {
+                currentAyaxIndex.setData(image.selectedAyahIndex);
             }
         }
         try {
@@ -625,7 +482,7 @@ public class MainActivity extends Activity {
                     }
                     else {
                         QuranImageView image = getCurrentPage();
-                        int next = AYAH_COUNT[sura - 1] >= ayah + 1 ?
+                        int next = Utils.AYAH_COUNT[sura - 1] >= ayah + 1 ?
                                 ayah + 1 : 1;
                         if (repeat) {
                             if (sura == toSurah && ayah == toAyah) {
@@ -641,7 +498,7 @@ public class MainActivity extends Activity {
                                     }
                                 }
                             } else if (next <= ayah) {
-                                if (++sura > AYAH_COUNT.length) {
+                                if (++sura > Utils.AYAH_COUNT.length) {
                                     if (pref.getBoolean("backToBegin", true)) {
                                         sura = ayah = 1;
                                         autoSwipPage = true;
@@ -659,7 +516,7 @@ public class MainActivity extends Activity {
                         }
                         else {
                             if (next <= ayah) {
-                                if (++sura > AYAH_COUNT.length) {
+                                if (++sura > Utils.AYAH_COUNT.length) {
                                     if (pref.getBoolean("backToBegin", true)) {
                                         sura = next = 1;
                                         autoSwipPage = true;
@@ -690,8 +547,8 @@ public class MainActivity extends Activity {
                         bar.setVisibility(View.VISIBLE);
                         try {
                             player.reset();
-                            player.setDataSource(getReciteUrl(getSelectedSound(),
-                                    sura, ayah));
+                            player.setDataSource(Utils.getAyahPath(MainActivity.this,
+                                    getSelectedSound(), sura, ayah));
                             player.prepareAsync();
                         } catch (IOException e) {
                             e.printStackTrace();
@@ -725,7 +582,7 @@ public class MainActivity extends Activity {
             });
             player.setAudioStreamType(AudioManager.STREAM_MUSIC);
             Ayah a = image.currentPage.ayahs.get(image.selectedAyahIndex);
-            player.setDataSource(getReciteUrl(getSelectedSound(),
+            player.setDataSource(Utils.getAyahPath(MainActivity.this, getSelectedSound(),
                     sura = a.sura, ayah = a.ayah));
             player.prepareAsync();
         } catch (Exception e) {
@@ -751,6 +608,7 @@ public class MainActivity extends Activity {
                     return;
                 }
                 setBookmarkMenuItem(setting.toggleBookmark(setting.page));
+                setting.save(MainActivity.this);
             }
         });
         btn = (Button) findViewById(R.id.gotoBtn);
@@ -864,8 +722,8 @@ public class MainActivity extends Activity {
                 }
                 int sf = (int) ((ListItem) spinner1.getSelectedItem()).value;
                 int st = (int) ((ListItem) spinner2.getSelectedItem()).value;
-                f = Math.min(f, AYAH_COUNT[sf - 1]);
-                t = Math.min(t, AYAH_COUNT[st - 1]);
+                f = Math.min(f, Utils.AYAH_COUNT[sf - 1]);
+                t = Math.min(t, Utils.AYAH_COUNT[st - 1]);
                 if ((sf > st || sf == st && f > t)
                         && !pref.getBoolean("backToBegin", true)) {
                     showError("البداية يجب أن لا تكون أعلى من النهاية. فعل خيار البدء من الفاتحة للاستمرار");
@@ -884,18 +742,17 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (!isExternalStorageWritable()) {
-            Toast.makeText(this, "فشل بدء التطبيق. تأكد من وجود سعة تخزين كافية",
-                    Toast.LENGTH_LONG).show();
-            finish();
-        }
+        Utils.initDatabaseDir(this);
+        DbManager.init(this);
+        deleteAll();
+        WelcomeActivity.initQuranData(this);
         setContentView(R.layout.activity_main);
         bar = (ProgressBar) this.findViewById(R.id.progressBar);
         tradionalArabicFont = Typeface.createFromAsset(getAssets(), "DroidNaskh-Regular.ttf");
         tradionalArabicBoldFont = Typeface.createFromAsset(getAssets(), "DroidNaskh-Bold.ttf");
         try {
             pref = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-            readSettings();
+            setting = Setting.getInstance(this);
             initViewPager();
             initButtons();
             getActionBar().hide();
@@ -907,199 +764,34 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void showAlert(String title, String msg) {
-        AlertDialog.Builder dlgAlert  = new AlertDialog.Builder(this);
-        dlgAlert.setMessage(msg);
-        dlgAlert.setTitle(title);
-        dlgAlert.setPositiveButton("موافق", null);
-        dlgAlert.setCancelable(false);
-        dlgAlert.create().show();
-    }
-
-    private void showConfirm(String title, String msg, DialogInterface.OnClickListener ok) {
-        new AlertDialog.Builder(this)
-                .setIcon(android.R.drawable.ic_dialog_alert)
-                .setTitle(title)
-                .setMessage(msg)
-                .setPositiveButton("نعم", ok)
-                .setNegativeButton("لا", null)
-                .show();
-    }
-
-    private Bitmap getBitmapFromURL(String link) {
-        System.out.println(link);
-        try {
-            URL url = new URL(link);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setDoInput(true);
-            connection.connect();
-            InputStream input = connection.getInputStream();
-            BitmapFactory.Options o = new BitmapFactory.Options();
-            return BitmapFactory.decodeStream(input, new Rect(0, 0, 0, 0), o);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    private void downloadAll() {
-        final ProgressDialog show = new ProgressDialog(this);
-        show.setTitle("تحميل المصحف كاملا");
-        show.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-        show.setIndeterminate(false);
-        final int MAX_PAGE = FullScreenImageAdapter.MAX_PAGE;
-        show.setMax(MAX_PAGE);
-        show.setProgress(0);
-        show.show();
-        Display display = getWindowManager().getDefaultDisplay();
-        final Point p = new Point();
-        display.getSize(p);
-        final AsyncTask<Void, Integer, String[]> execute = new AsyncTask<Void, Integer, String[]>() {
+    /**
+     * Used for cleaning up old app version data
+     * TODO: remove in later versions
+     */
+    private void deleteAll() {
+        new Thread(new Runnable() {
             @Override
-            protected String[] doInBackground(Void... params) {
-                final ConcurrentLinkedQueue<Integer> q = new ConcurrentLinkedQueue<>();
-                int exist = 0;
-                for (int p = 1; !isCancelled() && p <= MAX_PAGE; ++p) {
-                    Bitmap bb = readPage(p);
-                    if (bb == null) {
-                        q.add(p);
+            public void run() {
+                File file;
+                try {
+                    if (Utils.isExternalStorageWritable()) {
+                        file = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES),
+                                "quran_Images");
+                        if (!file.exists()) return;
                     } else {
-                        publishProgress(++exist);
-                        bb.recycle();
+                        file = new File(getFilesDir(), "quran_Images");
+                        if (!file.exists()) return;
                     }
-                }
-                if (isCancelled()) return null;
-                Thread[] threads = new Thread[4];
-                final Shared progress = new Shared();
-                final Shared error = new Shared();
-                error.setData(0);
-                progress.setData(exist);
-                if (exist == 0) {
-                    final Lock lock = new ReentrantLock(true);
-                    final Condition condition = lock.newCondition();
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                            builder.setTitle("حدد جودة التحميل");
-                            final Runnable signal = new Runnable() {
-                                @Override
-                                public void run() {
-                                    lock.lock();
-                                    condition.signalAll();
-                                    lock.unlock();
-                                }
-                            };
-                            builder.setItems(new String[]{"جودة عالية (250 ميغا تقريبا)", "جودة عادية (80 ميغا تقريبا)"},
-                                    new DialogInterface.OnClickListener() {
-                                        @Override
-                                        public void onClick(DialogInterface dialog, int which) {
-                                            if (which == 0)
-                                                setting.downloadQuality = Setting.QUALITY_HIGH;
-                                            else
-                                                setting.downloadQuality = Setting.QUALITY_LOW;
-                                            saveSettings();
-                                            signal.run();
-                                        }
-                                    });
-                            builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-                                @Override
-                                public void onCancel(DialogInterface dialog) {
-                                    setting.downloadQuality = Setting.QUALITY_UNSPECIFIED;
-                                    saveSettings();
-                                    signal.run();
-                                }
-                            });
-                            builder.show();
-                        }
-                    });
-                    try {
-                        lock.lock();
-                        condition.await();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
+                    for (int idx = 1; idx <= FullScreenImageAdapter.MAX_PAGE; ++idx) {
+                        File filename = new File(file, idx + "");
+                        if (filename.exists())
+                            filename.delete();
                     }
-                    lock.unlock();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
                 }
-                if (setting.downloadQuality == Setting.QUALITY_UNSPECIFIED) {
-                    cancel(false);
-                    return null; // user cancelled quality selection dialog
-                }
-                final String downloadUrl = getString(setting.downloadQuality == Setting.QUALITY_HIGH ?
-                        R.string.downloadPage_high : R.string.downloadPage_low);
-                for (int th = 0; th < threads.length; ++th) {
-                    threads[th] = new Thread(new Runnable() {
-
-                        @Override
-                        public void run() {
-                            while (!isCancelled() && error.getData() == 0) {
-                                Integer per = q.poll();
-                                if (per == null) break;
-                                String path = String.format(Locale.US, downloadUrl, per);
-                                Bitmap b = getBitmapFromURL(path);
-                                if (b == null) {
-                                    error.setData(1);
-                                    break;
-                                } else {
-                                    try {
-                                        if (!writePage(per, b, p)) {
-                                            error.setData(2);
-                                            break;
-                                        }
-                                    } finally {
-                                        b.recycle();
-                                    }
-                                }
-                                progress.increment();
-                                publishProgress(progress.getData());
-                            }
-                        }
-                    });
-                }
-                for (int i = 0; i < threads.length; ++i)
-                    threads[i].start();
-                for (int i = 0; i < threads.length; ++i)
-                    try {
-                        threads[i].join();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                if (error.getData() == 1)
-                    return new String[]{"خطأ", "فشلت عملية التحميل. تأكد من اتصالك بالانترنت"};
-                else if (error.getData() == 2)
-                    return new String[]{"خطأ", "لا يمكن كتابة الملف. تأكد من وجود مساحة كافية"};
-                else if (!isCancelled()) {
-                    return new String[]{"تحميل المصحف", "جميع الصفحات تم تحميلها بنجاح"};
-                }
-                return null;
             }
-
-            @Override
-            protected void onProgressUpdate(final Integer... values) {
-                show.setProgress(values[0]);
-            }
-
-            @Override
-            protected void onCancelled() {
-                //super.onCancelled();
-                show.dismiss();
-            }
-
-            @Override
-            protected void onPostExecute(String[] strings) {
-                //super.onPostExecute(strings);
-                show.dismiss();
-                showAlert(strings[0], strings[1]);
-                if (strings[1] != null && strings[1].contains("نجاح"))
-                    initViewPagerAdapter();
-            }
-        }.execute();
-        show.setOnCancelListener(new DialogInterface.OnCancelListener() {
-            @Override
-            public void onCancel(DialogInterface dialog) {
-                execute.cancel(true);
-            }
-        });
+        }).start();
     }
 
     @Override
@@ -1129,46 +821,13 @@ public class MainActivity extends Activity {
         mHideHandler.postDelayed(mHideRunnable, delayMillis);
     }
 
-    /* Checks if external storage is available for read and write */
-    public boolean isExternalStorageWritable() {
-        String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state)) {
-            return true;
-        }
-        return false;
-    }
-
-    /* Checks if external storage is available to at least read */
-    public boolean isExternalStorageReadable() {
-        String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state) ||
-                Environment.MEDIA_MOUNTED_READ_ONLY.equals(state)) {
-            return true;
-        }
-        return false;
-    }
-
-    public File getAlbumStorageDir(Context context) {
-        // Get the directory for the app's private pictures directory.
-        File file = new File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES),
-                "quran_Images");
-        if (!file.exists() && !file.mkdirs()) {
-            Log.e("QuranShemerly", "Directory not created");
-        }
-        return file;
-    }
-
-    private boolean pageExists(int idx) {
-        File filename = new File(getAlbumStorageDir(getApplicationContext()), idx + "");
-        return filename.exists();
-    }
-
     public Bitmap readPage(int idx) {
         try {
-            File filename = new File(getAlbumStorageDir(getApplicationContext()), idx + "");
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inPreferredConfig = Bitmap.Config.ARGB_8888;
-            Bitmap bitmap = BitmapFactory.decodeFile(filename.getPath(), options);
+            InputStream istr = getAssets().open(String.format(Locale.US, "pages/%03d.png", idx));
+            Bitmap bitmap = BitmapFactory.decodeStream(istr, null, options);
+            istr.close();
             bitmap.setHasAlpha(true);
             if (idx > 3) {
                 Bitmap tmp = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(),
@@ -1197,65 +856,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    private boolean writePage(int idx, Bitmap b, Point screenSize) {
-        FileOutputStream out = null;
-        File filename = new File(getAlbumStorageDir(getApplicationContext()), idx + "");
-        int width = Math.min(screenSize.x, screenSize.y);
-        int height = Math.max(screenSize.x, screenSize.y);
-        try {
-            out = new FileOutputStream(filename);
-            float factor = (float) width / b.getWidth();
-            Bitmap bb = Bitmap.createScaledBitmap(b, width, (int) (height * factor), false);
-            b.recycle();
-            b = bb;
-            b.compress(Bitmap.CompressFormat.PNG, 100, out);
-            // PNG is a lossless format, the compression factor (100) is ignored
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (out != null) {
-                    out.close();
-                    return true;
-                }
-                return false;
-            } catch (IOException e) {
-                e.printStackTrace();
-                return false;
-            }
-        }
-    }
-
-    private void readSettings() {
-        try {
-            FileInputStream fis = openFileInput(settingFilename);
-            ObjectInputStream is = new ObjectInputStream(fis);
-            setting = (Setting) is.readObject();
-            is.close();
-            fis.close();
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
-        if (setting == null) {
-            setting = new Setting();
-            setting.bookmarks = new ArrayList<>();
-        }
-    }
-
-    private void saveSettings() {
-        try {
-            FileOutputStream fos = openFileOutput(settingFilename, Context.MODE_PRIVATE);
-            ObjectOutputStream os = new ObjectOutputStream(fos);
-            os.writeObject(setting);
-            os.close();
-            fos.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
 }
 class ListItem implements Serializable {
     String name;
@@ -1275,13 +875,14 @@ class ListItem implements Serializable {
     }
 }
 class Setting implements Serializable {
+    private static Setting instnace;
+    private static final String settingFilename = "myfile";
+
     int page = 1;
-    public static final short QUALITY_UNSPECIFIED = 0;
-    public static final short QUALITY_LOW = 1;
-    public static final short QUALITY_HIGH = 2;
-    short downloadQuality = QUALITY_UNSPECIFIED;
+    String saveSoundsDirectory;
     ArrayList<ListItem> bookmarks;
 
+    @Nullable
     private ListItem getBookmark(int p) {
         for (ListItem i : bookmarks) {
             if (Integer.parseInt(i.name) == p)
@@ -1305,6 +906,38 @@ class Setting implements Serializable {
             bookmarks.remove(b);
             return false;
         }
+    }
+
+    public void save(Context context) {
+        try {
+            FileOutputStream fos = context.openFileOutput(settingFilename, Context.MODE_PRIVATE);
+            ObjectOutputStream os = new ObjectOutputStream(fos);
+            os.writeObject(this);
+            os.close();
+            fos.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static Setting getInstance(Context context) {
+        if (instnace != null)
+            return instnace;
+        Setting setting = null;
+        try {
+            FileInputStream fis = context.openFileInput(settingFilename);
+            ObjectInputStream is = new ObjectInputStream(fis);
+            setting = (Setting) is.readObject();
+            is.close();
+            fis.close();
+        } catch (IOException | ClassNotFoundException ex) {
+            ex.printStackTrace();
+        }
+        if (setting == null) {
+            setting = new Setting();
+            setting.bookmarks = new ArrayList<>();
+        }
+        return instnace = setting;
     }
 }
 class Surah {

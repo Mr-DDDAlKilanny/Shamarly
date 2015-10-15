@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="?android:attr/listPreferredItemHeight"
+    android:padding="6dip" >
+
+    <ImageButton
+        android:id="@+id/download_item"
+        android:layout_width="wrap_content"
+        android:layout_height="fill_parent"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginRight="6dip"
+        android:layout_marginEnd="6dip"
+        android:src="@android:drawable/arrow_down_float" />
+
+    <ImageButton
+        android:id="@+id/delete_item"
+        android:layout_width="wrap_content"
+        android:layout_height="fill_parent"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentTop="true"
+        android:layout_toRightOf="@id/download_item"
+        android:layout_toEndOf="@id/download_item"
+        android:src="@android:drawable/ic_delete" />
+
+    <ProgressBar
+        android:id="@+id/itemProgress"
+        android:layout_width="fill_parent"
+        android:layout_height="26dip"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
+        android:layout_toRightOf="@id/delete_item"
+        android:layout_toEndOf="@id/delete_item"
+        android:ellipsize="marquee"
+        android:progress="0"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        android:textSize="12sp"/>
+
+    <TextView
+        android:id="@+id/itemProgressText"
+        android:text="0 / 286"
+        android:textSize="12sp"
+        android:ellipsize="marquee"
+        android:layout_alignLeft="@id/itemProgress"
+        android:layout_alignRight="@id/itemProgress"
+        android:layout_alignTop="@id/itemProgress"
+        android:layout_alignBottom="@id/itemProgress"
+        android:background="#00000000"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <TextView
+        android:id="@+id/surahName"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/itemProgress"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentTop="true"
+        android:layout_alignWithParentIfMissing="true"
+        android:layout_toRightOf="@id/delete_item"
+        android:gravity="center_vertical"
+        android:layout_toEndOf="@id/delete_item"
+        android:textSize="16sp" />
+
+</RelativeLayout>

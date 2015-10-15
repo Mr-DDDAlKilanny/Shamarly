@@ -14,7 +14,7 @@
         android:layout_height="wrap_content" />
 <LinearLayout
     android:layout_below="@+id/appNameTextView"
-    android:weightSum="2"
+    android:weightSum="3"
     android:orientation="vertical"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent">
@@ -50,6 +50,18 @@
         <ImageButton
             android:background="@android:drawable/ic_menu_manage"
             android:id="@+id/openSettings"
+            android:layout_weight="1"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent" />
+    </LinearLayout>
+    <LinearLayout
+        android:layout_weight="1"
+        android:weightSum="2"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent">
+        <ImageButton
+            android:id="@+id/reciter_download"
+            android:background="@android:drawable/ic_btn_speak_now"
             android:layout_weight="1"
             android:layout_width="fill_parent"
             android:layout_height="fill_parent" />

@@ -1,9 +1,9 @@
 package kilanny.shamarlymushaf;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.XmlResourceParser;
 import android.os.Bundle;
-import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.ImageButton;
@@ -19,8 +19,10 @@ public class WelcomeActivity extends AppCompatActivity {
     public static final ListItem[] surahs2 = new ListItem[115];
     public static final Surah[] surahs = new Surah[114];
 
-    private void initQuranData() {
-        XmlResourceParser parser = getResources().getXml(R.xml.qurandata);
+    public static void initQuranData(Context context) {
+        if (juzs[0] != null)
+            return;
+        XmlResourceParser parser = context.getResources().getXml(R.xml.qurandata);
         try {
             int eventType = parser.getEventType();
             while (eventType != XmlPullParser.END_DOCUMENT){
@@ -74,10 +76,10 @@ public class WelcomeActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        MyDbContext.externalFilesDir = getExternalFilesDir(null);
+        Utils.initDatabaseDir(this);
         DbManager.init(this);
         setContentView(R.layout.activity_welcome);
-        initQuranData();
+        initQuranData(this);
 
         ImageButton btn = (ImageButton) findViewById(R.id.openQuran);
         btn.setOnClickListener(new View.OnClickListener() {
@@ -105,6 +107,13 @@ public class WelcomeActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 startActivity(new Intent(WelcomeActivity.this, HelpActivity.class));
+            }
+        });
+        btn = (ImageButton) findViewById(R.id.reciter_download);
+        btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(WelcomeActivity.this, ReciterListActivity.class));
             }
         });
     }

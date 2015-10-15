@@ -31,7 +31,7 @@
         <CheckBoxPreference
             android:key="nightMode"
             android:title="الوضع الليلي"
-            android:summary="تفعيل الوضع الليلي للقراءة (يحتاج إلى إعادة تشغيل التطبيق)"
+            android:summary="تفعيل الوضع الليلي للقراءة"
             android:defaultValue="false" />
         </PreferenceCategory>
     <PreferenceCategory android:title="التفسير" android:summary="إعدادات التفسير">
@@ -41,6 +41,7 @@
             android:summary="تحديد حجم الخط المستخدم في التفسير"
             android:entries="@array/fontSizes"
             android:entryValues="@array/fontSizes"
+            android:defaultValue="20"
             />
         <CheckBoxPreference
             android:key="fontBold"

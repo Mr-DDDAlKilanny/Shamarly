@@ -22,18 +22,16 @@ public class FullScreenImageAdapter extends PagerAdapter {
 
     private final MainActivity _activity;
     private LayoutInflater inflater;
-    private int actualPages = 0;
     public static final int MAX_PAGE = 522;
 
     // constructor
-    public FullScreenImageAdapter(MainActivity activity, int actualPages) {
+    public FullScreenImageAdapter(MainActivity activity) {
         this._activity = activity;
-        this.actualPages = actualPages;
     }
 
     @Override
     public int getCount() {
-        return actualPages == 0 ? 1 : actualPages;
+        return MAX_PAGE;
     }
 
     @Override
@@ -51,13 +49,8 @@ public class FullScreenImageAdapter extends PagerAdapter {
         imgDisplay.pref = _activity.pref;
         if (position > 1)
             imgDisplay.currentPage = _activity.db.getPage(position);
-        Bitmap bitmap;
-        if (getCount() < MAX_PAGE) {
-            bitmap = BitmapFactory.decodeResource(_activity.getResources(), R.drawable.pls_download);
-        } else {
-            bitmap = _activity.readPage(position);
-            viewLayout.setTag(position);
-        }
+        Bitmap bitmap = _activity.readPage(position);
+        viewLayout.setTag(position);
         imgDisplay.setImageBitmap(bitmap);
         container.addView(viewLayout);
         return viewLayout;

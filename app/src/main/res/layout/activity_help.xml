@@ -11,9 +11,10 @@
         android:layout_height="wrap_content"
         android:scrollbars="vertical"
         android:fillViewport="true">
-        <TextView android:textSize="25dp"
+        <TextView android:textSize="20dp"
             android:paddingRight="10dp"
-            android:text="@string/help_text"
+            android:paddingEnd="10dp"
+            android:id="@+id/helpText"
             android:layout_width="fill_parent"
             android:layout_height="fill_parent"
             android:layout_weight="1.0" />

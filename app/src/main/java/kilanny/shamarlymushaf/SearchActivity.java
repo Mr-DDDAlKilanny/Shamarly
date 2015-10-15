@@ -1,9 +1,11 @@
 package kilanny.shamarlymushaf;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
@@ -25,7 +27,8 @@ public class SearchActivity extends Activity {
                 startActivity(intent);
             }
         });
-        SearchView search = (SearchView) findViewById(R.id.searchTextView);
+        final SearchView search = (SearchView) findViewById(R.id.searchTextView);
+        search.requestFocusFromTouch();
         search.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
@@ -34,6 +37,13 @@ public class SearchActivity extends Activity {
                         .toArray(new SearchResult[0]);
                 results.setAdapter(new ArrayAdapter<>(SearchActivity.this,
                         android.R.layout.simple_list_item_1, res));
+                View view = getCurrentFocus();
+                if (view != null) {
+                    search.clearFocus();
+                    InputMethodManager imm = (InputMethodManager)getSystemService(
+                            Context.INPUT_METHOD_SERVICE);
+                    imm.hideSoftInputFromWindow(view.getWindowToken(), InputMethodManager.HIDE_IMPLICIT_ONLY);
+                }
                 return true;
             }
 

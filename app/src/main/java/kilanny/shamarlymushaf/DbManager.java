@@ -114,6 +114,7 @@ public class DbManager extends SQLiteOpenHelper {
             res.ayah = cursor.getInt(cursor.getColumnIndex("ayah"));
             res.surah = cursor.getInt(cursor.getColumnIndex("sura"));
             res.page = cursor.getInt(cursor.getColumnIndex("page"));
+            res.query = word;
             results.add(res);
             cursor.moveToNext();
         }

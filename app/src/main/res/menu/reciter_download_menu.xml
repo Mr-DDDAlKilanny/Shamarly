@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:title="تحميل كل السور للقارئ المحدد"
+        android:id="@+id/downloadAll" />
+    <item
+        android:title="حذف تلاوات جميع السور للقارئ المحدد"
+        android:id="@+id/deleteAll" />
+    <item android:title="اختيار حافظة التحميل"
+        android:id="@+id/chooseDownloadDir"/>
+</menu>
