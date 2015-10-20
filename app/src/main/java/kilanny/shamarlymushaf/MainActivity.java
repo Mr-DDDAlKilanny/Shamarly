@@ -210,9 +210,9 @@ public class MainActivity extends Activity {
                             QuranImageView imageView = getCurrentPage();
                             Ayah a = imageView.getAyahAtPos(e.getX(), e.getY());
                             if (a != null) {
+                                stopPlayback();
                                 imageView.selectedAyahIndex = imageView.currentPage.ayahs.indexOf(a);
                                 imageView.invalidate();
-                                stopPlayback();
                                 mSystemUiHider.show();
                             }
                         //}
@@ -229,8 +229,8 @@ public class MainActivity extends Activity {
                         //    downloadAll();
                         //else {
                             QuranImageView imageView = getCurrentPage();
-                            if (imageView.selectedAyahIndex >= -1) {
-                                imageView.selectedAyahIndex = -2;
+                            if (imageView.selectedAyahIndex >= QuranImageView.SELECTION_ALL) {
+                                imageView.selectedAyahIndex = QuranImageView.SELECTION_NONE;
                                 imageView.invalidate();
                             }
                         //}
@@ -260,7 +260,7 @@ public class MainActivity extends Activity {
                 setBookmarkMenuItem(setting.isBookmarked(setting.page));
                 setting.save(MainActivity.this);
                 if (last != null) {
-                    last.selectedAyahIndex = -2;
+                    last.selectedAyahIndex = QuranImageView.SELECTION_NONE;
                     last.invalidate();
                 }
                 try {
@@ -555,7 +555,7 @@ public class MainActivity extends Activity {
                             bar.setVisibility(View.GONE);
                             Toast.makeText(MainActivity.this, "لا يمكن تشغيل التلاوة. ربما لم يعد الملف موجودا",
                                     Toast.LENGTH_SHORT).show();
-                            image.selectedAyahIndex = -1;
+                            image.selectedAyahIndex = QuranImageView.SELECTION_NONE;
                             image.invalidate();
                             togglePlayButton(false);
                         }
@@ -777,15 +777,16 @@ public class MainActivity extends Activity {
                     if (Utils.isExternalStorageWritable()) {
                         file = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES),
                                 "quran_Images");
-                        if (!file.exists()) return;
                     } else {
                         file = new File(getFilesDir(), "quran_Images");
-                        if (!file.exists()) return;
                     }
+                    if (!file.exists()) return;
                     for (int idx = 1; idx <= FullScreenImageAdapter.MAX_PAGE; ++idx) {
                         File filename = new File(file, idx + "");
-                        if (filename.exists())
+                        if (filename.exists()) {
+                            System.out.println(filename);
                             filename.delete();
+                        }
                     }
                 } catch (Exception ex) {
                     ex.printStackTrace();

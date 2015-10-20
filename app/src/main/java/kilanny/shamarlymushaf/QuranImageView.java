@@ -16,10 +16,13 @@ import android.widget.ImageView;
  */
 public class QuranImageView extends ImageView {
 
+    public static final int SELECTION_ALL = -1;
+    public static final int SELECTION_NONE = -2;
+
     private int[] colors;
     private Paint rectPaint;
     Page currentPage;
-    int selectedAyahIndex = -2;
+    int selectedAyahIndex = SELECTION_NONE;
     private int drawColor;
     SharedPreferences pref;
     private Resources res = getResources();
@@ -63,7 +66,7 @@ public class QuranImageView extends ImageView {
         super.draw(canvas);
         if (currentPage != null) {
             initPrefs();
-            if (selectedAyahIndex == -1) {
+            if (selectedAyahIndex == SELECTION_ALL) {
                 int idx = 0;
                 for (Ayah a : currentPage.ayahs) {
                     rectPaint.setColor(colors[idx]);

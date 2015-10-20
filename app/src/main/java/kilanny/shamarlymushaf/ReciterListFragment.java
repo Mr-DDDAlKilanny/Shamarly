@@ -1,6 +1,8 @@
 package kilanny.shamarlymushaf;
 
 import android.app.Activity;
+import android.content.Context;
+import android.content.res.Resources;
 import android.os.Bundle;
 import android.support.v4.app.ListFragment;
 import android.view.View;
@@ -57,7 +59,23 @@ public class ReciterListFragment extends ListFragment {
         }
     };
 
-    private String[] names, values;
+    private static String[] names, values;
+
+    private static void initNames(Resources res) {
+        if (names != null && values != null)
+            return;
+        names = res.getStringArray(R.array.reciter_names);
+        values = res.getStringArray(R.array.reciter_values);
+    }
+
+    public static String getName(Resources res, String value) {
+        if (names == null || values == null)
+            initNames(res);
+        for (int i = 0; i < values.length; ++i)
+            if (values[i].equals(value))
+                return names[i];
+        return null;
+    }
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -70,8 +88,7 @@ public class ReciterListFragment extends ListFragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        names = getResources().getStringArray(R.array.reciter_names);
-        values = getResources().getStringArray(R.array.reciter_values);
+        initNames(getResources());
         setListAdapter(new ArrayAdapter<>(
                 getActivity(),
                 android.R.layout.simple_list_item_activated_1,

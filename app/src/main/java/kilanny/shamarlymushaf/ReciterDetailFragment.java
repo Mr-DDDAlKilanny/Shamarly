@@ -15,6 +15,7 @@ import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.File;
 
@@ -32,6 +33,8 @@ public class ReciterDetailFragment extends Fragment {
     public static final String ARG_ITEM_ID = "item_id";
 
     private AsyncTask prevTask;
+    private ArrayAdapter<SurahDownload> adapter;
+
     /**
      * prevent user from download/delete single items while
      * download all is running
@@ -78,31 +81,36 @@ public class ReciterDetailFragment extends Fragment {
     }
 
     public void setSurahProgress(int surah, int prog) {
-        View rootView = getView();
-        ListView listview = (ListView) rootView.findViewById(R.id.listview_reciter_detail);
-        if (listview == null) return;
-        View rowView = Utils.getViewByPosition(surah - 1, listview);
-        TextView txt = (TextView) rowView.findViewById(R.id.itemProgressText);
-        int max = getSurahAyahCount(surah);
-        ProgressBar progress = (ProgressBar) rowView.findViewById(R.id.itemProgress);
-        txt.setText(String.format("%d / %d", prog, max));
-        progress.setProgress(prog);
+        adapter.getItem(surah - 1).downloadedAyah = prog;
+        adapter.notifyDataSetChanged();
     }
 
     private int getSurahAyahCount(int surah) {
         return Utils.AYAH_COUNT[surah - 1] + (surah == 1 ? 1 : 0);
     }
 
+    class SurahDownload {
+        public Surah surah;
+        public int totalAyah, downloadedAyah;
+    }
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View rootView = inflater.inflate(R.layout.fragment_reciter_detail, container, false);
+        final View rootView = inflater.inflate(R.layout.fragment_reciter_detail, container, false);
 
         if (mItem != null) {
-            final ListView listview = (ListView)
-                    rootView.findViewById(R.id.listview_reciter_detail);
-            ArrayAdapter<Surah> adapter = new ArrayAdapter<Surah>(getActivity(),
-                    R.layout.reciter_download_list_item, WelcomeActivity.surahs) {
+            rootView.findViewById(R.id.progressBarLoading).setVisibility(View.VISIBLE);
+            rootView.findViewById(R.id.listview_reciter_detail).setVisibility(View.GONE);
+            SurahDownload[] arr = new SurahDownload[WelcomeActivity.surahs.length];
+            for (int i = 0; i < WelcomeActivity.surahs.length; ++i) {
+                arr[i] = new SurahDownload();
+                arr[i].surah = WelcomeActivity.surahs[i];
+                arr[i].totalAyah = getSurahAyahCount(i + 1);
+            }
+            adapter = new ArrayAdapter<SurahDownload>(
+                    getActivity(),
+                    R.layout.reciter_download_list_item, arr) {
                 @Override
                 public View getView(final int position, View convertView, ViewGroup parent) {
                     LayoutInflater inflater = (LayoutInflater) getActivity()
@@ -110,47 +118,57 @@ public class ReciterDetailFragment extends Fragment {
                     View rowView = inflater.inflate(R.layout.reciter_download_list_item,
                             parent, false);
                     TextView s = (TextView) rowView.findViewById(R.id.surahName);
-                    s.setText(WelcomeActivity.surahs[position].name);
+                    final SurahDownload item = adapter.getItem(position);
+                    s.setText(item.surah.name);
                     final TextView txt = (TextView) rowView.findViewById(R.id.itemProgressText);
-                    final int calc = Utils.getNumDownloaded(getActivity(), mItem, position + 1),
-                            max = getSurahAyahCount(position + 1);
-                    txt.setText(String.format("%d / %d", calc, max));
                     final ProgressBar progress = (ProgressBar)
                             rowView.findViewById(R.id.itemProgress);
-                    progress.setMax(max);
-                    progress.setProgress(calc);
+                    progress.setMax(item.totalAyah);
+                    txt.setText(String.format("%d / %d", item.downloadedAyah, item.totalAyah));
+                    progress.setProgress(item.downloadedAyah);
                     final ImageButton btn = (ImageButton) rowView.findViewById(R.id.download_item);
                     btn.setOnClickListener(new View.OnClickListener() {
 
                         @Override
                         public void onClick(View view) {
                             if (!canDoSingleOperation) return;
+                            //user can make only one single surah download per time
+                            //any other surah is clicked, cancel the previous surah
                             if (prevTask != null) {
                                 if (!prevTask.isCancelled())
                                     prevTask.cancel(true);
+                                Toast.makeText(getActivity(),
+                                        "يتم إيقاف التحميل...", Toast.LENGTH_SHORT).show();
                                 return;
                             }
                             prevTask = Utils.downloadSurah(getActivity(), mItem, position + 1,
                                     new RecoverySystem.ProgressListener() {
                                         @Override
                                         public void onProgress(int prog) {
-                                            progress.setProgress(prog);
-                                            txt.setText(String.format("%d / %d", prog, max));
+                                            setSurahProgress(position + 1, prog);
                                         }
                                     }, new DownloadTaskCompleteListener() {
                                         @Override
                                         public void taskCompleted(int result) {
                                             prevTask = null;
+                                            if (result != Utils.DOWNLOAD_OK && result != Utils.DOWNLOAD_USER_CANCEL) {
+                                                Toast.makeText(getActivity(),
+                                                        "فشل التحميل. تأكد من اتصالك بالشبكة ووجود مساحة كافية بجهازك",
+                                                        Toast.LENGTH_LONG).show();
+                                            }
                                         }
                                     });
+                            Toast.makeText(getActivity(),
+                                    "يتم التحميل...", Toast.LENGTH_SHORT).show();
                         }
                     });
                     rowView.findViewById(R.id.delete_item).setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View view) {
                             if (!canDoSingleOperation) return;
+                            if (prevTask != null) return;
                             final String message = String.format("حذف تسجيل سورة %s للقارئ المحدد",
-                                    WelcomeActivity.surahs[position].name);
+                                    item.surah.name);
                             Utils.showConfirm(getActivity(), "حذف سورة",
                                     "متأكد أنك تريد " + message + " ؟"
                                     , new DialogInterface.OnClickListener() {
@@ -161,7 +179,7 @@ public class ReciterDetailFragment extends Fragment {
                                             show.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
                                             show.setIndeterminate(false);
                                             show.setCancelable(false);
-                                            show.setMax(max);
+                                            show.setMax(item.totalAyah);
                                             show.setProgress(0);
                                             show.show();
                                             new AsyncTask<Void, Integer, Void>() {
@@ -170,13 +188,13 @@ public class ReciterDetailFragment extends Fragment {
                                                     File surahDir = Utils.getSurahDir(getActivity(),
                                                             mItem, position + 1);
                                                     if (surahDir.exists()) {
-                                                        for (int i = 0; i <= max; ++i) {
+                                                        for (int i = 0; i <= item.totalAyah; ++i) {
                                                             File file = new File(Utils.getAyahFile(i, surahDir));
                                                             if (file.exists())
                                                                 file.delete();
                                                             publishProgress(i);
                                                         }
-                                                    } else publishProgress(max);
+                                                    } else publishProgress(item.totalAyah);
                                                     return null;
                                                 }
 
@@ -187,8 +205,7 @@ public class ReciterDetailFragment extends Fragment {
 
                                                 @Override
                                                 protected void onPostExecute(Void v) {
-                                                    txt.setText(String.format("%d / %d", 0, max));
-                                                    progress.setProgress(0);
+                                                    setSurahProgress(position + 1, 0);
                                                     show.dismiss();
                                                 }
                                             }.execute();
@@ -199,7 +216,26 @@ public class ReciterDetailFragment extends Fragment {
                     return rowView;
                 }
             };
-            listview.setAdapter(adapter);
+
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    for (int i = 0; i < 114; ++i) {
+                        adapter.getItem(i).downloadedAyah = Utils.getNumDownloaded(getActivity(), mItem, i + 1);
+                    }
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            rootView.findViewById(R.id.progressBarLoading)
+                                    .setVisibility(View.GONE);
+                            ListView listview = (ListView)
+                                    rootView.findViewById(R.id.listview_reciter_detail);
+                            listview.setAdapter(adapter);
+                            listview.setVisibility(View.VISIBLE);
+                        }
+                    });
+                }
+            }).start();
         }
 
         return rootView;

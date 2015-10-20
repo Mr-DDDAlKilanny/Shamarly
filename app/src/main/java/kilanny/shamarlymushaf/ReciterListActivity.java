@@ -167,6 +167,8 @@ public class ReciterListActivity extends ActionBarActivity
                     }
                     fragment.cancelActiveOperations();
                     fragment.setCanDoSingleOperation(false);
+                    Toast.makeText(this,
+                            "يتم التحميل...", Toast.LENGTH_SHORT).show();
                     downloadAll = Utils.downloadAll(this, myReciter, new DownloadAllProgressChangeListener() {
                         @Override
                         public void onProgressChange(int surah, int ayah) {

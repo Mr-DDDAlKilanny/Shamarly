@@ -63,6 +63,11 @@ public class ReciterDetailActivity extends ActionBarActivity {
             getSupportFragmentManager().beginTransaction()
                     .add(R.id.reciter_detail_container, fragment)
                     .commit();
+            String name = ReciterListFragment.getName(getResources(), myReciter);
+            if (name != null) {
+                setTitle(name);
+                getSupportActionBar().setTitle(name);
+            }
         }
     }
 
@@ -113,6 +118,8 @@ public class ReciterDetailActivity extends ActionBarActivity {
                 }
                 fragment.cancelActiveOperations();
                 fragment.setCanDoSingleOperation(false);
+                Toast.makeText(this,
+                        "يتم التحميل...", Toast.LENGTH_SHORT).show();
                 downloadAll = Utils.downloadAll(this, myReciter, new DownloadAllProgressChangeListener() {
                     @Override
                     public void onProgressChange(int surah, int ayah) {

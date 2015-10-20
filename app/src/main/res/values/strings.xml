@@ -3,5 +3,5 @@
     <string name="title_activity_settings">الإعدادات</string>
     <string name="title_activity_search">البحث</string>
     <string name="title_reciter_list">تحميل التلاوات</string>
-    <string name="title_reciter_detail">Reciter Detail</string>
+    <string name="title_reciter_detail">تحميل تلاوات قارئ</string>
 </resources>
