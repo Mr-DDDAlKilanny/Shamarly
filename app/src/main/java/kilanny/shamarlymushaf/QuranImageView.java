@@ -1,39 +1,67 @@
 package kilanny.shamarlymushaf;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.RectF;
+import android.graphics.Typeface;
+import android.net.Uri;
 import android.util.AttributeSet;
-import android.widget.ImageView;
+
+import com.ortiz.touch.TouchImageView;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
 
 /**
  * Created by ibraheem on 05/11/2015.
  */
-public class QuranImageView extends ImageView {
+public class QuranImageView extends TouchImageView {
 
     public static final int SELECTION_ALL = -1;
     public static final int SELECTION_NONE = -2;
+    public static final int IMAGE_WIDTH = 886;
+    public static final int IMAGE_HEIGHT = 1377;
 
     private int[] colors;
-    private Paint rectPaint;
+    private final float[] matrixVals = new float[9];
+    private Paint rectPaint, fontPaint;
     Page currentPage;
     int selectedAyahIndex = SELECTION_NONE;
     private int drawColor;
     SharedPreferences pref;
     private Resources res = getResources();
+    Bitmap myBitmap;
+    boolean isMultiSelectMode = false;
+    final ArrayList<Ayah> mutliSelectList = new ArrayList<>();
 
     private void init() {
         rectPaint = new Paint();
+        fontPaint = new Paint();
         rectPaint.setStyle(Paint.Style.FILL);
-        String[] arr = res.getStringArray(R.array.listValues);
-        colors = new int[arr.length];
-        for (int i = 0; i < arr.length; ++i)
-            colors[i] = Color.parseColor(arr[i]);
+        fontPaint.setColor(Color.WHITE);
+        fontPaint.setTextSize(20);
+        if (!isInEditMode()) {
+            AssetManager am = getContext().getAssets();
+            fontPaint.setTypeface(Typeface.createFromAsset(am, "DroidNaskh-Bold.ttf"));
+            String[] arr = res.getStringArray(R.array.listValues);
+            colors = new int[arr.length];
+            for (int i = 0; i < arr.length; ++i)
+                colors[i] = Color.parseColor(arr[i]);
+        }
     }
 
     public QuranImageView(Context context) {
@@ -59,6 +87,7 @@ public class QuranImageView extends ImageView {
     @Override
     public void setImageBitmap(Bitmap bm) {
         super.setImageBitmap(bm);
+        myBitmap = bm;
     }
 
     @Override
@@ -66,7 +95,14 @@ public class QuranImageView extends ImageView {
         super.draw(canvas);
         if (currentPage != null) {
             initPrefs();
-            if (selectedAyahIndex == SELECTION_ALL) {
+            int sel = selectedAyahIndex; // prevent errors caused by other threads modifying this field
+            if (isMultiSelectMode) {
+                rectPaint.setColor(drawColor);
+                rectPaint.setAlpha(125);
+                for (Ayah a : mutliSelectList)
+                    for (RectF rect : a.rects)
+                        canvas.drawRect(getScaledRectFromImageRect(rect), rectPaint);
+            } else if (sel == SELECTION_ALL) {
                 int idx = 0;
                 for (Ayah a : currentPage.ayahs) {
                     rectPaint.setColor(colors[idx]);
@@ -75,8 +111,8 @@ public class QuranImageView extends ImageView {
                     for (RectF rect : a.rects)
                         canvas.drawRect(getScaledRectFromImageRect(rect), rectPaint);
                 }
-            } else if (selectedAyahIndex >= 0) {
-                Ayah a = currentPage.ayahs.get(selectedAyahIndex);
+            } else if (sel >= 0) {
+                Ayah a = currentPage.ayahs.get(sel);
                 rectPaint.setColor(drawColor);
                 rectPaint.setAlpha(125);
                 for (RectF rect : a.rects)
@@ -85,19 +121,81 @@ public class QuranImageView extends ImageView {
         }
     }
 
-    public RectF getScaledRectFromImageRect(RectF r) {
-        float w = getWidth() / (float) 886;
-        float h = getHeight() / (float) 1377;
-        return new RectF(r.left * w, r.top * h, r.right * w, r.bottom * h);
+    private RectF getScaledRectFromImageRect(RectF r) {
+        Matrix matrix = getImageMatrix();
+        matrix.getValues(matrixVals);
+        float x = Math.abs(matrixVals[Matrix.MTRANS_X]);
+        float y = Math.abs(matrixVals[Matrix.MTRANS_Y]);
+        float w = getImageWidth() / (float) IMAGE_WIDTH;
+        float h = getImageHeight() / (float) IMAGE_HEIGHT;
+        return new RectF(r.left * w - x, r.top * h - y, r.right * w - x, r.bottom * h - y);
     }
 
-    public Ayah getAyahAtPos(float x, float y) {
+    public int getAyahAtPos(float x, float y) {
         if (currentPage != null) {
-            for (Ayah a : currentPage.ayahs)
-                for (RectF rect : a.rects)
+            for (int i = 0; i < currentPage.ayahs.size(); ++i)
+                for (RectF rect : currentPage.ayahs.get(i).rects)
                     if (getScaledRectFromImageRect(rect).contains(x, y))
-                        return a;
+                        return i;
         }
-        return null;
+        return -1;
+    }
+
+    public void saveSelectedAyatAsImage(String path) {
+        if (!isMultiSelectMode)
+            throw new IllegalStateException("This method can be only invoked in multi-select mode");
+        if (myBitmap != null) {
+            float totalHeight = 100 + 90;
+            for (Ayah a : mutliSelectList) {
+                float mny = a.rects.get(0).top,
+                        mxy = a.rects.get(a.rects.size() - 1).bottom;
+                //TODO: check intersecting rects
+                totalHeight += mxy - mny + 100;
+            }
+            Bitmap draw = Bitmap.createBitmap(IMAGE_WIDTH, (int) Math.ceil(totalHeight), myBitmap.getConfig());
+            Canvas canvas = new Canvas(draw);
+            String text = "سورة " + WelcomeActivity.surahs[mutliSelectList.get(0).sura - 1].name;
+            Rect bounds = new Rect();
+            fontPaint.getTextBounds(text, 0, text.length(), bounds);
+            canvas.drawText(text, IMAGE_WIDTH / 2 - bounds.height() / 2, 45, fontPaint);
+            int y = 100;
+            for (Ayah a : mutliSelectList) {
+                for (int i = 0; i < a.rects.size(); ++i) {
+                    RectF rect = a.rects.get(i);
+                    int increment = i == a.rects.size() - 1 ? 20 : 0;
+                    canvas.drawBitmap(myBitmap,
+                            new Rect((int) rect.left, (int) rect.top, (int) rect.right, (int) rect.bottom + increment),
+                            new Rect((int) rect.left, y, (int) rect.right, y + (int) rect.height() + increment),
+                            null);
+                    y += (int) rect.height();
+                }
+                y += 80;
+            }
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inPreferredConfig = myBitmap.getConfig();
+            Bitmap tmp = BitmapFactory.decodeResource(res, R.drawable.googleplay, options);
+            canvas.drawBitmap(tmp, null,
+                    new Rect(2, (int) totalHeight - 90, IMAGE_WIDTH - 2, (int) totalHeight - 5),
+                    null);
+            tmp.recycle();
+            FileOutputStream outputStream;
+            try {
+                Intent share = new Intent(Intent.ACTION_SEND);
+                share.setType("image/png");
+                File file = new File(path);
+                if (!file.exists())
+                    file.createNewFile();
+                outputStream = new FileOutputStream(file);
+                draw.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
+                outputStream.close();
+                share.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(file));
+                getContext().startActivity(Intent.createChooser(share, "مشاركة"));
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            draw.recycle();
+        }
     }
 }

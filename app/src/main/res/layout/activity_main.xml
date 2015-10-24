@@ -38,6 +38,10 @@
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:background="@android:drawable/ic_menu_revert"/>
+            <Button android:id="@+id/shareAyat" style="?metaButtonBarStyle"
+                android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:background="@android:drawable/ic_menu_share"/>
         </LinearLayout>
     </FrameLayout>
 

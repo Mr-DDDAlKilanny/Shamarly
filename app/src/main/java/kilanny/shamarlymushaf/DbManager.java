@@ -93,6 +93,12 @@ public class DbManager extends SQLiteOpenHelper {
                     break;
                 }
             }
+            if (item.rects.size() > 1) {
+                RectF r = item.rects.get(item.rects.size() - 2);
+                r.set(r.left, r.top, r.right, y - lineHeight / 3);
+                r = item.rects.get(item.rects.size() - 1);
+                r.set(r.left, y - lineHeight / 3, r.right, r.bottom);
+            }
             result.add(item);
             px = x; py = y;
             cursor.moveToNext();

@@ -7,6 +7,7 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -32,6 +33,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
@@ -137,8 +139,54 @@ public class MainActivity extends Activity {
     }
 
     private void initViewPagerAdapter() {
-        //int num = getNumExistingPages();
         adapter = new FullScreenImageAdapter(this);
+        final GestureDetector tapGestureDetector = new GestureDetector(this,
+                new GestureDetector.SimpleOnGestureListener() {
+
+                @Override
+                public void onLongPress(MotionEvent e) {
+                    super.onLongPress(e);
+                    QuranImageView imageView = getCurrentPage();
+                    int idx = imageView != null ? imageView.getAyahAtPos(e.getX(), e.getY()) : -1;
+                    if (idx >= 0) {
+                        stopPlayback();
+                        imageView.selectedAyahIndex = idx;
+                        imageView.invalidate();
+                        mSystemUiHider.show();
+                    }
+                }
+
+                @Override
+                public boolean onSingleTapConfirmed(MotionEvent e) {
+                    if (TOGGLE_ON_CLICK) {
+                        mSystemUiHider.toggle();
+                    } else {
+                        mSystemUiHider.show();
+                    }
+                    QuranImageView imageView = getCurrentPage();
+                    if (imageView != null && imageView.selectedAyahIndex >= QuranImageView.SELECTION_ALL) {
+                        imageView.selectedAyahIndex = QuranImageView.SELECTION_NONE;
+                        imageView.invalidate();
+                    }
+                    return false;
+                }
+        });
+        adapter.setInstantiateQuranImageViewListener(new FullScreenImageAdapter.OnInstantiateQuranImageViewListener() {
+            @Override
+            public void onInstantiate(QuranImageView image, View parent) {
+                image.setOnTouchListener(new View.OnTouchListener() {
+                    @Override
+                    public boolean onTouch(View v, MotionEvent event) {
+                        tapGestureDetector.onTouchEvent(event);
+                        return false;
+                    }
+                });
+                // this is not called at onPageSelected
+                // when activity starts in landscape, so call here
+                configOrientation(image);
+                initCurrentPageInfo(image, parent);
+            }
+        });
         viewPager.setAdapter(adapter);
         // displaying selected image first
         Intent i = getIntent();
@@ -153,6 +201,66 @@ public class MainActivity extends Activity {
         } catch (NullPointerException ex){
             return null;
         }
+    }
+
+    private void initCurrentPageInfo(QuranImageView image, View parent) {
+        TextView surah = (TextView) parent.findViewById(R.id.quranPageSurah);
+        TextView juzz = (TextView) parent.findViewById(R.id.quranPageJuz);
+        TextView number = (TextView) parent.findViewById(R.id.quranPagePageNumber);
+        surah.setTypeface(tradionalArabicBoldFont);
+        juzz.setTypeface(tradionalArabicBoldFont);
+        number.setTypeface(tradionalArabicBoldFont);
+        if (image.currentPage != null && image.currentPage.ayahs.size() > 0) {
+            int page = image.currentPage.page;
+            String juz = "";
+            for (int i = 1; i < WelcomeActivity.juzs.length; ++i) {
+                int val = (int) WelcomeActivity.juzs[i].value;
+                if (page == val) {
+                    juz = WelcomeActivity.juzs[i].name;
+                    break;
+                } else if (page < val) {
+                    juz = WelcomeActivity.juzs[i - 1].name;
+                    break;
+                }
+            }
+            try {
+                surah.setText("سورة " + WelcomeActivity.surahs[image.currentPage.ayahs.get(0).sura - 1].name);
+                juzz.setText(juz);
+                number.setText("صفحة " + ArabicNumbers.convertDigits(page + ""));
+            } catch (NullPointerException ex){
+            }
+        }
+    }
+
+    private void configOrientation(int orientation) {
+        QuranImageView image = getCurrentPage();
+        if (image == null) return;
+        configOrientation(orientation, image);
+    }
+
+    private void configOrientation(QuranImageView image) {
+        configOrientation(getResources().getConfiguration().orientation, image);
+    }
+
+    private void configOrientation(int orientation, QuranImageView image) {
+        switch (orientation) {
+            case Configuration.ORIENTATION_LANDSCAPE:
+                image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                image.setScrollPosition(0, 0);
+                break;
+            case Configuration.ORIENTATION_PORTRAIT:
+                image.setScaleType(ImageView.ScaleType.FIT_XY);
+                break;
+            default:
+                return;
+        }
+        image.invalidate();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        configOrientation(newConfig.orientation);
     }
 
     private void initViewPager() {
@@ -198,51 +306,6 @@ public class MainActivity extends Activity {
                 }
             }
         });
-        final GestureDetector tapGestureDetector = new GestureDetector(this,
-                new GestureDetector.SimpleOnGestureListener() {
-
-                    @Override
-                    public void onLongPress(MotionEvent e) {
-                        super.onLongPress(e);
-                        //if (adapter.getCount() < FullScreenImageAdapter.MAX_PAGE)
-                        //    downloadAll();
-                        //else {
-                            QuranImageView imageView = getCurrentPage();
-                            Ayah a = imageView.getAyahAtPos(e.getX(), e.getY());
-                            if (a != null) {
-                                stopPlayback();
-                                imageView.selectedAyahIndex = imageView.currentPage.ayahs.indexOf(a);
-                                imageView.invalidate();
-                                mSystemUiHider.show();
-                            }
-                        //}
-                    }
-
-                    @Override
-                    public boolean onSingleTapConfirmed(MotionEvent e) {
-                        if (TOGGLE_ON_CLICK) {
-                            mSystemUiHider.toggle();
-                        } else {
-                            mSystemUiHider.show();
-                        }
-                        //if (adapter.getCount() < FullScreenImageAdapter.MAX_PAGE)
-                        //    downloadAll();
-                        //else {
-                            QuranImageView imageView = getCurrentPage();
-                            if (imageView.selectedAyahIndex >= QuranImageView.SELECTION_ALL) {
-                                imageView.selectedAyahIndex = QuranImageView.SELECTION_NONE;
-                                imageView.invalidate();
-                            }
-                        //}
-                        return false;
-                    }
-                });
-        contentView.setOnTouchListener(new View.OnTouchListener() {
-            public boolean onTouch(View v, MotionEvent event) {
-                tapGestureDetector.onTouchEvent(event);
-                return false;
-            }
-        });
 
         // Upon interacting with UI controls, delay any scheduled hide()
         // operations to prevent the jarring behavior of controls going away
@@ -265,8 +328,9 @@ public class MainActivity extends Activity {
                 }
                 try {
                     last = getCurrentPage();
+                    configOrientation(last);
                 } catch (Exception ex) {
-
+                    ex.printStackTrace();
                 }
                 // find hizb-juz
                 for (int i = 1; i < WelcomeActivity.hizbs.length; ++i) {
@@ -451,6 +515,7 @@ public class MainActivity extends Activity {
             showPage(db.getPage(fromSurah, fromAyah));
             image = getCurrentPage();
             allPagePlay = true;
+            currentAyaxIndex.setData(-1);
             for (int i = 0; i < image.currentPage.ayahs.size(); ++i) {
                 Ayah a = image.currentPage.ayahs.get(i);
                 if (a.sura == fromSurah && a.ayah == fromAyah) {
@@ -459,16 +524,26 @@ public class MainActivity extends Activity {
                     break;
                 }
             }
+            if (currentAyaxIndex.getData() == -1) { // theoretically, this is impossible to happen
+                Toast.makeText(this, "نأسف، حدث خطأ. حاول مرة أخرى", Toast.LENGTH_LONG).show();
+                return;
+            }
         }
-        else if (image.selectedAyahIndex < 0 ||
-                image.selectedAyahIndex >= image.currentPage.ayahs.size()
-                || pref.getBoolean("playContinues", false)) {
-            allPagePlay = true;
-            if (image.selectedAyahIndex < 0) {
-                currentAyaxIndex.setData(image.selectedAyahIndex = 0);
-                image.invalidate();
-            } else if (pref.getBoolean("playContinues", false)) {
-                currentAyaxIndex.setData(image.selectedAyahIndex);
+        else {
+            int sel = image.selectedAyahIndex; // prevent errors caused by other threads modifying this field
+            if (sel < 0 ||
+                    sel >= image.currentPage.ayahs.size()
+                    || pref.getBoolean("playContinues", false)) {
+                allPagePlay = true;
+                if (sel < 0 || sel >= image.currentPage.ayahs.size()) {
+                    currentAyaxIndex.setData(image.selectedAyahIndex = 0);
+                    //even for Al Fatihah, let it 0 ayah الاستعاذة
+                    image.invalidate();
+                } else {// if (pref.getBoolean("playContinues", false)) {
+                    currentAyaxIndex.setData(sel);
+                }
+            } else {
+                currentAyaxIndex.setData(sel);
             }
         }
         try {
@@ -539,7 +614,7 @@ public class MainActivity extends Activity {
                             showPage(setting.page + 1);
                             image = getCurrentPage();
                             currentAyaxIndex.setData(image.selectedAyahIndex = 0);
-                            if (image.currentPage.ayahs.get(image.selectedAyahIndex).ayah ==0)
+                            if (image.currentPage.ayahs.get(0).ayah == 0)
                                 currentAyaxIndex.setData(image.selectedAyahIndex =
                                         currentAyaxIndex.getData() + 1);
                         }
@@ -581,7 +656,7 @@ public class MainActivity extends Activity {
                 }
             });
             player.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            Ayah a = image.currentPage.ayahs.get(image.selectedAyahIndex);
+            Ayah a = image.currentPage.ayahs.get(currentAyaxIndex.getData());
             player.setDataSource(Utils.getAyahPath(MainActivity.this, getSelectedSound(),
                     sura = a.sura, ayah = a.ayah));
             player.prepareAsync();
@@ -641,12 +716,13 @@ public class MainActivity extends Activity {
                             Toast.LENGTH_LONG).show();
                     return;
                 }
-                if (image.selectedAyahIndex < 0) {
+                int sel = image.selectedAyahIndex; // prevent errors caused by other threads modifying this field
+                if (sel < 0) {
                     Toast.makeText(MainActivity.this, "حدد آية لتفسيرها، بالضغط عليها مطولا",
                             Toast.LENGTH_LONG).show();
                     return;
                 }
-                Ayah a = image.currentPage.ayahs.get(image.selectedAyahIndex);
+                Ayah a = image.currentPage.ayahs.get(sel);
                 displayTafseer(db.getTafseer(a.sura, a.ayah));
             }
         });
@@ -654,12 +730,14 @@ public class MainActivity extends Activity {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (adapter.getCount() < FullScreenImageAdapter.MAX_PAGE) {
-                    Toast.makeText(MainActivity.this, "يستخدم هذا الزر لتكرار تلاوة مجموعة من الآيات",
-                            Toast.LENGTH_LONG).show();
-                    return;
-                }
                 displayRepeatDlg();
+            }
+        });
+        btn = (Button) findViewById(R.id.shareAyat);
+        btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                displayShareDlg();
             }
         });
     }
@@ -736,6 +814,75 @@ public class MainActivity extends Activity {
         });
 
         dialog.setTitle("تكرار التلاوة");
+        dialog.show();
+    }
+
+    private void displayShareDlg() {
+        if (!Utils.isExternalStorageWritable()) {
+            Toast.makeText(this, "عفوا الذاكرة في جهازك غير قابلة للكتابة. لا يمكنك استخدام هذه الميزة",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        QuranImageView image = getCurrentPage();
+        if (image == null || image.currentPage == null || image.currentPage.ayahs.size() == 0) {
+            Toast.makeText(this, "يستخدم هذا الزر لمشاركة مجموعة من الآيات", Toast.LENGTH_LONG).show();
+            return;
+        }
+        final Dialog dialog = new Dialog(this);
+        dialog.setContentView(R.layout.fragment_share_ayat_dlg);
+        final QuranImageView display = (QuranImageView) dialog.findViewById(R.id.shareQuranImageView);
+        display.isMultiSelectMode = true;
+        display.setImageBitmap(image.myBitmap);
+        display.pref = pref;
+        display.currentPage = image.currentPage;
+        if (image.selectedAyahIndex >= 0)
+            display.mutliSelectList.add(display.currentPage.ayahs.get(image.selectedAyahIndex));
+        configOrientation(display);
+        display.setOnTouchListener(new View.OnTouchListener() {
+            private GestureDetector detector = new GestureDetector(MainActivity.this, new GestureDetector.SimpleOnGestureListener(){
+                @Override
+                public void onLongPress(MotionEvent e) {
+                    super.onLongPress(e);
+                    handle(e);
+                }
+
+                private void handle(MotionEvent e) {
+                    int idx = display.getAyahAtPos(e.getX(), e.getY());
+                    if (idx >= 0) {
+                        Ayah a = display.currentPage.ayahs.get(idx);
+                        if (!display.mutliSelectList.contains(a))
+                            display.mutliSelectList.add(a);
+                        else
+                            display.mutliSelectList.remove(a);
+                        display.invalidate();
+                    }
+                }
+
+                @Override
+                public boolean onSingleTapUp(MotionEvent e) {
+                    handle(e);
+                    return super.onSingleTapUp(e);
+                }
+            });
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                detector.onTouchEvent(event);
+                return false;
+            }
+        });
+        dialog.findViewById(R.id.buttonShare).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (display.mutliSelectList.size() > 0) {
+                    dialog.dismiss();
+                    display.saveSelectedAyatAsImage(Environment.getExternalStorageDirectory()
+                           + File.separator  + "shamraly_share.png");
+                } else
+                    showError("فضلا حدد آية أو أكثر");
+            }
+        });
+        dialog.setTitle("مشاركة آية أو أكثر");
         dialog.show();
     }
 

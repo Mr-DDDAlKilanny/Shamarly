@@ -31,9 +31,11 @@ public class ReciterDetailFragment extends Fragment {
      * represents.
      */
     public static final String ARG_ITEM_ID = "item_id";
+    public static final int CURRENT_SURAH_NONE = 0;
 
     private AsyncTask prevTask;
     private ArrayAdapter<SurahDownload> adapter;
+    private int currentDownloadSurah;
 
     /**
      * prevent user from download/delete single items while
@@ -59,6 +61,7 @@ public class ReciterDetailFragment extends Fragment {
             if (!prevTask.isCancelled())
                 prevTask.cancel(true);
         }
+        currentDownloadSurah = 0;
     }
 
     /**
@@ -66,6 +69,11 @@ public class ReciterDetailFragment extends Fragment {
      * fragment (e.g. upon screen orientation changes).
      */
     public ReciterDetailFragment() {
+    }
+
+    public void setCurrentDownloadSurah(int currentDownloadSurah) {
+        this.currentDownloadSurah = currentDownloadSurah;
+        adapter.notifyDataSetChanged();
     }
 
     @Override
@@ -80,8 +88,10 @@ public class ReciterDetailFragment extends Fragment {
         }
     }
 
-    public void setSurahProgress(int surah, int prog) {
+    public void setSurahProgress(int surah, int prog, boolean isCurrentDownload) {
         adapter.getItem(surah - 1).downloadedAyah = prog;
+        if (isCurrentDownload)
+            currentDownloadSurah = surah;
         adapter.notifyDataSetChanged();
     }
 
@@ -95,7 +105,7 @@ public class ReciterDetailFragment extends Fragment {
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+    public View onCreateView(final LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         final View rootView = inflater.inflate(R.layout.fragment_reciter_detail, container, false);
 
@@ -113,13 +123,17 @@ public class ReciterDetailFragment extends Fragment {
                     R.layout.reciter_download_list_item, arr) {
                 @Override
                 public View getView(final int position, View convertView, ViewGroup parent) {
-                    LayoutInflater inflater = (LayoutInflater) getActivity()
-                            .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-                    View rowView = inflater.inflate(R.layout.reciter_download_list_item,
-                            parent, false);
-                    TextView s = (TextView) rowView.findViewById(R.id.surahName);
+                    View rowView;
+                    if (convertView == null)
+                        rowView = inflater.inflate(R.layout.reciter_download_list_item,
+                                parent, false);
+                    else
+                        rowView = convertView;
                     final SurahDownload item = adapter.getItem(position);
+                    TextView s = (TextView) rowView.findViewById(R.id.surahName);
                     s.setText(item.surah.name);
+                    s = (TextView) rowView.findViewById(R.id.status);
+                    s.setText(currentDownloadSurah == item.surah.index ? "تحميل..." : "");
                     final TextView txt = (TextView) rowView.findViewById(R.id.itemProgressText);
                     final ProgressBar progress = (ProgressBar)
                             rowView.findViewById(R.id.itemProgress);
@@ -141,11 +155,12 @@ public class ReciterDetailFragment extends Fragment {
                                         "يتم إيقاف التحميل...", Toast.LENGTH_SHORT).show();
                                 return;
                             }
+                            setCurrentDownloadSurah(position + 1);
                             prevTask = Utils.downloadSurah(getActivity(), mItem, position + 1,
                                     new RecoverySystem.ProgressListener() {
                                         @Override
                                         public void onProgress(int prog) {
-                                            setSurahProgress(position + 1, prog);
+                                            setSurahProgress(position + 1, prog, true);
                                         }
                                     }, new DownloadTaskCompleteListener() {
                                         @Override
@@ -156,6 +171,7 @@ public class ReciterDetailFragment extends Fragment {
                                                         "فشل التحميل. تأكد من اتصالك بالشبكة ووجود مساحة كافية بجهازك",
                                                         Toast.LENGTH_LONG).show();
                                             }
+                                            setCurrentDownloadSurah(CURRENT_SURAH_NONE);
                                         }
                                     });
                             Toast.makeText(getActivity(),
@@ -205,7 +221,7 @@ public class ReciterDetailFragment extends Fragment {
 
                                                 @Override
                                                 protected void onPostExecute(Void v) {
-                                                    setSurahProgress(position + 1, 0);
+                                                    setSurahProgress(position + 1, 0, false);
                                                     show.dismiss();
                                                 }
                                             }.execute();

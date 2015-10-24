@@ -113,34 +113,37 @@ public class ReciterDetailActivity extends ActionBarActivity {
                     if (!downloadAll.isCancelled())
                         downloadAll.cancel(true);
                     Toast.makeText(this,
-                            "تم إيقاف التحميل", Toast.LENGTH_SHORT).show();
+                            "يتم إيقاف التحميل...", Toast.LENGTH_SHORT).show();
                     return true;
                 }
                 fragment.cancelActiveOperations();
                 fragment.setCanDoSingleOperation(false);
                 Toast.makeText(this,
                         "يتم التحميل...", Toast.LENGTH_SHORT).show();
+                fragment.setCurrentDownloadSurah(1);
                 downloadAll = Utils.downloadAll(this, myReciter, new DownloadAllProgressChangeListener() {
                     @Override
                     public void onProgressChange(int surah, int ayah) {
-                        fragment.setSurahProgress(surah, ayah);
+                        fragment.setSurahProgress(surah, ayah, true);
                     }
                 }, new DownloadTaskCompleteListener() {
                     @Override
                     public void taskCompleted(int result) {
-                        String msg;
+                        String msg = null;
                         fragment.setCanDoSingleOperation(true);
                         downloadAll = null;
                         switch (result) {
                             case Utils.DOWNLOAD_USER_CANCEL:
-                                return;
+                                break;
                             case Utils.DOWNLOAD_OK:
                                 msg = "تم تحميل جميع التلاوات بنجاح";
                                 break;
                             default:
                                 msg = "فشل تحميل التلاوات. تأكد من اتصالك بالإنترنت ووجود مساحة كافية";
                         }
-                        Utils.showAlert(ReciterDetailActivity.this, "تحميل جميع التلاوات", msg, null);
+                        fragment.setCurrentDownloadSurah(ReciterDetailFragment.CURRENT_SURAH_NONE);
+                        if (msg != null)
+                            Utils.showAlert(ReciterDetailActivity.this, "تحميل جميع التلاوات", msg, null);
                     }
                 });
                 return true;
@@ -151,7 +154,7 @@ public class ReciterDetailActivity extends ActionBarActivity {
                 Utils.deleteAll(this, myReciter, new RecoverySystem.ProgressListener() {
                     @Override
                     public void onProgress(int progress) {
-                        fragment.setSurahProgress(progress, 0);
+                        fragment.setSurahProgress(progress, 0, false);
                     }
                 }, new Runnable() {
                     @Override

@@ -309,6 +309,8 @@ public class Utils {
         progress.setData(AYAH_COUNT[surah - 1] + (surah == 1 ? 1 : 0) - q.size());
         final Shared error = new Shared();
         error.setData(DOWNLOAD_OK);
+        final Shared interrupt = new Shared();
+        interrupt.setData(0);
         final Lock lock = new ReentrantLock(true);
         for (int th = 0; th < threads.length; ++th) {
             threads[th] = new Thread(new Runnable() {
@@ -316,11 +318,13 @@ public class Utils {
                 @Override
                 public void run() {
                     byte[] buf = new byte[1024];
-                    while (cancel.canContinue() && error.getData() == DOWNLOAD_OK) {
+                    while (interrupt.getData() == 0 &&
+                            cancel.canContinue() &&
+                            error.getData() == DOWNLOAD_OK) {
                         Integer per = q.poll();
                         if (per == null) break;
                         int code = downloadAyah(context, reciter, surah, per, buf, surahDir);
-                        lock.lock();
+                        lock.lock(); // prevent other threads while checking
                         if (error.getData() == DOWNLOAD_OK) {
                             error.setData(code);
                         }
@@ -333,15 +337,17 @@ public class Utils {
                 }
             });
         }
-        for (int i = 0; i < threads.length; ++i)
-            threads[i].start();
-        for (int i = 0; i < threads.length; ++i)
+        for (Thread thread1 : threads) thread1.start();
+        for (Thread thread : threads)
             try {
-                threads[i].join();
+                thread.join();
             } catch (InterruptedException e) {
                 e.printStackTrace();
+                interrupt.setData(1);
+                break;
             }
-        listener.taskCompleted(!cancel.canContinue() ? DOWNLOAD_USER_CANCEL : error.getData());
+        listener.taskCompleted(!cancel.canContinue() || interrupt.getData() != 0 ?
+                DOWNLOAD_USER_CANCEL : error.getData());
     }
 
     public static AsyncTask downloadSurah(final Context context,

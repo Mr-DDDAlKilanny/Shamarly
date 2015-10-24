@@ -2,12 +2,6 @@ package kilanny.shamarlymushaf;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffXfermode;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.support.v4.view.PagerAdapter;
@@ -16,13 +10,14 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.RelativeLayout;
+import android.widget.LinearLayout;
 
 public class FullScreenImageAdapter extends PagerAdapter {
 
     private final MainActivity _activity;
     private LayoutInflater inflater;
     public static final int MAX_PAGE = 522;
+    private OnInstantiateQuranImageViewListener instantiateQuranImageViewListener;
 
     // constructor
     public FullScreenImageAdapter(MainActivity activity) {
@@ -36,7 +31,7 @@ public class FullScreenImageAdapter extends PagerAdapter {
 
     @Override
     public boolean isViewFromObject(View view, Object object) {
-        return view == ((RelativeLayout) object);
+        return view == object;
     }
 
     @Override
@@ -53,12 +48,14 @@ public class FullScreenImageAdapter extends PagerAdapter {
         viewLayout.setTag(position);
         imgDisplay.setImageBitmap(bitmap);
         container.addView(viewLayout);
+        if (getInstantiateQuranImageViewListener() != null)
+            getInstantiateQuranImageViewListener().onInstantiate(imgDisplay, viewLayout);
         return viewLayout;
     }
 
     @Override
     public void destroyItem(ViewGroup container, int position, Object object) {
-        RelativeLayout layout = (RelativeLayout) object;
+        LinearLayout layout = (LinearLayout) object;
         ((ViewPager) container).removeView(layout);
         ImageView imgDisplay = (ImageView) layout.findViewById(R.id.quranPage);
         Drawable drawable = imgDisplay.getDrawable();
@@ -67,5 +64,17 @@ public class FullScreenImageAdapter extends PagerAdapter {
             Bitmap bitmap = bitmapDrawable.getBitmap();
             bitmap.recycle();
         }
+    }
+
+    public OnInstantiateQuranImageViewListener getInstantiateQuranImageViewListener() {
+        return instantiateQuranImageViewListener;
+    }
+
+    public void setInstantiateQuranImageViewListener(OnInstantiateQuranImageViewListener instantiateQuranImageViewListener) {
+        this.instantiateQuranImageViewListener = instantiateQuranImageViewListener;
+    }
+
+    public static interface OnInstantiateQuranImageViewListener {
+        void onInstantiate(QuranImageView image, View parent);
     }
 }

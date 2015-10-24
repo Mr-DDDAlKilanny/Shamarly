@@ -9,7 +9,7 @@
     <!--
     This layout is a two-pane layout for the Reciters
     master/detail flow.
-    
+
     -->
 
     <FrameLayout android:id="@+id/reciter_detail_container" android:layout_width="0dp"
