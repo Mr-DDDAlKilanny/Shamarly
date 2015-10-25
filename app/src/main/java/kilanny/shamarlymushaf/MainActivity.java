@@ -4,7 +4,10 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
@@ -18,6 +21,7 @@ import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -54,6 +58,7 @@ import java.util.Locale;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import cn.trinea.android.view.autoscrollviewpager.AutoScrollViewPager;
 import kilanny.shamarlymushaf.util.SystemUiHider;
 
 /**
@@ -112,6 +117,7 @@ public class MainActivity extends Activity {
     private boolean allPagePlay = false;
     private boolean autoSwipPage = false;
     private Typeface tradionalArabicFont, tradionalArabicBoldFont;
+    private QuranImageView shareImageView;
 
     public MainActivity() {
         DbManager.init(this);
@@ -204,15 +210,12 @@ public class MainActivity extends Activity {
     }
 
     private void initCurrentPageInfo(QuranImageView image, View parent) {
-        TextView surah = (TextView) parent.findViewById(R.id.quranPageSurah);
-        TextView juzz = (TextView) parent.findViewById(R.id.quranPageJuz);
-        TextView number = (TextView) parent.findViewById(R.id.quranPagePageNumber);
-        surah.setTypeface(tradionalArabicBoldFont);
-        juzz.setTypeface(tradionalArabicBoldFont);
-        number.setTypeface(tradionalArabicBoldFont);
-        if (image.currentPage != null && image.currentPage.ayahs.size() > 0) {
+        if (!pref.getBoolean("showPageInfo", true)) {
+            parent.findViewById(R.id.pageInfoLayout).setVisibility(View.GONE);
+        } else if (image.currentPage != null && image.currentPage.ayahs.size() > 0) {
+            AutoScrollViewPager pager = (AutoScrollViewPager) parent.findViewById(R.id.pageTitleViewPager);
             int page = image.currentPage.page;
-            String juz = "";
+            String juz = "", hizb = "";
             for (int i = 1; i < WelcomeActivity.juzs.length; ++i) {
                 int val = (int) WelcomeActivity.juzs[i].value;
                 if (page == val) {
@@ -223,12 +226,34 @@ public class MainActivity extends Activity {
                     break;
                 }
             }
-            try {
-                surah.setText("سورة " + WelcomeActivity.surahs[image.currentPage.ayahs.get(0).sura - 1].name);
-                juzz.setText(juz);
-                number.setText("صفحة " + ArabicNumbers.convertDigits(page + ""));
-            } catch (NullPointerException ex){
+            if (juz.equals("") &&
+                    (int) WelcomeActivity.juzs[WelcomeActivity.juzs.length - 1].value < page) {
+                juz = WelcomeActivity.juzs[WelcomeActivity.juzs.length - 1].name;
             }
+            for (int i = 1; i < WelcomeActivity.hizbs.length; ++i) {
+                int val = (int) WelcomeActivity.hizbs[i].value;
+                if (val == page) {
+                    hizb = WelcomeActivity.hizbs[i].name;
+                    break;
+                } else if (val > page) {
+                    hizb = WelcomeActivity.hizbs[i - 1].name;
+                    break;
+                }
+            }
+            if (hizb.equals("") &&
+                    (int) WelcomeActivity.hizbs[WelcomeActivity.hizbs.length - 1].value < page) {
+                hizb = WelcomeActivity.hizbs[WelcomeActivity.hizbs.length - 1].name;
+            }
+            PageInfoAdapter adapter = new PageInfoAdapter();
+            adapter.setSurahName("سورة " + WelcomeActivity.surahs[image.currentPage.ayahs.get(0).sura - 1].name);
+            adapter.setJuzNumber(juz);
+            adapter.setPageNumber("صفحة " + ArabicNumbers.convertDigits(page + ""));
+            adapter.setHizbNumber(hizb);
+            pager.setAdapter(adapter);
+            pager.setCurrentItem(adapter.getCount() - 1);
+            pager.setInterval(5000);
+            pager.setDirection(AutoScrollViewPager.LEFT);
+            pager.startAutoScroll();
         }
     }
 
@@ -261,6 +286,8 @@ public class MainActivity extends Activity {
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         configOrientation(newConfig.orientation);
+        if (shareImageView != null)
+            configOrientation(newConfig.orientation, shareImageView);
     }
 
     private void initViewPager() {
@@ -830,16 +857,16 @@ public class MainActivity extends Activity {
         }
         final Dialog dialog = new Dialog(this);
         dialog.setContentView(R.layout.fragment_share_ayat_dlg);
-        final QuranImageView display = (QuranImageView) dialog.findViewById(R.id.shareQuranImageView);
-        display.isMultiSelectMode = true;
-        display.setImageBitmap(image.myBitmap);
-        display.pref = pref;
-        display.currentPage = image.currentPage;
+        shareImageView = (QuranImageView) dialog.findViewById(R.id.shareQuranImageView);
+        shareImageView.isMultiSelectMode = true;
+        shareImageView.setImageBitmap(image.myBitmap);
+        shareImageView.pref = pref;
+        shareImageView.currentPage = image.currentPage;
         if (image.selectedAyahIndex >= 0)
-            display.mutliSelectList.add(display.currentPage.ayahs.get(image.selectedAyahIndex));
-        configOrientation(display);
-        display.setOnTouchListener(new View.OnTouchListener() {
-            private GestureDetector detector = new GestureDetector(MainActivity.this, new GestureDetector.SimpleOnGestureListener(){
+            shareImageView.mutliSelectList.add(shareImageView.currentPage.ayahs.get(image.selectedAyahIndex));
+        configOrientation(shareImageView);
+        shareImageView.setOnTouchListener(new View.OnTouchListener() {
+            private GestureDetector detector = new GestureDetector(MainActivity.this, new GestureDetector.SimpleOnGestureListener() {
                 @Override
                 public void onLongPress(MotionEvent e) {
                     super.onLongPress(e);
@@ -847,14 +874,14 @@ public class MainActivity extends Activity {
                 }
 
                 private void handle(MotionEvent e) {
-                    int idx = display.getAyahAtPos(e.getX(), e.getY());
+                    int idx = shareImageView.getAyahAtPos(e.getX(), e.getY());
                     if (idx >= 0) {
-                        Ayah a = display.currentPage.ayahs.get(idx);
-                        if (!display.mutliSelectList.contains(a))
-                            display.mutliSelectList.add(a);
+                        Ayah a = shareImageView.currentPage.ayahs.get(idx);
+                        if (!shareImageView.mutliSelectList.contains(a))
+                            shareImageView.mutliSelectList.add(a);
                         else
-                            display.mutliSelectList.remove(a);
-                        display.invalidate();
+                            shareImageView.mutliSelectList.remove(a);
+                        shareImageView.invalidate();
                     }
                 }
 
@@ -871,15 +898,54 @@ public class MainActivity extends Activity {
                 return false;
             }
         });
-        dialog.findViewById(R.id.buttonShare).setOnClickListener(new View.OnClickListener() {
+        dialog.findViewById(R.id.buttonShareImage).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (display.mutliSelectList.size() > 0) {
+                if (shareImageView.mutliSelectList.size() > 0) {
                     dialog.dismiss();
-                    display.saveSelectedAyatAsImage(Environment.getExternalStorageDirectory()
-                           + File.separator  + "shamraly_share.png");
+                    String path = Environment.getExternalStorageDirectory()
+                            + File.separator + "shamraly_share.png";
+                    shareImageView.saveSelectedAyatAsImage(path);
+                    Intent share = new Intent(Intent.ACTION_SEND);
+                    share.setType("image/png");
+                    share.putExtra(Intent.EXTRA_STREAM, Uri.parse(path));
+                    startActivity(Intent.createChooser(share, "مشاركة"));
                 } else
                     showError("فضلا حدد آية أو أكثر");
+            }
+        });
+        dialog.findViewById(R.id.buttonShareCopy).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (shareImageView.mutliSelectList.size() > 0) {
+                    String text = Utils.getAllAyahText(MainActivity.this, shareImageView.mutliSelectList);
+                    dialog.dismiss();
+                    ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                    clipboard.setPrimaryClip(ClipData.newPlainText("مصحف الشمرلي", text));
+                    Toast.makeText(MainActivity.this, "تم نسخ النص إلى الحافظة", Toast.LENGTH_LONG).show();
+                } else
+                    showError("فضلا حدد آية أو أكثر");
+            }
+        });
+        dialog.findViewById(R.id.buttonShareText).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (shareImageView.mutliSelectList.size() > 0) {
+                    String text = Utils.getAllAyahText(MainActivity.this, shareImageView.mutliSelectList);
+                    dialog.dismiss();
+                    Intent sharingIntent = new Intent(android.content.Intent.ACTION_SEND);
+                    sharingIntent.setType("text/plain");
+                    sharingIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, "");
+                    sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, text);
+                    startActivity(Intent.createChooser(sharingIntent, "مشاركة مجموعة من الآيات"));
+                } else
+                    showError("فضلا حدد آية أو أكثر");
+            }
+        });
+        dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+            @Override
+            public void onDismiss(DialogInterface dialog) {
+                shareImageView = null;
             }
         });
         dialog.setTitle("مشاركة آية أو أكثر");

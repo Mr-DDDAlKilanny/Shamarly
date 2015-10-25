@@ -33,6 +33,11 @@
             android:title="الوضع الليلي"
             android:summary="تفعيل الوضع الليلي للقراءة"
             android:defaultValue="false" />
+        <CheckBoxPreference
+            android:key="showPageInfo"
+            android:title="عرض معلومات الصفحة"
+            android:summary="عرض رقم الصفحة واسم السورة ورقم الجزء والحزب في أعلى الصفحة"
+            android:defaultValue="true" />
         </PreferenceCategory>
     <PreferenceCategory android:title="التفسير" android:summary="إعدادات التفسير">
         <ListPreference

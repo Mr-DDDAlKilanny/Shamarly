@@ -7,10 +7,14 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.os.Environment;
-import android.os.Handler;
 import android.os.RecoverySystem;
 import android.view.View;
 import android.widget.ListView;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -18,15 +22,24 @@ import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpressionException;
+import javax.xml.xpath.XPathFactory;
 
 /**
  * Created by Yasser on 10/11/2015.
@@ -528,6 +541,42 @@ public class Utils {
         dlgAlert.setPositiveButton("موافق", ok);
         dlgAlert.setCancelable(false);
         dlgAlert.create().show();
+    }
+
+    public static String getAllAyahText(Context context, ArrayList<Ayah> list) {
+        Document doc;
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        try {
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            InputSource is = new InputSource();
+            InputStream stream = context.getAssets().open("quran-uthmani.xml");
+            is.setCharacterStream(new InputStreamReader(stream));
+            doc = db.parse(is);
+            stream.close();
+        } catch (ParserConfigurationException e) {
+            return null;
+        } catch (SAXException e) {
+            return null;
+        } catch (IOException e) {
+            return null;
+        }
+        XPath xPath = XPathFactory.newInstance().newXPath();
+        try {
+            String all = "قال تعالى:\n";
+            for (Ayah a : list) {
+                String res = ((NodeList) xPath.evaluate("/quran/sura[@index=\"" + a.sura
+                                + "\"]/aya[@index=\"" + a.ayah + "\"]",
+                        doc.getDocumentElement(), XPathConstants.NODESET))
+                        .item(0).getAttributes().getNamedItem("text").getTextContent();
+                all += "{" + res + " (" + ArabicNumbers.convertDigits(a.ayah + "") + ")} سورة"
+                        + WelcomeActivity.surahs[a.sura - 1].name + "\n\n";
+            }
+            all += "مصحف الشمرلي على أندرويد https://play.google.com/store/apps/details?id=kilanny.shamarlymushaf";
+            return all;
+        } catch (XPathExpressionException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }
 

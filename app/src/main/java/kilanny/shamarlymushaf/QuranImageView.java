@@ -1,7 +1,6 @@
 package kilanny.shamarlymushaf;
 
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
@@ -14,12 +13,10 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Typeface;
-import android.net.Uri;
 import android.util.AttributeSet;
 
 import com.ortiz.touch.TouchImageView;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -111,7 +108,7 @@ public class QuranImageView extends TouchImageView {
                     for (RectF rect : a.rects)
                         canvas.drawRect(getScaledRectFromImageRect(rect), rectPaint);
                 }
-            } else if (sel >= 0) {
+            } else if (sel >= 0 && sel < currentPage.ayahs.size()) {
                 Ayah a = currentPage.ayahs.get(sel);
                 rectPaint.setColor(drawColor);
                 rectPaint.setAlpha(125);
@@ -180,16 +177,12 @@ public class QuranImageView extends TouchImageView {
             tmp.recycle();
             FileOutputStream outputStream;
             try {
-                Intent share = new Intent(Intent.ACTION_SEND);
-                share.setType("image/png");
                 File file = new File(path);
                 if (!file.exists())
                     file.createNewFile();
                 outputStream = new FileOutputStream(file);
                 draw.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
                 outputStream.close();
-                share.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(file));
-                getContext().startActivity(Intent.createChooser(share, "مشاركة"));
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             } catch (IOException e) {
