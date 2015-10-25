@@ -22,6 +22,8 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 
 /**
  * Created by ibraheem on 05/11/2015.
@@ -133,15 +135,30 @@ public class QuranImageView extends TouchImageView {
             for (int i = 0; i < currentPage.ayahs.size(); ++i)
                 for (RectF rect : currentPage.ayahs.get(i).rects)
                     if (getScaledRectFromImageRect(rect).contains(x, y))
-                        return i;
+                        return currentPage.ayahs.get(i).ayah == 0 && isMultiSelectMode ? -1 : i; // fix exception: no Basmalah in xml file
+
         }
         return -1;
     }
 
-    public void saveSelectedAyatAsImage(String path) {
+    public static void sortMutliSelectList(ArrayList<Ayah> list) {
+        Collections.sort(list, new Comparator<Ayah>() {
+            @Override
+            public int compare(Ayah lhs, Ayah rhs) {
+                if (lhs.sura != rhs.sura)
+                    return lhs.sura - rhs.sura;
+                if (lhs.ayah != rhs.ayah)
+                    return lhs.ayah - rhs.ayah;
+                return 0;
+            }
+        });
+    }
+
+    public void saveSelectedAyatAsImage(File file) {
         if (!isMultiSelectMode)
             throw new IllegalStateException("This method can be only invoked in multi-select mode");
         if (myBitmap != null) {
+            sortMutliSelectList(mutliSelectList);
             float totalHeight = 100 + 90;
             for (Ayah a : mutliSelectList) {
                 float mny = a.rects.get(0).top,
@@ -177,10 +194,9 @@ public class QuranImageView extends TouchImageView {
             tmp.recycle();
             FileOutputStream outputStream;
             try {
-                File file = new File(path);
                 if (!file.exists())
                     file.createNewFile();
-                outputStream = new FileOutputStream(file);
+                outputStream = new FileOutputStream(file, false);
                 draw.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
                 outputStream.close();
             } catch (FileNotFoundException e) {
@@ -189,6 +205,6 @@ public class QuranImageView extends TouchImageView {
                 e.printStackTrace();
             }
             draw.recycle();
-        }
+        } else throw new IllegalStateException("myBitmap is null");
     }
 }

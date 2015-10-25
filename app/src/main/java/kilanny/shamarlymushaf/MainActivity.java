@@ -903,12 +903,12 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 if (shareImageView.mutliSelectList.size() > 0) {
                     dialog.dismiss();
-                    String path = Environment.getExternalStorageDirectory()
-                            + File.separator + "shamraly_share.png";
+                    File path = new File(Environment.getExternalStorageDirectory(),
+                            "shamraly_share.png");
                     shareImageView.saveSelectedAyatAsImage(path);
                     Intent share = new Intent(Intent.ACTION_SEND);
                     share.setType("image/png");
-                    share.putExtra(Intent.EXTRA_STREAM, Uri.parse(path));
+                    share.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(path));
                     startActivity(Intent.createChooser(share, "مشاركة"));
                 } else
                     showError("فضلا حدد آية أو أكثر");

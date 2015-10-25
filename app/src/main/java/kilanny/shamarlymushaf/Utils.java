@@ -562,17 +562,29 @@ public class Utils {
         }
         XPath xPath = XPathFactory.newInstance().newXPath();
         try {
-            String all = "قال تعالى:\n";
+            StringBuilder all = new StringBuilder();
+            QuranImageView.sortMutliSelectList(list);
+            int prevSurah = -1;
             for (Ayah a : list) {
                 String res = ((NodeList) xPath.evaluate("/quran/sura[@index=\"" + a.sura
                                 + "\"]/aya[@index=\"" + a.ayah + "\"]",
                         doc.getDocumentElement(), XPathConstants.NODESET))
                         .item(0).getAttributes().getNamedItem("text").getTextContent();
-                all += "{" + res + " (" + ArabicNumbers.convertDigits(a.ayah + "") + ")} سورة"
-                        + WelcomeActivity.surahs[a.sura - 1].name + "\n\n";
+                if (prevSurah != a.sura) {
+                    prevSurah = a.sura;
+                    if (all.length() > 0)
+                        all.append("\n");
+                    all.append("قال تعالى في سورة ")
+                            .append(WelcomeActivity.surahs[a.sura - 1].name.trim())
+                            .append(":\n");
+                }
+                all.append("{").append(res).append(" (")
+                        .append(ArabicNumbers.convertDigits(a.ayah + "")).append(")}\n");
             }
-            all += "مصحف الشمرلي على أندرويد https://play.google.com/store/apps/details?id=kilanny.shamarlymushaf";
-            return all;
+            all.append("\n")
+                    .append("مصحف الشمرلي على أندرويد\n")
+                    .append("https://play.google.com/store/apps/details?id=kilanny.shamarlymushaf");
+            return all.toString();
         } catch (XPathExpressionException e) {
             e.printStackTrace();
             return null;
