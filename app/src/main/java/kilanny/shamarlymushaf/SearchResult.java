@@ -11,6 +11,11 @@ class SearchResult {
     public int page, surah, ayah;
     public String text;
     public String query;
+    private final QuranData quranData;
+
+    public SearchResult(QuranData quranData) {
+        this.quranData = quranData;
+    }
 
     @Override
     public String toString() {
@@ -53,7 +58,7 @@ class SearchResult {
             }
         }
         return "سورة "
-                + WelcomeActivity.surahs[surah - 1].name
+                + quranData.surahs[surah - 1].name
                 + " " + ayah + ": {"
                 + str + "}";
     }

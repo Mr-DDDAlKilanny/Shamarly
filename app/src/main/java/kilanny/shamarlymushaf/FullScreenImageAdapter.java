@@ -15,7 +15,6 @@ import android.widget.LinearLayout;
 public class FullScreenImageAdapter extends PagerAdapter {
 
     private final MainActivity _activity;
-    private LayoutInflater inflater;
     public static final int MAX_PAGE = 522;
     private OnInstantiateQuranImageViewListener instantiateQuranImageViewListener;
 
@@ -38,7 +37,7 @@ public class FullScreenImageAdapter extends PagerAdapter {
     public Object instantiateItem(ViewGroup container, int position) {
         QuranImageView imgDisplay;
         position = getCount() - position;
-        inflater = (LayoutInflater) _activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        LayoutInflater inflater = (LayoutInflater) _activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         View viewLayout = inflater.inflate(R.layout.layout_fullscreen_image, container, false);
         imgDisplay = (QuranImageView) viewLayout.findViewById(R.id.quranPage);
         imgDisplay.pref = _activity.pref;

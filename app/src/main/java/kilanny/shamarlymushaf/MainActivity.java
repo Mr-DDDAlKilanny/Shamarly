@@ -118,10 +118,10 @@ public class MainActivity extends Activity {
     private boolean autoSwipPage = false;
     private Typeface tradionalArabicFont, tradionalArabicBoldFont;
     private QuranImageView shareImageView;
+    private QuranData quranData;
 
     public MainActivity() {
-        DbManager.init(this);
-        db = DbManager.getInstance();
+        db = DbManager.getInstance(this);
     }
 
     @Override
@@ -216,36 +216,36 @@ public class MainActivity extends Activity {
             AutoScrollViewPager pager = (AutoScrollViewPager) parent.findViewById(R.id.pageTitleViewPager);
             int page = image.currentPage.page;
             String juz = "", hizb = "";
-            for (int i = 1; i < WelcomeActivity.juzs.length; ++i) {
-                int val = (int) WelcomeActivity.juzs[i].value;
+            for (int i = 1; i < quranData.juzs.length; ++i) {
+                int val = (int) quranData.juzs[i].value;
                 if (page == val) {
-                    juz = WelcomeActivity.juzs[i].name;
+                    juz = quranData.juzs[i].name;
                     break;
                 } else if (page < val) {
-                    juz = WelcomeActivity.juzs[i - 1].name;
+                    juz = quranData.juzs[i - 1].name;
                     break;
                 }
             }
             if (juz.equals("") &&
-                    (int) WelcomeActivity.juzs[WelcomeActivity.juzs.length - 1].value < page) {
-                juz = WelcomeActivity.juzs[WelcomeActivity.juzs.length - 1].name;
+                    (int) quranData.juzs[quranData.juzs.length - 1].value < page) {
+                juz = quranData.juzs[quranData.juzs.length - 1].name;
             }
-            for (int i = 1; i < WelcomeActivity.hizbs.length; ++i) {
-                int val = (int) WelcomeActivity.hizbs[i].value;
+            for (int i = 1; i < quranData.hizbs.length; ++i) {
+                int val = (int) quranData.hizbs[i].value;
                 if (val == page) {
-                    hizb = WelcomeActivity.hizbs[i].name;
+                    hizb = quranData.hizbs[i].name;
                     break;
                 } else if (val > page) {
-                    hizb = WelcomeActivity.hizbs[i - 1].name;
+                    hizb = quranData.hizbs[i - 1].name;
                     break;
                 }
             }
             if (hizb.equals("") &&
-                    (int) WelcomeActivity.hizbs[WelcomeActivity.hizbs.length - 1].value < page) {
-                hizb = WelcomeActivity.hizbs[WelcomeActivity.hizbs.length - 1].name;
+                    (int) quranData.hizbs[quranData.hizbs.length - 1].value < page) {
+                hizb = quranData.hizbs[quranData.hizbs.length - 1].name;
             }
             PageInfoAdapter adapter = new PageInfoAdapter();
-            adapter.setSurahName("سورة " + WelcomeActivity.surahs[image.currentPage.ayahs.get(0).sura - 1].name);
+            adapter.setSurahName("سورة " + quranData.surahs[image.currentPage.ayahs.get(0).sura - 1].name);
             adapter.setJuzNumber(juz);
             adapter.setPageNumber("صفحة " + ArabicNumbers.convertDigits(page + ""));
             adapter.setHizbNumber(hizb);
@@ -360,14 +360,14 @@ public class MainActivity extends Activity {
                     ex.printStackTrace();
                 }
                 // find hizb-juz
-                for (int i = 1; i < WelcomeActivity.hizbs.length; ++i) {
-                    int val = (int) WelcomeActivity.hizbs[i].value;
+                for (int i = 1; i < quranData.hizbs.length; ++i) {
+                    int val = (int) quranData.hizbs[i].value;
                     if (val == setting.page) {
                         String txt;
                         if (i % 2 == 1)
-                            txt = WelcomeActivity.juzs[1 + i / 2].name;
+                            txt = quranData.juzs[1 + i / 2].name;
                         else
-                            txt = WelcomeActivity.hizbs[i].name;
+                            txt = quranData.hizbs[i].name;
                         Toast.makeText(MainActivity.this, txt, Toast.LENGTH_SHORT).show();
                         break;
                     } else if (val > setting.page) break;
@@ -414,7 +414,7 @@ public class MainActivity extends Activity {
         dialog.setTitle("ذهاب إلى");
         final ListView l = (ListView) dialog.findViewById(R.id.listViewSurah);
         l.setAdapter(new ArrayAdapter<>(this,
-                android.R.layout.simple_list_item_1, android.R.id.text1, WelcomeActivity.surahs));
+                android.R.layout.simple_list_item_1, android.R.id.text1, quranData.surahs));
         l.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -437,10 +437,10 @@ public class MainActivity extends Activity {
         });
         Spinner spinner = (Spinner) dialog.findViewById(R.id.juzNumber);
         spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1,
-                android.R.id.text1, WelcomeActivity.juzs));
+                android.R.id.text1, quranData.juzs));
         spinner = (Spinner) dialog.findViewById(R.id.hizbNumber);
         spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1,
-                android.R.id.text1, WelcomeActivity.hizbs));
+                android.R.id.text1, quranData.hizbs));
         Button b = (Button) dialog.findViewById(R.id.buttonGoto);
         b.setOnClickListener(new View.OnClickListener() {
 
@@ -476,9 +476,9 @@ public class MainActivity extends Activity {
                             dialog.dismiss();
                             int ss = Integer.parseInt(s);
                             int aa = Integer.parseInt(a);
-                            if (ss < 1 || ss > Utils.AYAH_COUNT.length)
+                            if (ss < 1 || ss > QuranData.AYAH_COUNT.length)
                                 showError("رقم السورة غير صحيح");
-                            else if (aa < 1 || aa > Utils.AYAH_COUNT[ss - 1])
+                            else if (aa < 1 || aa > QuranData.AYAH_COUNT[ss - 1])
                                 showError("رقم الآية غير صحيح");
                             else
                                 showPage(db.getPage(ss, aa));
@@ -584,7 +584,7 @@ public class MainActivity extends Activity {
                     }
                     else {
                         QuranImageView image = getCurrentPage();
-                        int next = Utils.AYAH_COUNT[sura - 1] >= ayah + 1 ?
+                        int next = QuranData.AYAH_COUNT[sura - 1] >= ayah + 1 ?
                                 ayah + 1 : 1;
                         if (repeat) {
                             if (sura == toSurah && ayah == toAyah) {
@@ -600,7 +600,7 @@ public class MainActivity extends Activity {
                                     }
                                 }
                             } else if (next <= ayah) {
-                                if (++sura > Utils.AYAH_COUNT.length) {
+                                if (++sura > QuranData.AYAH_COUNT.length) {
                                     if (pref.getBoolean("backToBegin", true)) {
                                         sura = ayah = 1;
                                         autoSwipPage = true;
@@ -618,7 +618,7 @@ public class MainActivity extends Activity {
                         }
                         else {
                             if (next <= ayah) {
-                                if (++sura > Utils.AYAH_COUNT.length) {
+                                if (++sura > QuranData.AYAH_COUNT.length) {
                                     if (pref.getBoolean("backToBegin", true)) {
                                         sura = next = 1;
                                         autoSwipPage = true;
@@ -787,10 +787,10 @@ public class MainActivity extends Activity {
         dialog.setContentView(R.layout.fragment_repeat_recite);
         final Spinner spinner1 = (Spinner) dialog.findViewById(R.id.fromSurah);
         spinner1.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1,
-                android.R.id.text1, WelcomeActivity.surahs2));
+                android.R.id.text1, quranData.surahs2));
         final Spinner spinner2 = (Spinner) dialog.findViewById(R.id.toSurah);
         spinner2.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1,
-                android.R.id.text1, WelcomeActivity.surahs2));
+                android.R.id.text1, quranData.surahs2));
         QuranImageView image = getCurrentPage();
         final EditText from = (EditText) dialog.findViewById(R.id.fromAyah);
         final EditText to = (EditText) dialog.findViewById(R.id.toAyah);
@@ -827,8 +827,8 @@ public class MainActivity extends Activity {
                 }
                 int sf = (int) ((ListItem) spinner1.getSelectedItem()).value;
                 int st = (int) ((ListItem) spinner2.getSelectedItem()).value;
-                f = Math.min(f, Utils.AYAH_COUNT[sf - 1]);
-                t = Math.min(t, Utils.AYAH_COUNT[st - 1]);
+                f = Math.min(f, QuranData.AYAH_COUNT[sf - 1]);
+                t = Math.min(t, QuranData.AYAH_COUNT[st - 1]);
                 if ((sf > st || sf == st && f > t)
                         && !pref.getBoolean("backToBegin", true)) {
                     showError("البداية يجب أن لا تكون أعلى من النهاية. فعل خيار البدء من الفاتحة للاستمرار");
@@ -905,7 +905,7 @@ public class MainActivity extends Activity {
                     dialog.dismiss();
                     File path = new File(Environment.getExternalStorageDirectory(),
                             "shamraly_share.png");
-                    shareImageView.saveSelectedAyatAsImage(path);
+                    shareImageView.saveSelectedAyatAsImage(path, quranData);
                     Intent share = new Intent(Intent.ACTION_SEND);
                     share.setType("image/png");
                     share.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(path));
@@ -918,7 +918,8 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 if (shareImageView.mutliSelectList.size() > 0) {
-                    String text = Utils.getAllAyahText(MainActivity.this, shareImageView.mutliSelectList);
+                    String text = Utils.getAllAyahText(MainActivity.this,
+                            shareImageView.mutliSelectList, quranData);
                     dialog.dismiss();
                     ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
                     clipboard.setPrimaryClip(ClipData.newPlainText("مصحف الشمرلي", text));
@@ -931,7 +932,8 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 if (shareImageView.mutliSelectList.size() > 0) {
-                    String text = Utils.getAllAyahText(MainActivity.this, shareImageView.mutliSelectList);
+                    String text = Utils.getAllAyahText(MainActivity.this,
+                            shareImageView.mutliSelectList, quranData);
                     dialog.dismiss();
                     Intent sharingIntent = new Intent(android.content.Intent.ACTION_SEND);
                     sharingIntent.setType("text/plain");
@@ -955,10 +957,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Utils.initDatabaseDir(this);
-        DbManager.init(this);
         deleteAll();
-        WelcomeActivity.initQuranData(this);
+        quranData = QuranData.getInstance(this);
         setContentView(R.layout.activity_main);
         bar = (ProgressBar) this.findViewById(R.id.progressBar);
         tradionalArabicFont = Typeface.createFromAsset(getAssets(), "DroidNaskh-Regular.ttf");
@@ -1095,6 +1095,9 @@ class Setting implements Serializable {
     int page = 1;
     String saveSoundsDirectory;
     ArrayList<ListItem> bookmarks;
+
+    private Setting() {
+    }
 
     @Nullable
     private ListItem getBookmark(int p) {

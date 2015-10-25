@@ -46,123 +46,6 @@ import javax.xml.xpath.XPathFactory;
  */
 public class Utils {
 
-    public static final int[] AYAH_COUNT = {
-            7,
-            286,
-            200,
-            176,
-            120,
-            165,
-            206,
-            75,
-            129,
-            109,
-            123,
-            111,
-            43,
-            52,
-            99,
-            128,
-            111,
-            110,
-            98,
-            135,
-            112,
-            78,
-            118,
-            64,
-            77,
-            227,
-            93,
-            88,
-            69,
-            60,
-            34,
-            30,
-            73,
-            54,
-            45,
-            83,
-            182,
-            88,
-            75,
-            85,
-            54,
-            53,
-            89,
-            59,
-            37,
-            35,
-            38,
-            29,
-            18,
-            45,
-            60,
-            49,
-            62,
-            55,
-            78,
-            96,
-            29,
-            22,
-            24,
-            13,
-            14,
-            11,
-            11,
-            18,
-            12,
-            12,
-            30,
-            52,
-            52,
-            44,
-            28,
-            28,
-            20,
-            56,
-            40,
-            31,
-            50,
-            40,
-            46,
-            42,
-            29,
-            19,
-            36,
-            25,
-            22,
-            17,
-            19,
-            26,
-            30,
-            20,
-            15,
-            21,
-            11,
-            8,
-            8,
-            19,
-            5,
-            8,
-            8,
-            11,
-            11,
-            8,
-            3,
-            9,
-            5,
-            4,
-            7,
-            3,
-            6,
-            3,
-            5,
-            4,
-            5,
-            6
-    };
-
     public static final int DOWNLOAD_SERVER_INVALID_RESPONSE = -1,
             DOWNLOAD_OK = 0,
             DOWNLOAD_MALFORMED_URL = -2,
@@ -170,7 +53,7 @@ public class Utils {
             DOWNLOAD_IO_EXCEPTION = -4,
             DOWNLOAD_USER_CANCEL = -5;
 
-    public static void initDatabaseDir(Context context) {
+    public static File getDatabaseDir(Context context) {
         File filesDir;
         // Make sure it's available
         if (isExternalStorageWritable()) {
@@ -180,7 +63,7 @@ public class Utils {
             // Load another directory, probably local memory
             filesDir = context.getFilesDir();
         }
-        MyDbContext.externalFilesDir = filesDir;
+        return filesDir;
     }
 
     /* Checks if external storage is available for read and write */
@@ -295,7 +178,7 @@ public class Utils {
             }
         }
         ConcurrentLinkedQueue<Integer> q = new ConcurrentLinkedQueue<>();
-        for (int i = surah == 1 ? 0 : 1; i <= AYAH_COUNT[surah - 1]; ++i)
+        for (int i = surah == 1 ? 0 : 1; i <= QuranData.AYAH_COUNT[surah - 1]; ++i)
             if (!buffer[i])
                 q.add(i);
         return q;
@@ -319,7 +202,7 @@ public class Utils {
             surahDir.mkdirs();
         Thread[] threads = new Thread[4];
         final Shared progress = new Shared();
-        progress.setData(AYAH_COUNT[surah - 1] + (surah == 1 ? 1 : 0) - q.size());
+        progress.setData(QuranData.AYAH_COUNT[surah - 1] + (surah == 1 ? 1 : 0) - q.size());
         final Shared error = new Shared();
         error.setData(DOWNLOAD_OK);
         final Shared interrupt = new Shared();
@@ -543,7 +426,7 @@ public class Utils {
         dlgAlert.create().show();
     }
 
-    public static String getAllAyahText(Context context, ArrayList<Ayah> list) {
+    public static String getAllAyahText(Context context, ArrayList<Ayah> list, QuranData quranData) {
         Document doc;
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         try {
@@ -575,7 +458,7 @@ public class Utils {
                     if (all.length() > 0)
                         all.append("\n");
                     all.append("قال تعالى في سورة ")
-                            .append(WelcomeActivity.surahs[a.sura - 1].name.trim())
+                            .append(quranData.surahs[a.sura - 1].name.trim())
                             .append(":\n");
                 }
                 all.append("{").append(res).append(" (")

@@ -32,8 +32,8 @@ public class SearchActivity extends Activity {
         search.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
-                DbManager db = DbManager.getInstance();
-                SearchResult res[] = db.search(query)
+                DbManager db = DbManager.getInstance(SearchActivity.this);
+                SearchResult res[] = db.search(query, QuranData.getInstance(SearchActivity.this))
                         .toArray(new SearchResult[0]);
                 results.setAdapter(new ArrayAdapter<>(SearchActivity.this,
                         android.R.layout.simple_list_item_1, res));

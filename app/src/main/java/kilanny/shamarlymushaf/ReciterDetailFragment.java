@@ -96,7 +96,7 @@ public class ReciterDetailFragment extends Fragment {
     }
 
     private int getSurahAyahCount(int surah) {
-        return Utils.AYAH_COUNT[surah - 1] + (surah == 1 ? 1 : 0);
+        return QuranData.AYAH_COUNT[surah - 1] + (surah == 1 ? 1 : 0);
     }
 
     class SurahDownload {
@@ -112,10 +112,11 @@ public class ReciterDetailFragment extends Fragment {
         if (mItem != null) {
             rootView.findViewById(R.id.progressBarLoading).setVisibility(View.VISIBLE);
             rootView.findViewById(R.id.listview_reciter_detail).setVisibility(View.GONE);
-            SurahDownload[] arr = new SurahDownload[WelcomeActivity.surahs.length];
-            for (int i = 0; i < WelcomeActivity.surahs.length; ++i) {
+            QuranData quranData = QuranData.getInstance(getActivity());
+            SurahDownload[] arr = new SurahDownload[quranData.surahs.length];
+            for (int i = 0; i < quranData.surahs.length; ++i) {
                 arr[i] = new SurahDownload();
-                arr[i].surah = WelcomeActivity.surahs[i];
+                arr[i].surah = quranData.surahs[i];
                 arr[i].totalAyah = getSurahAyahCount(i + 1);
             }
             adapter = new ArrayAdapter<SurahDownload>(

@@ -30,13 +30,10 @@ public class DbManager extends SQLiteOpenHelper {
         super(new MyDbContext(context), DATABASE_NAME , null, 1);
     }
 
-    public static DbManager getInstance() {
-        return instance;
-    }
-
-    public static void init(Context context) {
+    public static DbManager getInstance(Context context) {
         if (instance == null)
             instance = new DbManager(context);
+        return instance;
     }
 
     @Override
@@ -109,13 +106,13 @@ public class DbManager extends SQLiteOpenHelper {
         return pg;
     }
 
-    public ArrayList<SearchResult> search(String word) {
+    public ArrayList<SearchResult> search(String word, QuranData quranData) {
         ArrayList<SearchResult> results = new ArrayList<>();
         SQLiteDatabase db = this.getWritableDatabase();
         Cursor cursor =  db.rawQuery("select * from mushaf where ayahtext like '%" + word + "%'", null);
         cursor.moveToFirst();
         while (cursor.isAfterLast() == false) {
-            SearchResult res = new SearchResult();
+            SearchResult res = new SearchResult(quranData);
             res.text = cursor.getString(cursor.getColumnIndex("ayahtext"));
             res.ayah = cursor.getInt(cursor.getColumnIndex("ayah"));
             res.surah = cursor.getInt(cursor.getColumnIndex("sura"));
@@ -147,10 +144,11 @@ public class DbManager extends SQLiteOpenHelper {
 
 class MyDbContext extends ContextWrapper {
 
-    public static File externalFilesDir;
+    private final File externalFilesDir;
 
     public MyDbContext(Context base) {
         super(base);
+        externalFilesDir = Utils.getDatabaseDir(base);
     }
 
     @Override

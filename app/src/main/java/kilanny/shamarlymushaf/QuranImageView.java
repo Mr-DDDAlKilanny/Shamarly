@@ -154,7 +154,7 @@ public class QuranImageView extends TouchImageView {
         });
     }
 
-    public void saveSelectedAyatAsImage(File file) {
+    public void saveSelectedAyatAsImage(File file, QuranData quranData) {
         if (!isMultiSelectMode)
             throw new IllegalStateException("This method can be only invoked in multi-select mode");
         if (myBitmap != null) {
@@ -168,7 +168,7 @@ public class QuranImageView extends TouchImageView {
             }
             Bitmap draw = Bitmap.createBitmap(IMAGE_WIDTH, (int) Math.ceil(totalHeight), myBitmap.getConfig());
             Canvas canvas = new Canvas(draw);
-            String text = "سورة " + WelcomeActivity.surahs[mutliSelectList.get(0).sura - 1].name;
+            String text = "سورة " + quranData.surahs[mutliSelectList.get(0).sura - 1].name;
             Rect bounds = new Rect();
             fontPaint.getTextBounds(text, 0, text.length(), bounds);
             canvas.drawText(text, IMAGE_WIDTH / 2 - bounds.height() / 2, 45, fontPaint);
