@@ -110,7 +110,7 @@ public class MainActivity extends Activity {
     private ViewPager viewPager;
     private Setting setting;
     SharedPreferences pref;
-    public final DbManager db;
+    public DbManager db;
     private ProgressBar bar;
     private MediaPlayer player;
     private int sura, ayah;
@@ -119,10 +119,6 @@ public class MainActivity extends Activity {
     private Typeface tradionalArabicFont, tradionalArabicBoldFont;
     private QuranImageView shareImageView;
     private QuranData quranData;
-
-    public MainActivity() {
-        db = DbManager.getInstance(this);
-    }
 
     @Override
     protected void onStop() {
@@ -957,6 +953,14 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (Utils.getDatabaseDir(this) == null) {
+            Toast.makeText(this,
+                    "فشل بدء التطبيق. لا يمكن الكتابة في ذاكرة الجهاز",
+                    Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+        db = DbManager.getInstance(this);
         deleteAll();
         quranData = QuranData.getInstance(this);
         setContentView(R.layout.activity_main);

@@ -56,9 +56,8 @@ public class Utils {
     public static File getDatabaseDir(Context context) {
         File filesDir;
         // Make sure it's available
-        if (isExternalStorageWritable()) {
+        if (isExternalStorageWritable() && (filesDir = context.getExternalFilesDir(null)) != null) {
             // We can read and write the media
-            filesDir = context.getExternalFilesDir(null);
         } else {
             // Load another directory, probably local memory
             filesDir = context.getFilesDir();
