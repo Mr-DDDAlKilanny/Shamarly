@@ -206,7 +206,7 @@ public class ReciterDetailFragment extends Fragment {
                                                             mItem, position + 1);
                                                     if (surahDir.exists()) {
                                                         for (int i = 0; i <= item.totalAyah; ++i) {
-                                                            File file = new File(Utils.getAyahFile(i, surahDir));
+                                                            File file = Utils.getAyahFile(i, surahDir);
                                                             if (file.exists())
                                                                 file.delete();
                                                             publishProgress(i);

@@ -193,4 +193,18 @@ public class QuranData {
             surahs2[i] = item;
         }
     }
+
+    public Surah findSurahAtPage(int page) {
+        if (page <= 0)
+            throw new IllegalArgumentException();
+        for (int i = 0; i < surahs.length; ++i) {
+            if (surahs[i].page == page)
+                return surahs[i];
+            else if (surahs[i].page > page)
+                return surahs[i - 1];
+        }
+        if (page > surahs[surahs.length - 1].page)
+            return surahs[surahs.length - 1];
+        return null;
+    }
 }

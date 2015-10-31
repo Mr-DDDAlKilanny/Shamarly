@@ -17,6 +17,7 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
@@ -32,6 +33,8 @@ import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -56,13 +59,26 @@ public class Utils {
     public static File getDatabaseDir(Context context) {
         File filesDir;
         // Make sure it's available
-        if (isExternalStorageWritable() && (filesDir = context.getExternalFilesDir(null)) != null) {
-            // We can read and write the media
-        } else {
+        if (!isExternalStorageWritable() || (filesDir = context.getExternalFilesDir(null)) == null) {
             // Load another directory, probably local memory
             filesDir = context.getFilesDir();
         }
         return filesDir;
+    }
+
+    public static File getTafaseerDbFile(Context context) {
+        return new File(getDatabaseDir(context), "tafaseer.db");
+    }
+
+    public static File getQuranDir(Context context) {
+        File file = new File(getDatabaseDir(context), "pages");
+        if (!file.exists())
+            file.mkdirs();
+        return file;
+    }
+
+    public static File getPageFile(Context context, int idx) {
+        return new File(Utils.getQuranDir(context), String.format(Locale.ENGLISH, "%d", idx));
     }
 
     /* Checks if external storage is available for read and write */
@@ -102,8 +118,8 @@ public class Utils {
     /**
      * Used for less memory usage, less object instantiation
      */
-    public static String getAyahFile(int ayah, File surahDir) {
-        return surahDir.getAbsolutePath() + "//" + ayah;
+    public static File getAyahFile(int ayah, File surahDir) {
+        return new File(surahDir, ayah + "");
     }
 
     public static String getAyahUrl(String reciter, int surah, int ayah) {
@@ -119,11 +135,17 @@ public class Utils {
         return getAyahUrl(reciter, surah, ayah);
     }
 
-    public static int downloadAyah(Context context, String reciter, int surah, int ayah,
-                                   byte[] buffer, File surahDir) {
+    public static int downloadTafaseerDb(Context context,
+                                         RecoverySystem.ProgressListener progressListener,
+                                         CancelOperationListener cancel) {
+        File dbFile = getTafaseerDbFile(context);
+        boolean error = true;
+        if (dbFile.exists()) return DOWNLOAD_OK;
+        byte[] buffer = new byte[4096];
         URL url;
+        boolean conn = true;
         try {
-            url = new URL(getAyahUrl(reciter, surah, ayah));
+            url = new URL("http://archive.org/download/shamraly/tafaseer.zip");
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestProperty("connection", "close");
             connection.connect();
@@ -132,12 +154,84 @@ public class Utils {
             if (connection.getResponseCode() != HttpURLConnection.HTTP_OK)
                 return DOWNLOAD_SERVER_INVALID_RESPONSE;
             // download the file
-            InputStream input = connection.getInputStream();
-            FileOutputStream output = new FileOutputStream(
-                    getAyahFile(ayah, surahDir));
-            int count;
-            while ((count = input.read(buffer)) != -1)
+            ZipInputStream zipIs = new ZipInputStream(connection.getInputStream());
+            ZipEntry entry = zipIs.getNextEntry();
+            if (entry == null) return DOWNLOAD_SERVER_INVALID_RESPONSE;
+            long fileLength = entry.getSize();
+            conn = false;
+            FileOutputStream output = new FileOutputStream(dbFile);
+            int count, tmpProgress, progress = -1;
+            long total = 0;
+            while ((count = zipIs.read(buffer)) != -1) {
                 output.write(buffer, 0, count);
+                total += count;
+                tmpProgress = (int) (total * 100 / fileLength);
+                if (progressListener != null && tmpProgress != progress) // only if total length is known
+                    progressListener.onProgress(progress = tmpProgress);
+                if (cancel != null && !cancel.canContinue())
+                    break;
+            }
+            zipIs.closeEntry();
+            zipIs.close();
+            output.close();
+            error = false;
+            return cancel != null && !cancel.canContinue() ? DOWNLOAD_USER_CANCEL : DOWNLOAD_OK;
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            return DOWNLOAD_MALFORMED_URL;
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            return DOWNLOAD_FILE_NOT_FOUND;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return conn ? DOWNLOAD_SERVER_INVALID_RESPONSE : DOWNLOAD_IO_EXCEPTION;
+        } finally {
+            if (error && dbFile.exists())
+                dbFile.delete();
+        }
+    }
+
+    public static void extractZippedFile(InputStream zip, File output) throws IOException {
+        byte[] buffer = new byte[4096];
+        ZipEntry ze = null;
+        int length;
+        FileOutputStream myOutput = new FileOutputStream(output);
+        ZipInputStream zipIs = new ZipInputStream(zip);
+        if ((ze = zipIs.getNextEntry()) != null) {
+            while ((length = zipIs.read(buffer)) > 0) {
+                myOutput.write(buffer, 0, length);
+            }
+            zipIs.closeEntry();
+            myOutput.flush();
+            myOutput.close();
+        }
+        zipIs.close();
+        zip.close();
+    }
+
+    private static int downloadFile(byte[] buffer, String fromUrl, File saveTo) {
+        URL url;
+        boolean conn = true;
+        try {
+            url = new URL(fromUrl);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestProperty("connection", "close");
+            connection.connect();
+            // expect HTTP 200 OK, so we don't mistakenly save error report
+            // instead of the file
+            if (connection.getResponseCode() != HttpURLConnection.HTTP_OK)
+                return DOWNLOAD_SERVER_INVALID_RESPONSE;
+            int fileLength = connection.getContentLength();
+            // download the file
+            InputStream input = connection.getInputStream();
+            conn = false;
+            FileOutputStream output = new FileOutputStream(saveTo);
+            int count;
+            long total = 0;
+            while ((count = input.read(buffer)) != -1) {
+                output.write(buffer, 0, count);
+                total += count;
+            }
             input.close();
             output.close();
             return DOWNLOAD_OK;
@@ -149,8 +243,14 @@ public class Utils {
             return DOWNLOAD_FILE_NOT_FOUND;
         } catch (IOException e) {
             e.printStackTrace();
-            return DOWNLOAD_IO_EXCEPTION;
+            return conn ? DOWNLOAD_SERVER_INVALID_RESPONSE : DOWNLOAD_IO_EXCEPTION;
         }
+    }
+
+    public static int downloadAyah(String reciter, int surah, int ayah,
+                                   byte[] buffer, File surahDir) {
+        return downloadFile(buffer, getAyahUrl(reciter, surah, ayah),
+                getAyahFile(ayah, surahDir));
     }
 
     private static File[] listAyahs(Context context, String reciter, int surah) {
@@ -188,6 +288,18 @@ public class Utils {
         return arr == null ? 0 : arr.length;
     }
 
+    public static int downloadPage(Context context, int idx, String pageUrl, byte[] buffer) {
+        return downloadFile(buffer, pageUrl, getPageFile(context, idx));
+    }
+
+    public static int getTotalExistPages(Context context, int maxPage) {
+        int ret = 0;
+        for (int i = 1; i <= maxPage; ++i)
+            if (getPageFile(context, i).exists())
+                ++ret;
+        return ret;
+    }
+
     private static void myDownloadSurah(final Context context,
                                         final String reciter, final int surah,
                                         final RecoverySystem.ProgressListener progressListener,
@@ -218,7 +330,7 @@ public class Utils {
                             error.getData() == DOWNLOAD_OK) {
                         Integer per = q.poll();
                         if (per == null) break;
-                        int code = downloadAyah(context, reciter, surah, per, buf, surahDir);
+                        int code = downloadAyah(reciter, surah, per, buf, surahDir);
                         lock.lock(); // prevent other threads while checking
                         if (error.getData() == DOWNLOAD_OK) {
                             error.setData(code);

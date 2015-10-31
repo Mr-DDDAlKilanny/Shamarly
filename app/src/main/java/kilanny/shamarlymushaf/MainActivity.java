@@ -4,6 +4,7 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -22,10 +23,12 @@ import android.graphics.Typeface;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.RecoverySystem;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.v4.view.ViewPager;
@@ -52,11 +55,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.RandomAccessFile;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import cn.trinea.android.view.autoscrollviewpager.AutoScrollViewPager;
 import kilanny.shamarlymushaf.util.SystemUiHider;
@@ -110,7 +117,7 @@ public class MainActivity extends Activity {
     private ViewPager viewPager;
     private Setting setting;
     SharedPreferences pref;
-    public DbManager db;
+    private DbManager db;
     private ProgressBar bar;
     private MediaPlayer player;
     private int sura, ayah;
@@ -119,6 +126,7 @@ public class MainActivity extends Activity {
     private Typeface tradionalArabicFont, tradionalArabicBoldFont;
     private QuranImageView shareImageView;
     private QuranData quranData;
+    private int totalDeviceRamMg;
 
     @Override
     protected void onStop() {
@@ -141,13 +149,18 @@ public class MainActivity extends Activity {
     }
 
     private void initViewPagerAdapter() {
-        adapter = new FullScreenImageAdapter(this);
+        adapter = new FullScreenImageAdapter(this, Utils.getTotalExistPages(this,
+                FullScreenImageAdapter.MAX_PAGE));
         final GestureDetector tapGestureDetector = new GestureDetector(this,
                 new GestureDetector.SimpleOnGestureListener() {
 
                 @Override
                 public void onLongPress(MotionEvent e) {
                     super.onLongPress(e);
+                    if (adapter.getCount() < FullScreenImageAdapter.MAX_PAGE) {
+                        downloadAll();
+                        return;
+                    }
                     QuranImageView imageView = getCurrentPage();
                     int idx = imageView != null ? imageView.getAyahAtPos(e.getX(), e.getY()) : -1;
                     if (idx >= 0) {
@@ -165,10 +178,14 @@ public class MainActivity extends Activity {
                     } else {
                         mSystemUiHider.show();
                     }
-                    QuranImageView imageView = getCurrentPage();
-                    if (imageView != null && imageView.selectedAyahIndex >= QuranImageView.SELECTION_ALL) {
-                        imageView.selectedAyahIndex = QuranImageView.SELECTION_NONE;
-                        imageView.invalidate();
+                    if (adapter.getCount() < FullScreenImageAdapter.MAX_PAGE)
+                        downloadAll();
+                    else {
+                        QuranImageView imageView = getCurrentPage();
+                        if (imageView != null && imageView.selectedAyahIndex >= QuranImageView.SELECTION_ALL) {
+                            imageView.selectedAyahIndex = QuranImageView.SELECTION_NONE;
+                            imageView.invalidate();
+                        }
                     }
                     return false;
                 }
@@ -194,7 +211,10 @@ public class MainActivity extends Activity {
         Intent i = getIntent();
         int page = i.getIntExtra(SHOW_PAGE_MESSAGE, -1);
         page = page == -1 ? setting.page : page;
-        showPage(page);
+        if (adapter.getCount() < FullScreenImageAdapter.MAX_PAGE)
+            viewPager.setCurrentItem(0);
+        else
+            showPage(page);
     }
 
     private QuranImageView getCurrentPage() {
@@ -206,7 +226,8 @@ public class MainActivity extends Activity {
     }
 
     private void initCurrentPageInfo(QuranImageView image, View parent) {
-        if (!pref.getBoolean("showPageInfo", true)) {
+        if (adapter.getCount() < FullScreenImageAdapter.MAX_PAGE ||
+                !pref.getBoolean("showPageInfo", true)) {
             parent.findViewById(R.id.pageInfoLayout).setVisibility(View.GONE);
         } else if (image.currentPage != null && image.currentPage.ayahs.size() > 0) {
             AutoScrollViewPager pager = (AutoScrollViewPager) parent.findViewById(R.id.pageTitleViewPager);
@@ -420,15 +441,20 @@ public class MainActivity extends Activity {
             }
         });
         final ListView l4 = (ListView) dialog.findViewById(R.id.listViewBookmarks);
+        String[] book = new String[setting.bookmarks.size()];
+        for (int i = 0; i < setting.bookmarks.size(); ++i) {
+            String name = setting.bookmarks.get(i).name;
+            book[i] = quranData.findSurahAtPage(Integer.parseInt(name)).name + ": " + name;
+        }
         l4.setAdapter(new ArrayAdapter<>(this,
                 android.R.layout.simple_list_item_1, android.R.id.text1,
-                setting.bookmarks.toArray()));
+                book));
         l4.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                ListItem itemValue = (ListItem) l4.getItemAtPosition(position);
+                String itemValue = (String) l4.getItemAtPosition(position);
                 dialog.dismiss();
-                showPage(Integer.parseInt(itemValue.name));
+                showPage(Integer.parseInt(itemValue.substring(itemValue.indexOf(":") + 2)));
             }
         });
         Spinner spinner = (Spinner) dialog.findViewById(R.id.juzNumber);
@@ -745,14 +771,121 @@ public class MainActivity extends Activity {
                             Toast.LENGTH_LONG).show();
                     return;
                 }
-                Ayah a = image.currentPage.ayahs.get(sel);
-                displayTafseer(db.getTafseer(a.sura, a.ayah));
+                final Ayah a = image.currentPage.ayahs.get(sel);
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                builder.setTitle("اختر التفسير");
+                String tmp[] = null;
+                ListItem[] tmp1 = null;
+                TafseerDbManager db1 = null;
+                File file = Utils.getTafaseerDbFile(MainActivity.this);
+                boolean dbExists = file.exists();
+                if (dbExists) {
+                    try {
+                        db1 = TafseerDbManager.getInstance(MainActivity.this);
+                        tmp1 = db1.getAvailableTafaseer().toArray(new ListItem[0]);
+                        tmp = new String[tmp1.length + 2];
+                        tmp[0] = "التفسير الميسر";
+                        tmp[tmp.length - 1] = "حذف التفاسير";
+                        for (int i = 0; i < tmp1.length; ++i)
+                            tmp[i + 1] = tmp1[i].name;
+                    } catch (Exception ex) {
+                        file.delete();
+                        db1 = null;
+                        tmp1 = null;
+                        dbExists = false;
+                    }
+                }
+                if (!dbExists)
+                    tmp = new String[] { "التفسير الميسر", "تحميل 8 تفاسير أخرى (140 ميغا)" };
+                final String items[] = tmp;
+                final TafseerDbManager db = db1;
+                final ListItem[] tafseers = tmp1;
+                builder.setItems(items,
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                if (which == 0)
+                                    displayTafseer(MainActivity.this.db.getTafseer(a.sura, a.ayah),
+                                            "التفسير الميسر");
+                                else if (items.length == 2) {
+                                    final ProgressDialog show = new ProgressDialog(MainActivity.this);
+                                    show.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+                                    show.setIndeterminate(false);
+                                    show.setTitle("تحميل التفاسير: القرطبي وابن كثير والطبري وغيرهم");
+                                    show.setMax(100);
+                                    show.setProgress(0);
+                                    show.show();
+                                    final AsyncTask<Void, Integer, Integer> execute = new AsyncTask<Void, Integer, Integer>() {
+
+                                        @Override
+                                        protected Integer doInBackground(Void... params) {
+                                            return Utils.downloadTafaseerDb(MainActivity.this,
+                                                    new RecoverySystem.ProgressListener() {
+                                                @Override
+                                                public void onProgress(int progress) {
+                                                    publishProgress(progress);
+                                                }
+                                            }, new CancelOperationListener() {
+                                                @Override
+                                                public boolean canContinue() {
+                                                    return !isCancelled();
+                                                }
+                                            });
+                                        }
+
+                                        @Override
+                                        protected void onProgressUpdate(Integer... values) {
+                                            //super.onProgressUpdate(values);
+                                            show.setProgress(values[0]);
+                                        }
+
+                                        @Override
+                                        protected void onPostExecute(Integer integer) {
+                                            //super.onPostExecute(integer);
+                                            show.dismiss();
+                                            if (integer == Utils.DOWNLOAD_FILE_NOT_FOUND ||
+                                                    integer == Utils.DOWNLOAD_IO_EXCEPTION)
+                                                showError("فشل التحميل. تأكد من وجود مساحة كافية بالجهاز");
+                                            else if (integer != Utils.DOWNLOAD_OK &&
+                                                    integer != Utils.DOWNLOAD_USER_CANCEL)
+                                                showError("فشل التحميل. تأكد من اتصالك بالشبكة");
+                                            else if (integer == Utils.DOWNLOAD_OK)
+                                                Utils.showAlert(MainActivity.this, "تحميل التفاسير",
+                                                        "تم تحميل التفاسير بنجاح", null);
+                                        }
+                                    }.execute();
+                                    show.setCancelable(false);
+                                    show.setOnCancelListener(new DialogInterface.OnCancelListener() {
+                                        @Override
+                                        public void onCancel(DialogInterface dialog) {
+                                            execute.cancel(true);
+                                        }
+                                    });
+                                } else if (which - 1 < tafseers.length)
+                                    displayTafseer(db.getTafseer((int) tafseers[which - 1].value,
+                                            a.sura, a.ayah), tafseers[which - 1].name);
+                                else
+                                    Utils.showConfirm(MainActivity.this, "حذف التفاسير",
+                                            "حذف التفسير المحملة وتحرير 140 ميغا والإبقاء فقط على التفسير الميسر؟", new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            Utils.getTafaseerDbFile(MainActivity.this).delete();
+                                        }
+                                    }, null);
+                            }
+                        });
+                builder.show();
             }
         });
         btn = (Button) findViewById(R.id.repeat);
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (adapter.getCount() < FullScreenImageAdapter.MAX_PAGE) {
+                    Toast.makeText(MainActivity.this, "يستخدم هذا الزر لتكرار تلاوة الآيات",
+                            Toast.LENGTH_LONG).show();
+                    return;
+                }
                 displayRepeatDlg();
             }
         });
@@ -760,12 +893,17 @@ public class MainActivity extends Activity {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (adapter.getCount() < FullScreenImageAdapter.MAX_PAGE) {
+                    Toast.makeText(MainActivity.this, "يستخدم هذا الزر لمشاركة الآيات",
+                            Toast.LENGTH_LONG).show();
+                    return;
+                }
                 displayShareDlg();
             }
         });
     }
 
-    private void displayTafseer(String tafseer) {
+    private void displayTafseer(String tafseer, String name) {
         final Dialog dialog = new Dialog(this);
         dialog.setContentView(R.layout.fragment_view_tafseer);
         TextView textView = (TextView) dialog.findViewById(R.id.tafseerText);
@@ -774,7 +912,7 @@ public class MainActivity extends Activity {
         textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP,
                 Float.parseFloat(pref.getString("fontSize", "20")));
         textView.setText(tafseer);
-        dialog.setTitle("عرض تفسير آية");
+        dialog.setTitle("عرض تفسير آية - " + name);
         dialog.show();
     }
 
@@ -950,6 +1088,29 @@ public class MainActivity extends Activity {
         dialog.show();
     }
 
+    private void calcTotalDeviceRam() {
+        RandomAccessFile reader;
+        try {
+            reader = new RandomAccessFile("/proc/meminfo", "r");
+            // Get the Number value from the string
+            Pattern p = Pattern.compile("(\\d+)");
+            Matcher m = p.matcher(reader.readLine());
+            String value = "";
+            while (m.find()) {
+                value = m.group(1);
+            }
+            reader.close();
+            totalDeviceRamMg = (int) (Double.parseDouble(value) / 1024.0);
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            totalDeviceRamMg = -1;
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            totalDeviceRamMg = -1;
+        }
+        System.out.println("Ram = " + totalDeviceRamMg);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -960,6 +1121,7 @@ public class MainActivity extends Activity {
             finish();
             return;
         }
+        calcTotalDeviceRam();
         db = DbManager.getInstance(this);
         deleteAll();
         quranData = QuranData.getInstance(this);
@@ -1042,14 +1204,19 @@ public class MainActivity extends Activity {
     public Bitmap readPage(int idx) {
         try {
             BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inPreferredConfig = Bitmap.Config.ARGB_8888;
-            InputStream istr = getAssets().open(String.format(Locale.US, "pages/%03d.png", idx));
-            Bitmap bitmap = BitmapFactory.decodeStream(istr, null, options);
-            istr.close();
+            Bitmap.Config config;
+            if (totalDeviceRamMg > 500)
+                config = Bitmap.Config.ARGB_8888;
+            else {
+                config = Bitmap.Config.RGB_565;
+                options.inDither = true;
+            }
+            options.inPreferredConfig = config;
+            Bitmap bitmap = BitmapFactory.decodeFile(Utils.getPageFile(this, idx).getAbsolutePath(), options);
             bitmap.setHasAlpha(true);
             if (idx > 3) {
                 Bitmap tmp = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(),
-                        bitmap.getConfig());
+                        config);
                 tmp.eraseColor(Color.WHITE);  // set its background to white, or whatever color you want
                 Canvas canvas = new Canvas(tmp);
                 canvas.drawBitmap(bitmap, 0, 0, null);
@@ -1059,7 +1226,7 @@ public class MainActivity extends Activity {
                     Paint invertPaint = new Paint();
                     invertPaint.setColorFilter(filter);
                     tmp = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(),
-                            bitmap.getConfig());
+                            config);
                     canvas = new Canvas(tmp);
                     canvas.drawBitmap(bitmap, 0, 0, invertPaint);
                     bitmap.recycle();
@@ -1069,11 +1236,116 @@ public class MainActivity extends Activity {
             return bitmap;
         }
         catch (Exception ex) {
+            Toast.makeText(this, "خطأ: الذاكرة ممتلئة. قم بإغلاق التطبيقات الأخرى", Toast.LENGTH_LONG).show();
             ex.printStackTrace();
             return null;
         }
     }
 
+    private void downloadAll() {
+        final ProgressDialog show = new ProgressDialog(this);
+        show.setTitle("تحميل المصحف كاملا");
+        show.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+        show.setIndeterminate(false);
+        final int MAX_PAGE = FullScreenImageAdapter.MAX_PAGE;
+        show.setMax(MAX_PAGE);
+        show.setProgress(0);
+        show.show();
+        final AsyncTask<Void, Integer, String[]> execute = new AsyncTask<Void, Integer, String[]>() {
+            @Override
+            protected String[] doInBackground(Void... params) {
+                final ConcurrentLinkedQueue<Integer> q = new ConcurrentLinkedQueue<>();
+                int exist = 0;
+                BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inJustDecodeBounds = true;
+                for (int p = 1; !isCancelled() && p <= MAX_PAGE; ++p) {
+                    File file = Utils.getPageFile(MainActivity.this, p);
+                    boolean yes = true;
+                    if (file.exists()) {
+                        try {
+                            BitmapFactory.decodeFile(file.getAbsolutePath(), options);
+                            publishProgress(++exist);
+                        } catch (Exception ex) {
+                            yes = false;
+                        }
+                    } else yes = false;
+                    if (!yes) {
+                        q.add(p);
+                        if (file.exists())
+                            file.delete();
+                    }
+                }
+                if (isCancelled()) return null;
+                Thread[] threads = new Thread[4];
+                final Shared progress = new Shared();
+                final Shared error = new Shared();
+                error.setData(Utils.DOWNLOAD_OK);
+                progress.setData(exist);
+                for (int th = 0; th < threads.length; ++th) {
+                    threads[th] = new Thread(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            byte[] buf = new byte[1024];
+                            while (!isCancelled() && error.getData() == Utils.DOWNLOAD_OK) {
+                                Integer per = q.poll();
+                                if (per == null) break;
+                                String path = String.format(Locale.ENGLISH,
+                                        getString(R.string.downloadPageUrl), per);
+                                error.setData(Utils.downloadPage(MainActivity.this, per, path, buf));
+                                progress.increment();
+                                publishProgress(progress.getData());
+                            }
+                        }
+                    });
+                }
+                for (int i = 0; i < threads.length; ++i)
+                    threads[i].start();
+                for (int i = 0; i < threads.length; ++i)
+                    try {
+                        threads[i].join();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                if (error.getData() == Utils.DOWNLOAD_MALFORMED_URL
+                        || error.getData() == Utils.DOWNLOAD_SERVER_INVALID_RESPONSE)
+                    return new String[]{"خطأ", "فشلت عملية التحميل. تأكد من اتصالك بالانترنت"};
+                else if (error.getData() == Utils.DOWNLOAD_IO_EXCEPTION
+                        || error.getData() == Utils.DOWNLOAD_FILE_NOT_FOUND)
+                    return new String[]{"خطأ", "لا يمكن كتابة الملف. تأكد من وجود مساحة كافية"};
+                else if (!isCancelled() && error.getData() == Utils.DOWNLOAD_OK) {
+                    return new String[]{"تحميل المصحف", "جميع الصفحات تم تحميلها بنجاح"};
+                }
+                return null;
+            }
+
+            @Override
+            protected void onProgressUpdate(final Integer... values) {
+                show.setProgress(values[0]);
+            }
+
+            @Override
+            protected void onCancelled() {
+                //super.onCancelled();
+                show.dismiss();
+            }
+
+            @Override
+            protected void onPostExecute(String[] strings) {
+                //super.onPostExecute(strings);
+                show.dismiss();
+                Utils.showAlert(MainActivity.this, strings[0], strings[1], null);
+                if (strings[1] != null && strings[1].contains("نجاح"))
+                    initViewPagerAdapter();
+            }
+        }.execute();
+        show.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface dialog) {
+                execute.cancel(true);
+            }
+        });
+    }
 }
 class ListItem implements Serializable {
     String name;

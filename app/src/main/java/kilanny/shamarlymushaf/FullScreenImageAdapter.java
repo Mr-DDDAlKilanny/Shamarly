@@ -2,6 +2,7 @@ package kilanny.shamarlymushaf;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.support.v4.view.PagerAdapter;
@@ -16,16 +17,25 @@ public class FullScreenImageAdapter extends PagerAdapter {
 
     private final MainActivity _activity;
     public static final int MAX_PAGE = 522;
+    private static final BitmapFactory.Options options;
+    private final int actualDownloaded;
     private OnInstantiateQuranImageViewListener instantiateQuranImageViewListener;
 
+    static {
+        options = new BitmapFactory.Options();
+        options.inDither = true;
+        options.inPreferredConfig = Bitmap.Config.RGB_565;
+    }
+
     // constructor
-    public FullScreenImageAdapter(MainActivity activity) {
+    public FullScreenImageAdapter(MainActivity activity, int count) {
         this._activity = activity;
+        this.actualDownloaded = count;
     }
 
     @Override
     public int getCount() {
-        return MAX_PAGE;
+        return Math.max(1, actualDownloaded);
     }
 
     @Override
@@ -41,10 +51,17 @@ public class FullScreenImageAdapter extends PagerAdapter {
         View viewLayout = inflater.inflate(R.layout.layout_fullscreen_image, container, false);
         imgDisplay = (QuranImageView) viewLayout.findViewById(R.id.quranPage);
         imgDisplay.pref = _activity.pref;
+        DbManager db = DbManager.getInstance(_activity);
         if (position > 1)
-            imgDisplay.currentPage = _activity.db.getPage(position);
-        Bitmap bitmap = _activity.readPage(position);
-        viewLayout.setTag(position);
+            imgDisplay.currentPage = db.getPage(position);
+        Bitmap bitmap;
+        if (getCount() < MAX_PAGE) {
+            bitmap = BitmapFactory.decodeResource(_activity.getResources(), R.drawable.pls_download,
+                    options);
+        } else {
+            bitmap = _activity.readPage(position);
+            viewLayout.setTag(position);
+        }
         imgDisplay.setImageBitmap(bitmap);
         container.addView(viewLayout);
         if (getInstantiateQuranImageViewListener() != null)
@@ -61,7 +78,8 @@ public class FullScreenImageAdapter extends PagerAdapter {
         if (drawable instanceof BitmapDrawable) {
             BitmapDrawable bitmapDrawable = (BitmapDrawable) drawable;
             Bitmap bitmap = bitmapDrawable.getBitmap();
-            bitmap.recycle();
+            if (bitmap != null) //when reading page fails, this will be null
+                bitmap.recycle();
         }
     }
 

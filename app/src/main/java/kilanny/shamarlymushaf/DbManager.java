@@ -10,14 +10,9 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.graphics.RectF;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Locale;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 /**
  * Created by Yasser on 09/29/2015.
@@ -172,30 +167,11 @@ class MyDbContext extends ContextWrapper {
                                                SQLiteDatabase.CursorFactory factory) {
         File dbFile = getDatabasePath(name);
         if (!dbFile.exists()) {
-            byte[] buffer = new byte[1024];
-            OutputStream myOutput;
-            int length;
             // Open your local db as the input stream
-            InputStream myInput;
             try {
-                ZipEntry ze = null;
-                myOutput = new FileOutputStream(dbFile);
-                myInput = getAssets().open("shamerly.zip");
-                ZipInputStream zipIs = new ZipInputStream(myInput);
-                while ((ze = zipIs.getNextEntry()) != null) {
-                    while ((length = zipIs.read(buffer)) > 0) {
-                        myOutput.write(buffer, 0, length);
-                    }
-                    zipIs.closeEntry();
-                    myOutput.flush();
-                    myOutput.close();
-                    break;
-                }
-                zipIs.close();
-                myInput.close();
+                Utils.extractZippedFile(getAssets().open("shamerly.zip"), dbFile);
             } catch (IOException e) {
                 e.printStackTrace();
-
             }
         }
         SQLiteDatabase result = SQLiteDatabase.openDatabase(dbFile.getPath(), factory,

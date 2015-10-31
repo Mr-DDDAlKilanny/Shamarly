@@ -4,4 +4,5 @@
     <string name="title_activity_search">البحث</string>
     <string name="title_reciter_list">تحميل التلاوات</string>
     <string name="title_reciter_detail">تحميل تلاوات قارئ</string>
+    <string name="downloadPageUrl">http://archive.org/download/shamraly/%03d.png</string>
 </resources>
