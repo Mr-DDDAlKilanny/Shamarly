@@ -19,6 +19,7 @@ import android.graphics.Color;
 import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Paint;
+import android.graphics.Point;
 import android.graphics.Typeface;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -31,8 +32,10 @@ import android.os.Handler;
 import android.os.RecoverySystem;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
+import android.support.v4.app.FragmentActivity;
 import android.support.v4.view.ViewPager;
 import android.util.TypedValue;
+import android.view.Display;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
@@ -74,7 +77,7 @@ import kilanny.shamarlymushaf.util.SystemUiHider;
  *
  * @see SystemUiHider
  */
-public class MainActivity extends Activity {
+public class MainActivity extends FragmentActivity {
     /**
      * Whether or not the system UI should be auto-hidden after
      * {@link #AUTO_HIDE_DELAY_MILLIS} milliseconds.
@@ -97,6 +100,8 @@ public class MainActivity extends Activity {
      * The flags to pass to {@link SystemUiHider#getInstance}.
      */
     private static final int HIDER_FLAGS = SystemUiHider.FLAG_HIDE_NAVIGATION;
+
+    public static final String EXTRA_NON_DOWNLOADED_PAGES = "nonDownloadedPagesQueue";
 
     /**
      * The instance of the {@link SystemUiHider} for this activity.
@@ -127,6 +132,7 @@ public class MainActivity extends Activity {
     private QuranImageView shareImageView;
     private QuranData quranData;
     private int totalDeviceRamMg;
+    private ConcurrentLinkedQueue<Integer> notDownloaded;
 
     @Override
     protected void onStop() {
@@ -149,8 +155,8 @@ public class MainActivity extends Activity {
     }
 
     private void initViewPagerAdapter() {
-        adapter = new FullScreenImageAdapter(this, Utils.getTotalExistPages(this,
-                FullScreenImageAdapter.MAX_PAGE));
+        adapter = new FullScreenImageAdapter(this, FullScreenImageAdapter.MAX_PAGE
+                - notDownloaded.size());
         final GestureDetector tapGestureDetector = new GestureDetector(this,
                 new GestureDetector.SimpleOnGestureListener() {
 
@@ -854,7 +860,6 @@ public class MainActivity extends Activity {
                                                         "تم تحميل التفاسير بنجاح", null);
                                         }
                                     }.execute();
-                                    show.setCancelable(false);
                                     show.setOnCancelListener(new DialogInterface.OnCancelListener() {
                                         @Override
                                         public void onCancel(DialogInterface dialog) {
@@ -1121,6 +1126,8 @@ public class MainActivity extends Activity {
             finish();
             return;
         }
+        notDownloaded = (ConcurrentLinkedQueue<Integer>)
+                getIntent().getSerializableExtra(EXTRA_NON_DOWNLOADED_PAGES);
         calcTotalDeviceRam();
         db = DbManager.getInstance(this);
         deleteAll();
@@ -1201,17 +1208,44 @@ public class MainActivity extends Activity {
         mHideHandler.postDelayed(mHideRunnable, delayMillis);
     }
 
+    public static int calculateInSampleSize(int reqWidth, int reqHeight) {
+        // Raw height and width of image
+        final int height = 1377;
+        final int width = 886;
+        int inSampleSize = 1;
+
+        if (height > reqHeight || width > reqWidth) {
+
+            final int halfHeight = height / 2;
+            final int halfWidth = width / 2;
+
+            // Calculate the largest inSampleSize value that is a power of 2 and keeps both
+            // height and width larger than the requested height and width.
+            while ((halfHeight / inSampleSize) > reqHeight
+                    && (halfWidth / inSampleSize) > reqWidth) {
+                inSampleSize *= 2;
+            }
+        }
+
+        return inSampleSize;
+    }
+
     public Bitmap readPage(int idx) {
         try {
             BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inDither = true;
             Bitmap.Config config;
-            if (totalDeviceRamMg > 500)
-                config = Bitmap.Config.ARGB_8888;
-            else {
+            //if (totalDeviceRamMg > 500)
                 config = Bitmap.Config.RGB_565;
-                options.inDither = true;
-            }
+            //else {
+            //    config = Bitmap.Config.ARGB_4444;
+            //}
+            Display display = getWindowManager().getDefaultDisplay();
+            Point p = new Point();
+            display.getSize(p);
+            options.inSampleSize = calculateInSampleSize(p.x, p.y);
             options.inPreferredConfig = config;
+            System.gc();
             Bitmap bitmap = BitmapFactory.decodeFile(Utils.getPageFile(this, idx).getAbsolutePath(), options);
             bitmap.setHasAlpha(true);
             if (idx > 3) {
@@ -1254,33 +1288,11 @@ public class MainActivity extends Activity {
         final AsyncTask<Void, Integer, String[]> execute = new AsyncTask<Void, Integer, String[]>() {
             @Override
             protected String[] doInBackground(Void... params) {
-                final ConcurrentLinkedQueue<Integer> q = new ConcurrentLinkedQueue<>();
-                int exist = 0;
-                BitmapFactory.Options options = new BitmapFactory.Options();
-                options.inJustDecodeBounds = true;
-                for (int p = 1; !isCancelled() && p <= MAX_PAGE; ++p) {
-                    File file = Utils.getPageFile(MainActivity.this, p);
-                    boolean yes = true;
-                    if (file.exists()) {
-                        try {
-                            BitmapFactory.decodeFile(file.getAbsolutePath(), options);
-                            publishProgress(++exist);
-                        } catch (Exception ex) {
-                            yes = false;
-                        }
-                    } else yes = false;
-                    if (!yes) {
-                        q.add(p);
-                        if (file.exists())
-                            file.delete();
-                    }
-                }
-                if (isCancelled()) return null;
                 Thread[] threads = new Thread[4];
                 final Shared progress = new Shared();
                 final Shared error = new Shared();
                 error.setData(Utils.DOWNLOAD_OK);
-                progress.setData(exist);
+                progress.setData(MAX_PAGE - notDownloaded.size());
                 for (int th = 0; th < threads.length; ++th) {
                     threads[th] = new Thread(new Runnable() {
 
@@ -1288,22 +1300,25 @@ public class MainActivity extends Activity {
                         public void run() {
                             byte[] buf = new byte[1024];
                             while (!isCancelled() && error.getData() == Utils.DOWNLOAD_OK) {
-                                Integer per = q.poll();
+                                Integer per = notDownloaded.poll();
                                 if (per == null) break;
                                 String path = String.format(Locale.ENGLISH,
                                         getString(R.string.downloadPageUrl), per);
                                 error.setData(Utils.downloadPage(MainActivity.this, per, path, buf));
-                                progress.increment();
-                                publishProgress(progress.getData());
+                                if (error.getData() != Utils.DOWNLOAD_OK)
+                                    notDownloaded.add(per);
+                                else {
+                                    progress.increment();
+                                    publishProgress(progress.getData());
+                                }
                             }
                         }
                     });
                 }
-                for (int i = 0; i < threads.length; ++i)
-                    threads[i].start();
-                for (int i = 0; i < threads.length; ++i)
+                for (Thread thread : threads) thread.start();
+                for (Thread thread : threads)
                     try {
-                        threads[i].join();
+                        thread.join();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }

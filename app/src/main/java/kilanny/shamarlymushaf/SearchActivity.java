@@ -24,6 +24,8 @@ public class SearchActivity extends Activity {
                 SearchResult result = (SearchResult) results.getItemAtPosition(position);
                 Intent intent = new Intent(SearchActivity.this, MainActivity.class);
                 intent.putExtra(MainActivity.SHOW_PAGE_MESSAGE, result.page);
+                intent.putExtra(MainActivity.EXTRA_NON_DOWNLOADED_PAGES,
+                        getIntent().getSerializableExtra(MainActivity.EXTRA_NON_DOWNLOADED_PAGES));
                 startActivity(intent);
             }
         });

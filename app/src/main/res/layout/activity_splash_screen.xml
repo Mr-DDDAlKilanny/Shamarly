@@ -1,0 +1,33 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/color_preloader_start"
+    tools:context="kilanny.shamarlymushaf.SplashScreenActivity">
+
+    <LinearLayout android:id="@+id/fullscreen_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:keepScreenOn="true"
+        android:orientation="vertical">
+        <ImageView
+            android:layout_weight="1"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/ic_launcher" />
+        <ProgressBar
+            android:id="@+id/progressBarLoadingPages"
+            style="@android:style/Widget.Holo.ProgressBar.Horizontal"
+            android:layout_weight="4"
+            android:indeterminate="false"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+        <TextView
+            android:gravity="center"
+            android:textSize="20sp"
+            android:textColor="@color/abc_primary_text_material_light"
+            android:text="يتم بدء التطبيق..."
+            android:layout_weight="4"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </LinearLayout>
+</FrameLayout>

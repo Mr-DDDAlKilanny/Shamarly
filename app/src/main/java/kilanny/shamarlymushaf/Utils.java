@@ -5,6 +5,8 @@ import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Environment;
 import android.os.RecoverySystem;
@@ -26,7 +28,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.SocketException;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Locale;
@@ -182,11 +186,17 @@ public class Utils {
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             return DOWNLOAD_FILE_NOT_FOUND;
+        } catch (SocketException ex) {
+            ex.printStackTrace();
+            return DOWNLOAD_SERVER_INVALID_RESPONSE;
+        } catch (UnknownHostException ex) {
+            ex.printStackTrace();
+            return DOWNLOAD_SERVER_INVALID_RESPONSE;
         } catch (IOException e) {
             e.printStackTrace();
             return conn ? DOWNLOAD_SERVER_INVALID_RESPONSE : DOWNLOAD_IO_EXCEPTION;
         } finally {
-            if (error && dbFile.exists())
+            if ((error || cancel != null && !cancel.canContinue()) && dbFile.exists())
                 dbFile.delete();
         }
     }
@@ -241,6 +251,12 @@ public class Utils {
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             return DOWNLOAD_FILE_NOT_FOUND;
+        } catch (SocketException ex) {
+            ex.printStackTrace();
+            return DOWNLOAD_SERVER_INVALID_RESPONSE;
+        } catch (UnknownHostException ex) {
+            ex.printStackTrace();
+            return DOWNLOAD_SERVER_INVALID_RESPONSE;
         } catch (IOException e) {
             e.printStackTrace();
             return conn ? DOWNLOAD_SERVER_INVALID_RESPONSE : DOWNLOAD_IO_EXCEPTION;
@@ -289,15 +305,58 @@ public class Utils {
     }
 
     public static int downloadPage(Context context, int idx, String pageUrl, byte[] buffer) {
-        return downloadFile(buffer, pageUrl, getPageFile(context, idx));
+        File file = getPageFile(context, idx);
+        if (file.exists()) file.delete();
+        return downloadFile(buffer, pageUrl, file);
     }
 
-    public static int getTotalExistPages(Context context, int maxPage) {
-        int ret = 0;
-        for (int i = 1; i <= maxPage; ++i)
-            if (getPageFile(context, i).exists())
-                ++ret;
-        return ret;
+    public static boolean pageExists(Context context, int page) {
+        File file = getPageFile(context, page);
+        if (!file.exists()) return false;
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        try {
+            BitmapFactory.decodeFile(file.getAbsolutePath(), options);
+            return options.outWidth != -1 && options.outHeight != -1;
+        } catch (Exception ex) {
+            file.delete();
+            return false;
+        }
+    }
+
+    public static ConcurrentLinkedQueue<Integer> getNonExistPages(final Context context, final int maxPage,
+                              final RecoverySystem.ProgressListener listener) {
+        final ConcurrentLinkedQueue<Integer> q = new ConcurrentLinkedQueue<>();
+        final Shared progress = new Shared();
+        progress.setData(0);
+        final Thread[] threads = new Thread[16];
+        final int work = maxPage / threads.length;
+        for (int i = 0; i < threads.length; ++i) {
+            final int ii = i;
+            threads[i] = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    int myStart = ii * work + 1;
+                    int myEnd = (ii + 1) * work;
+                    if (ii == threads.length - 1) myEnd = maxPage;
+                    for (int i = myStart; i <= myEnd; ++i) {
+                        if (!pageExists(context, i))
+                            q.add(i);
+                        progress.increment();
+                        listener.onProgress(progress.getData());
+                    }
+                }
+            });
+        }
+        for (Thread thread : threads) thread.start();
+        for (Thread thread : threads)
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        System.gc();
+        return q;
     }
 
     private static void myDownloadSurah(final Context context,
