@@ -60,6 +60,33 @@ public class Utils {
             DOWNLOAD_IO_EXCEPTION = -4,
             DOWNLOAD_USER_CANCEL = -5;
 
+    public static class DownloadStatusArray {
+
+        public final Shared[] status;
+
+        public DownloadStatusArray(int size) {
+            status = new Shared[size];
+            for (int i = 0; i < size; ++i) {
+                status[i] = new Shared();
+                status[i].setData(DOWNLOAD_OK);
+            }
+        }
+
+        public boolean isAllOk() {
+            for (Shared s : status)
+                if (s.getData() != DOWNLOAD_OK)
+                    return false;
+            return true;
+        }
+
+        public int getFirstError() {
+            for (Shared s : status)
+                if (s.getData() != DOWNLOAD_OK)
+                    return s.getData();
+            return DOWNLOAD_OK;
+        }
+    }
+
     public static File getDatabaseDir(Context context) {
         File filesDir;
         // Make sure it's available
@@ -306,8 +333,8 @@ public class Utils {
 
     public static int downloadPage(Context context, int idx, String pageUrl, byte[] buffer) {
         File file = getPageFile(context, idx);
-        if (file.exists()) file.delete();
-        return downloadFile(buffer, pageUrl, file);
+        return pageExists(context, idx) ? DOWNLOAD_OK :
+                downloadFile(buffer, pageUrl, file);
     }
 
     public static boolean pageExists(Context context, int page) {
@@ -373,28 +400,22 @@ public class Utils {
         Thread[] threads = new Thread[4];
         final Shared progress = new Shared();
         progress.setData(QuranData.AYAH_COUNT[surah - 1] + (surah == 1 ? 1 : 0) - q.size());
-        final Shared error = new Shared();
-        error.setData(DOWNLOAD_OK);
+        final DownloadStatusArray error = new DownloadStatusArray(threads.length);
         final Shared interrupt = new Shared();
         interrupt.setData(0);
-        final Lock lock = new ReentrantLock(true);
         for (int th = 0; th < threads.length; ++th) {
+            final int myIdx = th;
             threads[th] = new Thread(new Runnable() {
 
                 @Override
                 public void run() {
                     byte[] buf = new byte[1024];
                     while (interrupt.getData() == 0 &&
-                            cancel.canContinue() &&
-                            error.getData() == DOWNLOAD_OK) {
+                            cancel.canContinue() && error.isAllOk()) {
                         Integer per = q.poll();
                         if (per == null) break;
                         int code = downloadAyah(reciter, surah, per, buf, surahDir);
-                        lock.lock(); // prevent other threads while checking
-                        if (error.getData() == DOWNLOAD_OK) {
-                            error.setData(code);
-                        }
-                        lock.unlock();
+                        error.status[myIdx].setData(code);
                         if (code == DOWNLOAD_OK) {
                             progress.increment();
                             progressListener.onProgress(progress.getData());
@@ -413,7 +434,7 @@ public class Utils {
                 break;
             }
         listener.taskCompleted(!cancel.canContinue() || interrupt.getData() != 0 ?
-                DOWNLOAD_USER_CANCEL : error.getData());
+                DOWNLOAD_USER_CANCEL : error.getFirstError());
     }
 
     public static AsyncTask downloadSurah(final Context context,

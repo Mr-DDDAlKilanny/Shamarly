@@ -1,7 +1,7 @@
 package kilanny.shamarlymushaf;
 
 import android.annotation.TargetApi;
-import android.app.Activity;
+import android.app.ActionBar;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.ProgressDialog;
@@ -55,7 +55,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
@@ -802,7 +801,7 @@ public class MainActivity extends FragmentActivity {
                     }
                 }
                 if (!dbExists)
-                    tmp = new String[] { "التفسير الميسر", "تحميل 8 تفاسير أخرى (140 ميغا)" };
+                    tmp = new String[]{"التفسير الميسر", "تحميل 8 تفاسير أخرى (140 ميغا)"};
                 final String items[] = tmp;
                 final TafseerDbManager db = db1;
                 final ListItem[] tafseers = tmp1;
@@ -827,16 +826,16 @@ public class MainActivity extends FragmentActivity {
                                         protected Integer doInBackground(Void... params) {
                                             return Utils.downloadTafaseerDb(MainActivity.this,
                                                     new RecoverySystem.ProgressListener() {
-                                                @Override
-                                                public void onProgress(int progress) {
-                                                    publishProgress(progress);
-                                                }
-                                            }, new CancelOperationListener() {
-                                                @Override
-                                                public boolean canContinue() {
-                                                    return !isCancelled();
-                                                }
-                                            });
+                                                        @Override
+                                                        public void onProgress(int progress) {
+                                                            publishProgress(progress);
+                                                        }
+                                                    }, new CancelOperationListener() {
+                                                        @Override
+                                                        public boolean canContinue() {
+                                                            return !isCancelled();
+                                                        }
+                                                    });
                                         }
 
                                         @Override
@@ -872,11 +871,11 @@ public class MainActivity extends FragmentActivity {
                                 else
                                     Utils.showConfirm(MainActivity.this, "حذف التفاسير",
                                             "حذف التفسير المحملة وتحرير 140 ميغا والإبقاء فقط على التفسير الميسر؟", new DialogInterface.OnClickListener() {
-                                        @Override
-                                        public void onClick(DialogInterface dialog, int which) {
-                                            Utils.getTafaseerDbFile(MainActivity.this).delete();
-                                        }
-                                    }, null);
+                                                @Override
+                                                public void onClick(DialogInterface dialog, int which) {
+                                                    Utils.getTafaseerDbFile(MainActivity.this).delete();
+                                                }
+                                            }, null);
                             }
                         });
                 builder.show();
@@ -1117,6 +1116,15 @@ public class MainActivity extends FragmentActivity {
     }
 
     @Override
+    public void onBackPressed() {
+        //super.onBackPressed();
+        Intent i = new Intent();
+        i.putExtra(EXTRA_NON_DOWNLOADED_PAGES, notDownloaded);
+        setResult(RESULT_OK, i);
+        finish();
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (Utils.getDatabaseDir(this) == null) {
@@ -1127,7 +1135,7 @@ public class MainActivity extends FragmentActivity {
             return;
         }
         notDownloaded = (ConcurrentLinkedQueue<Integer>)
-                getIntent().getSerializableExtra(EXTRA_NON_DOWNLOADED_PAGES);
+                    getIntent().getSerializableExtra(EXTRA_NON_DOWNLOADED_PAGES);
         calcTotalDeviceRam();
         db = DbManager.getInstance(this);
         deleteAll();
@@ -1141,12 +1149,28 @@ public class MainActivity extends FragmentActivity {
             setting = Setting.getInstance(this);
             initViewPager();
             initButtons();
-            getActionBar().hide();
-        } catch (Exception ex) {
+            ActionBar bar = getActionBar();
+            if (bar != null) bar.hide();
+        } catch (Exception ex) { //notDownloaded, views maybe null?
             ex.printStackTrace();
-            Toast.makeText(this, "فشل بدء التطبيق. تأكد من وجود سعة تخزين كافية",
+            Toast.makeText(this, "فشل بدء التطبيق.",
                     Toast.LENGTH_LONG).show();
             finish();
+        }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (adapter.getCount() < FullScreenImageAdapter.MAX_PAGE) {
+            Utils.showConfirm(this, "تحميل المصحف",
+                    "مرحبا بك في تطبيق مصحف الشمرلي.\n نحتاج أولا قبل بدء استخدام التطبيق لتحميل المصحف على جهازك، وذلك حتى يمكنك استخدام التطبيق دون اتصال فيما بعد. البدء بالتحميل الآن؟",
+                    new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    downloadAll();
+                }
+            }, null);
         }
     }
 
@@ -1268,10 +1292,17 @@ public class MainActivity extends FragmentActivity {
                 }
             }
             return bitmap;
-        }
-        catch (Exception ex) {
-            Toast.makeText(this, "خطأ: الذاكرة ممتلئة. قم بإغلاق التطبيقات الأخرى", Toast.LENGTH_LONG).show();
+        } catch (OutOfMemoryError err) {
+            Toast.makeText(this, "خطأ: الذاكرة ممتلئة. قم بإغلاق التطبيقات الأخرى",
+                    Toast.LENGTH_LONG).show();
+            err.printStackTrace();
+            finish();
+            return null;
+        } catch (Exception ex) { //maybe deleted files during app run
+            Toast.makeText(this, "حدث خطأ أثناء فتح الصفحة\n" + ex.getMessage(),
+                    Toast.LENGTH_LONG).show();
             ex.printStackTrace();
+            finish();
             return null;
         }
     }
@@ -1290,22 +1321,23 @@ public class MainActivity extends FragmentActivity {
             protected String[] doInBackground(Void... params) {
                 Thread[] threads = new Thread[4];
                 final Shared progress = new Shared();
-                final Shared error = new Shared();
-                error.setData(Utils.DOWNLOAD_OK);
+                final Utils.DownloadStatusArray error = new Utils.DownloadStatusArray(threads.length);
                 progress.setData(MAX_PAGE - notDownloaded.size());
                 for (int th = 0; th < threads.length; ++th) {
+                    final int myIdx = th;
                     threads[th] = new Thread(new Runnable() {
 
                         @Override
                         public void run() {
                             byte[] buf = new byte[1024];
-                            while (!isCancelled() && error.getData() == Utils.DOWNLOAD_OK) {
+                            while (!isCancelled() && error.isAllOk()) {
                                 Integer per = notDownloaded.poll();
                                 if (per == null) break;
                                 String path = String.format(Locale.ENGLISH,
                                         getString(R.string.downloadPageUrl), per);
-                                error.setData(Utils.downloadPage(MainActivity.this, per, path, buf));
-                                if (error.getData() != Utils.DOWNLOAD_OK)
+                                int result = Utils.downloadPage(MainActivity.this, per, path, buf);
+                                error.status[myIdx].setData(result);
+                                if (result != Utils.DOWNLOAD_OK)
                                     notDownloaded.add(per);
                                 else {
                                     progress.increment();
@@ -1322,13 +1354,14 @@ public class MainActivity extends FragmentActivity {
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                if (error.getData() == Utils.DOWNLOAD_MALFORMED_URL
-                        || error.getData() == Utils.DOWNLOAD_SERVER_INVALID_RESPONSE)
+                int err = error.getFirstError();
+                if (err == Utils.DOWNLOAD_MALFORMED_URL
+                        || err == Utils.DOWNLOAD_SERVER_INVALID_RESPONSE)
                     return new String[]{"خطأ", "فشلت عملية التحميل. تأكد من اتصالك بالانترنت"};
-                else if (error.getData() == Utils.DOWNLOAD_IO_EXCEPTION
-                        || error.getData() == Utils.DOWNLOAD_FILE_NOT_FOUND)
+                else if (err == Utils.DOWNLOAD_IO_EXCEPTION
+                        || err == Utils.DOWNLOAD_FILE_NOT_FOUND)
                     return new String[]{"خطأ", "لا يمكن كتابة الملف. تأكد من وجود مساحة كافية"};
-                else if (!isCancelled() && error.getData() == Utils.DOWNLOAD_OK) {
+                else if (!isCancelled() && err == Utils.DOWNLOAD_OK) {
                     return new String[]{"تحميل المصحف", "جميع الصفحات تم تحميلها بنجاح"};
                 }
                 return null;
@@ -1438,7 +1471,7 @@ class Setting implements Serializable {
             setting = (Setting) is.readObject();
             is.close();
             fis.close();
-        } catch (IOException | ClassNotFoundException ex) {
+        } catch (Exception ex) {
             ex.printStackTrace();
         }
         if (setting == null) {
