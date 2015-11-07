@@ -5,6 +5,8 @@ import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.RecoverySystem;
+import android.support.annotation.NonNull;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v4.app.NavUtils;
 import android.view.Menu;
@@ -16,6 +18,7 @@ import net.rdrei.android.dirchooser.DirectoryChooserConfig;
 import net.rdrei.android.dirchooser.DirectoryChooserFragment;
 
 import java.io.File;
+import java.util.HashSet;
 
 
 /**
@@ -86,7 +89,8 @@ public class ReciterListActivity extends ActionBarActivity
         if (setting.saveSoundsDirectory == null || !new File(setting.saveSoundsDirectory).exists())
             chooseDir(true);
         // Show the Up button in the action bar.
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        ActionBar bar = getSupportActionBar();
+        if (bar != null) bar.setDisplayHomeAsUpEnabled(true);
 
         if (findViewById(R.id.reciter_detail_container) != null) {
             // The detail container view will be present only in the
@@ -101,8 +105,6 @@ public class ReciterListActivity extends ActionBarActivity
                     .findFragmentById(R.id.reciter_list))
                     .setActivateOnItemClick(true);
         }
-
-        // TODO: If exposing deep links into your app, handle intents here.
     }
 
     @Override
@@ -155,7 +157,7 @@ public class ReciterListActivity extends ActionBarActivity
         if (item.getItemId() == R.id.chooseDownloadDir)
             chooseDir(false);
         else if (fragment != null) {
-            String myReciter = fragment.mItem;
+            final String myReciter = fragment.mItem;
             switch (item.getItemId()) {
                 case R.id.downloadAll:
                     if (downloadAll != null) {
@@ -170,10 +172,12 @@ public class ReciterListActivity extends ActionBarActivity
                     Toast.makeText(this,
                             "يتم التحميل...", Toast.LENGTH_SHORT).show();
                     fragment.setCurrentDownloadSurah(1);
+                    final HashSet<Integer> integers = new HashSet<>();
                     downloadAll = Utils.downloadAll(this, myReciter, new DownloadAllProgressChangeListener() {
                         @Override
                         public void onProgressChange(int surah, int ayah) {
                             fragment.setSurahProgress(surah, ayah, true);
+                            integers.add(surah);
                         }
                     }, new DownloadTaskCompleteListener() {
                         @Override
@@ -190,6 +194,10 @@ public class ReciterListActivity extends ActionBarActivity
                                 default:
                                     msg = "فشل تحميل التلاوات. تأكد من اتصالك بالإنترنت ووجود مساحة كافية";
                             }
+                            if (!integers.isEmpty())
+                                AnalyticsTrackers
+                                        .sendDownloadRecites(ReciterListActivity.this,
+                                                myReciter, integers);
                             fragment.setCurrentDownloadSurah(ReciterDetailFragment.CURRENT_SURAH_NONE);
                             if (msg != null)
                                 Utils.showAlert(ReciterListActivity.this, "تحميل جميع التلاوات", msg, null);
@@ -258,7 +266,7 @@ public class ReciterListActivity extends ActionBarActivity
     }
 
     @Override
-    public void onSelectDirectory(String path) {
+    public void onSelectDirectory(@NonNull String path) {
         setting.saveSoundsDirectory = path;
         setting.save(this);
         mDialog.dismiss();

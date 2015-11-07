@@ -42,22 +42,21 @@
                         android:inputType="number"
                         android:ems="10"
                         android:layout_weight="1"
-                        android:layout_marginTop="20px"
+                        android:layout_marginTop="20dp"
                         android:id="@+id/editTextPageNum"
-                        android:editable="true"
                         android:hint="رقم الصفحة..."/>
                     <Spinner android:id="@+id/juzNumber"
-                        android:layout_marginTop="30px"
+                        android:layout_marginTop="30dp"
                         android:layout_weight="1"
                         android:layout_width="fill_parent"
                         android:layout_height="wrap_content"></Spinner>
                     <Spinner android:id="@+id/hizbNumber"
                         android:layout_width="fill_parent"
-                        android:paddingTop="30px"
+                        android:paddingTop="30dp"
                         android:layout_weight="1"
                         android:layout_height="wrap_content"></Spinner>
                     <LinearLayout
-                        android:layout_marginTop="30px"
+                        android:layout_marginTop="30dp"
                         android:layout_weight="1"
                         android:layout_width="fill_parent"
                         android:layout_height="wrap_content">
@@ -68,7 +67,6 @@
                             android:inputType="number"
                             android:ems="10"
                             android:id="@+id/editTextAyahNum"
-                            android:editable="true"
                             android:hint="رقم الآية..."/>
                         <EditText android:gravity="right"
                             android:layout_width="0dip"
@@ -77,13 +75,12 @@
                             android:inputType="number"
                             android:ems="10"
                             android:id="@+id/editTextSuraNum"
-                            android:editable="true"
                             android:hint="رقم السورة..."/>
                     </LinearLayout>
                     <Button
                         android:layout_weight="1"
                         android:layout_width="fill_parent"
-                        android:layout_marginTop="30px"
+                        android:layout_marginTop="30dp"
                         android:layout_height="wrap_content"
                         android:text="ذهاب"
                         android:id="@+id/buttonGoto" />

@@ -3,6 +3,7 @@ package kilanny.shamarlymushaf;
 import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.os.RecoverySystem;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
 import android.content.Intent;
 import android.os.Bundle;
@@ -11,6 +12,8 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.widget.Toast;
+
+import java.util.HashSet;
 
 /**
  * An activity representing a single Reciter detail screen. This
@@ -41,7 +44,8 @@ public class ReciterDetailActivity extends ActionBarActivity {
         setContentView(R.layout.activity_reciter_detail);
 
         // Show the Up button in the action bar.
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        ActionBar bar = getSupportActionBar();
+        if (bar != null) bar.setDisplayHomeAsUpEnabled(true);
 
         // savedInstanceState is non-null when there is fragment state
         // saved from previous configurations of this activity
@@ -121,10 +125,12 @@ public class ReciterDetailActivity extends ActionBarActivity {
                 Toast.makeText(this,
                         "يتم التحميل...", Toast.LENGTH_SHORT).show();
                 fragment.setCurrentDownloadSurah(1);
+                final HashSet<Integer> integers = new HashSet<>();
                 downloadAll = Utils.downloadAll(this, myReciter, new DownloadAllProgressChangeListener() {
                     @Override
                     public void onProgressChange(int surah, int ayah) {
                         fragment.setSurahProgress(surah, ayah, true);
+                        integers.add(surah);
                     }
                 }, new DownloadTaskCompleteListener() {
                     @Override
@@ -141,6 +147,9 @@ public class ReciterDetailActivity extends ActionBarActivity {
                             default:
                                 msg = "فشل تحميل التلاوات. تأكد من اتصالك بالإنترنت ووجود مساحة كافية";
                         }
+                        if (!integers.isEmpty())
+                            AnalyticsTrackers.sendDownloadRecites(ReciterDetailActivity.this,
+                                    myReciter, integers);
                         fragment.setCurrentDownloadSurah(ReciterDetailFragment.CURRENT_SURAH_NONE);
                         if (msg != null)
                             Utils.showAlert(ReciterDetailActivity.this, "تحميل جميع التلاوات", msg, null);

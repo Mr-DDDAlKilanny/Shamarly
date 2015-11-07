@@ -4,6 +4,8 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentStatePagerAdapter;
 import android.view.View;
 
+import java.lang.ref.WeakReference;
+
 public class FullScreenImageAdapter extends FragmentStatePagerAdapter {
 
     private final MainActivity _activity;
@@ -37,7 +39,7 @@ public class FullScreenImageAdapter extends FragmentStatePagerAdapter {
         this.instantiateQuranImageViewListener = instantiateQuranImageViewListener;
     }
 
-    public static interface OnInstantiateQuranImageViewListener {
-        void onInstantiate(QuranImageView image, View parent);
+    public interface OnInstantiateQuranImageViewListener {
+        void onInstantiate(WeakReference<QuranImageView> image, View parent);
     }
 }

@@ -28,6 +28,8 @@
             android:summary="بعد تلاوة سورة الناس لا تقف بل عد إلى الفاتحة"
             android:defaultValue="true"
             />
+        </PreferenceCategory>
+    <PreferenceCategory android:title="العرض" android:summary="إعدادات العرض">
         <CheckBoxPreference
             android:key="nightMode"
             android:title="الوضع الليلي"
@@ -38,6 +40,22 @@
             android:title="عرض معلومات الصفحة"
             android:summary="عرض رقم الصفحة واسم السورة ورقم الجزء والحزب في أعلى الصفحة"
             android:defaultValue="true" />
+        <CheckBoxPreference
+            android:key="manuallyScrollPageInfo"
+            android:title="تحريك يدوي لمعلومات الصفحة"
+            android:summary="إلغاء التحريك الآلي لشريط المعلومات وجعل التحريك يدويا"
+            android:dependency="showPageInfo"
+            android:defaultValue="false"
+            />
+        <ListPreference
+            android:dependency="manuallyScrollPageInfo"
+            android:key="defaultPageInfoItem"
+            android:title="معلومة الصفحة الافتراضية"
+            android:summary="تحديد المعلومة الافتراضية لعرضها في البداية"
+            android:entries="@array/pageInfoTitles"
+            android:entryValues="@array/pageInfoValues"
+            android:defaultValue="@string/defaultPageInfo"
+            />
         </PreferenceCategory>
     <PreferenceCategory android:title="التفسير" android:summary="إعدادات التفسير">
         <ListPreference

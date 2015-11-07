@@ -1,7 +1,6 @@
 package kilanny.shamarlymushaf;
 
 import android.app.ProgressDialog;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -171,7 +170,9 @@ public class ReciterDetailFragment extends Fragment {
                                                 Toast.makeText(getActivity(),
                                                         "فشل التحميل. تأكد من اتصالك بالشبكة ووجود مساحة كافية بجهازك",
                                                         Toast.LENGTH_LONG).show();
-                                            }
+                                            } else if (result == Utils.DOWNLOAD_OK)
+                                                AnalyticsTrackers.sendDownloadRecites(getActivity(),
+                                                        mItem, position + 1);
                                             setCurrentDownloadSurah(CURRENT_SURAH_NONE);
                                         }
                                     });

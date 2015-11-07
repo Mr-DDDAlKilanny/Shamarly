@@ -9,11 +9,10 @@
         android:scrollbars="vertical"
         android:fillViewport="true">
         <TextView android:id="@+id/tafseerText"
-            android:textSize="25dp"
+            android:textSize="25sp"
             android:textIsSelectable="true"
             android:paddingRight="10dp"
             android:layout_width="fill_parent"
-            android:layout_height="fill_parent"
-            android:layout_weight="1.0" />
+            android:layout_height="wrap_content" />
     </ScrollView>
 </RelativeLayout>

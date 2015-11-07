@@ -5,7 +5,6 @@ import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Environment;
@@ -26,6 +25,8 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.SocketException;
@@ -35,8 +36,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -59,6 +58,7 @@ public class Utils {
             DOWNLOAD_FILE_NOT_FOUND = -3,
             DOWNLOAD_IO_EXCEPTION = -4,
             DOWNLOAD_USER_CANCEL = -5;
+    public static final String NON_DOWNLOADED_QUEUE_FILE_PATH = "nonDownloaded";
 
     public static class DownloadStatusArray {
 
@@ -115,20 +115,14 @@ public class Utils {
     /* Checks if external storage is available for read and write */
     public static boolean isExternalStorageWritable() {
         String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state)) {
-            return true;
-        }
-        return false;
+        return Environment.MEDIA_MOUNTED.equals(state);
     }
 
     /* Checks if external storage is available to at least read */
     public static boolean isExternalStorageReadable() {
         String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state) ||
-                Environment.MEDIA_MOUNTED_READ_ONLY.equals(state)) {
-            return true;
-        }
-        return false;
+        return Environment.MEDIA_MOUNTED.equals(state) ||
+                Environment.MEDIA_MOUNTED_READ_ONLY.equals(state);
     }
 
     public static File getSurahDir(Context context, String reciter, int surah) {
@@ -351,12 +345,14 @@ public class Utils {
         }
     }
 
-    public static ConcurrentLinkedQueue<Integer> getNonExistPages(final Context context, final int maxPage,
-                              final RecoverySystem.ProgressListener listener) {
+    public static void getNonExistPages(final Context context, final int maxPage,
+                              final RecoverySystem.ProgressListener listener, int numThreads) {
+        File file = new File(context.getFilesDir(), NON_DOWNLOADED_QUEUE_FILE_PATH);
+        if (file.exists()) file.delete();
         final ConcurrentLinkedQueue<Integer> q = new ConcurrentLinkedQueue<>();
         final Shared progress = new Shared();
         progress.setData(0);
-        final Thread[] threads = new Thread[16];
+        final Thread[] threads = new Thread[numThreads];
         final int work = maxPage / threads.length;
         for (int i = 0; i < threads.length; ++i) {
             final int ii = i;
@@ -382,8 +378,29 @@ public class Utils {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        System.gc();
-        return q;
+        try {
+            FileOutputStream outputStream = new FileOutputStream(file);
+            ObjectOutputStream stream = new ObjectOutputStream(outputStream);
+            stream.writeObject(q);
+            stream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static ConcurrentLinkedQueue<Integer> getNonExistPagesFromFile(Context context) {
+        File file = new File(context.getFilesDir(), NON_DOWNLOADED_QUEUE_FILE_PATH);
+        if (!file.exists()) return null;
+        try {
+            FileInputStream inputStream = new FileInputStream(file);
+            ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
+            ConcurrentLinkedQueue<Integer> q = (ConcurrentLinkedQueue<Integer>) objectInputStream.readObject();
+            objectInputStream.close();
+            return q;
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private static void myDownloadSurah(final Context context,

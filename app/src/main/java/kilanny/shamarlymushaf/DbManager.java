@@ -44,10 +44,14 @@ public class DbManager extends SQLiteOpenHelper {
         Cursor cursor = db.rawQuery(String.format(Locale.US,
                 "select tafseer from mushaf where sura = %d and ayah = %d", sura, ayah), null);
         cursor.moveToFirst();
-        if (cursor.isAfterLast() == false) {
-            return cursor.getString(cursor.getColumnIndex("tafseer"));
+        try {
+            if (cursor.isAfterLast() == false) {
+                return cursor.getString(cursor.getColumnIndex("tafseer"));
+            }
+            return null;
+        } finally {
+            cursor.close();
         }
-        return null;
     }
 
     public Page getPage(int page) {
@@ -95,6 +99,7 @@ public class DbManager extends SQLiteOpenHelper {
             px = x; py = y;
             cursor.moveToNext();
         }
+        cursor.close();
         Page pg = new Page();
         pg.ayahs = result;
         pg.page = page;
@@ -116,6 +121,7 @@ public class DbManager extends SQLiteOpenHelper {
             results.add(res);
             cursor.moveToNext();
         }
+        cursor.close();
         return results;
     }
 
@@ -127,6 +133,7 @@ public class DbManager extends SQLiteOpenHelper {
         if (cursor.isAfterLast() == false) {
             return cursor.getInt(cursor.getColumnIndex("page"));
         }
+        cursor.close();
         return -1;
     }
 
@@ -166,17 +173,26 @@ class MyDbContext extends ContextWrapper {
     public SQLiteDatabase openOrCreateDatabase(String name, int mode,
                                                SQLiteDatabase.CursorFactory factory) {
         File dbFile = getDatabasePath(name);
-        if (!dbFile.exists()) {
-            // Open your local db as the input stream
+        boolean firstTry = true;
+        while (true) {
+            if (!dbFile.exists()) {
+                // Open your local db as the input stream
+                try {
+                    Utils.extractZippedFile(getAssets().open("shamerly.zip"), dbFile);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
             try {
-                Utils.extractZippedFile(getAssets().open("shamerly.zip"), dbFile);
-            } catch (IOException e) {
-                e.printStackTrace();
+                return SQLiteDatabase.openDatabase(dbFile.getPath(), factory,
+                        SQLiteDatabase.OPEN_READWRITE);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                if (firstTry) {
+                    dbFile.delete();
+                    firstTry = false;
+                } else throw ex;
             }
         }
-        SQLiteDatabase result = SQLiteDatabase.openDatabase(dbFile.getPath(), factory,
-                SQLiteDatabase.OPEN_READWRITE);
-        // SQLiteDatabase result = super.openOrCreateDatabase(name, mode, factory);
-        return result;
     }
 }

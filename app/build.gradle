@@ -7,8 +7,8 @@ android {
         applicationId "kilanny.shamarlymushaf"
         minSdkVersion 14
         targetSdkVersion 21
-        versionName '2.55'
-        versionCode 12
+        versionName '2.7'
+        versionCode 16
     }
     buildTypes {
         release {
@@ -30,6 +30,7 @@ dependencies {
     compile('cn.trinea.android.view.autoscrollviewpager:android-auto-scroll-view-pager:1.1.2') {
         exclude module: 'support-v4'
     }
-    compile 'com.android.support:appcompat-v7:22.2.1'
-    compile 'com.android.support:support-v4:22.2.1'
+    compile 'com.android.support:appcompat-v7:21.0.1'
+    compile 'com.android.support:support-v4:21.0.1'
+    compile 'com.google.android.gms:play-services-analytics:8.1.0'
 }

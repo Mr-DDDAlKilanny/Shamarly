@@ -2,6 +2,7 @@ package kilanny.shamarlymushaf;
 
 import android.annotation.TargetApi;
 import android.app.ActionBar;
+import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.ProgressDialog;
@@ -59,7 +60,10 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
 import java.io.Serializable;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.Lock;
@@ -100,8 +104,6 @@ public class MainActivity extends FragmentActivity {
      */
     private static final int HIDER_FLAGS = SystemUiHider.FLAG_HIDE_NAVIGATION;
 
-    public static final String EXTRA_NON_DOWNLOADED_PAGES = "nonDownloadedPagesQueue";
-
     /**
      * The instance of the {@link SystemUiHider} for this activity.
      */
@@ -131,12 +133,31 @@ public class MainActivity extends FragmentActivity {
     private QuranImageView shareImageView;
     private QuranData quranData;
     private int totalDeviceRamMg;
+    private int recommendedRamMg;
     private ConcurrentLinkedQueue<Integer> notDownloaded;
+    private static final Bitmap[] PageBitmapPool = new Bitmap[3];
+    private int currentBitmap = 0;
+
+    //google analytics fields
+    private HashSet<Integer> pagesViewed;
+    private Date startDate;
+    private HashSet<String> listenRecite, viewTafseer;
 
     @Override
     protected void onStop() {
         super.onStop();
         stopPlayback();
+        if (pagesViewed != null) {
+            AnalyticsTrackers.sendPageReadStats(this, pagesViewed,
+                    new Date().getTime() - startDate.getTime());
+            if (listenRecite != null)
+                AnalyticsTrackers.sendListenReciteStats(this, listenRecite);
+            if (viewTafseer != null)
+                AnalyticsTrackers.sendTafseerStats(this, viewTafseer);
+            listenRecite = null;
+            pagesViewed = null;
+            startDate = null;
+        }
     }
 
     private void stopPlayback() {
@@ -197,8 +218,8 @@ public class MainActivity extends FragmentActivity {
         });
         adapter.setInstantiateQuranImageViewListener(new FullScreenImageAdapter.OnInstantiateQuranImageViewListener() {
             @Override
-            public void onInstantiate(QuranImageView image, View parent) {
-                image.setOnTouchListener(new View.OnTouchListener() {
+            public void onInstantiate(WeakReference<QuranImageView> image, View parent) {
+                image.get().setOnTouchListener(new View.OnTouchListener() {
                     @Override
                     public boolean onTouch(View v, MotionEvent event) {
                         tapGestureDetector.onTouchEvent(event);
@@ -207,8 +228,8 @@ public class MainActivity extends FragmentActivity {
                 });
                 // this is not called at onPageSelected
                 // when activity starts in landscape, so call here
-                configOrientation(image);
-                initCurrentPageInfo(image, parent);
+                configOrientation(image.get());
+                initCurrentPageInfo(image.get(), parent);
             }
         });
         viewPager.setAdapter(adapter);
@@ -272,10 +293,16 @@ public class MainActivity extends FragmentActivity {
             adapter.setPageNumber("صفحة " + ArabicNumbers.convertDigits(page + ""));
             adapter.setHizbNumber(hizb);
             pager.setAdapter(adapter);
-            pager.setCurrentItem(adapter.getCount() - 1);
-            pager.setInterval(5000);
             pager.setDirection(AutoScrollViewPager.LEFT);
-            pager.startAutoScroll();
+            if (!pref.getBoolean("manuallyScrollPageInfo", false)) {
+                pager.setCurrentItem(adapter.getCount() - 1);
+                pager.setInterval(5000);
+                pager.startAutoScroll();
+            } else {
+                pager.setCurrentItem(Integer.parseInt(pref
+                        .getString("defaultPageInfoItem",
+                                getString(R.string.defaultPageInfo))));
+            }
         }
     }
 
@@ -361,7 +388,7 @@ public class MainActivity extends FragmentActivity {
         // while interacting with the UI.
         viewPager = (ViewPager) contentView;
         viewPager.addOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
-            private QuranImageView last;
+            private WeakReference<QuranImageView> last;
 
             @Override
             public void onPageSelected(int position) {
@@ -369,15 +396,21 @@ public class MainActivity extends FragmentActivity {
                     stopPlayback();
                 else autoSwipPage = false;
                 setting.page = adapter.getCount() - position;
+                if (pagesViewed == null) {
+                    pagesViewed = new HashSet<>();
+                    startDate = new Date();
+                }
+                pagesViewed.add(setting.page);
                 setBookmarkMenuItem(setting.isBookmarked(setting.page));
                 setting.save(MainActivity.this);
-                if (last != null) {
-                    last.selectedAyahIndex = QuranImageView.SELECTION_NONE;
-                    last.invalidate();
+                if (last != null && last.get() != null && last.get().myBitmap != null &&
+                        !last.get().myBitmap.isRecycled()) {
+                    last.get().selectedAyahIndex = QuranImageView.SELECTION_NONE;
+                    last.get().invalidate();
                 }
                 try {
-                    last = getCurrentPage();
-                    configOrientation(last);
+                    last = new WeakReference<>(getCurrentPage());
+                    configOrientation(last.get());
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
@@ -606,6 +639,9 @@ public class MainActivity extends FragmentActivity {
             player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
                 @Override
                 public void onCompletion(MediaPlayer mp) {
+                    if (listenRecite == null)
+                        listenRecite = new HashSet<>();
+                    listenRecite.add(getSelectedSound() + "," + sura + "," + ayah);
                     if (!allPagePlay) {
                         stopPlayback();
                     }
@@ -809,10 +845,13 @@ public class MainActivity extends FragmentActivity {
                         new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                if (which == 0)
+                                if (viewTafseer == null)
+                                    viewTafseer = new HashSet<>();
+                                if (which == 0) {
+                                    viewTafseer.add("ميسر بلا تحميل:" + a.sura + "," + a.ayah);
                                     displayTafseer(MainActivity.this.db.getTafseer(a.sura, a.ayah),
                                             "التفسير الميسر");
-                                else if (items.length == 2) {
+                                } else if (items.length == 2) {
                                     final ProgressDialog show = new ProgressDialog(MainActivity.this);
                                     show.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
                                     show.setIndeterminate(false);
@@ -865,10 +904,12 @@ public class MainActivity extends FragmentActivity {
                                             execute.cancel(true);
                                         }
                                     });
-                                } else if (which - 1 < tafseers.length)
+                                } else if (which - 1 < tafseers.length) {
+                                    viewTafseer.add(tafseers[which - 1].name + ": " +
+                                            a.sura + "," + a.ayah);
                                     displayTafseer(db.getTafseer((int) tafseers[which - 1].value,
                                             a.sura, a.ayah), tafseers[which - 1].name);
-                                else
+                                } else
                                     Utils.showConfirm(MainActivity.this, "حذف التفاسير",
                                             "حذف التفسير المحملة وتحرير 140 ميغا والإبقاء فقط على التفسير الميسر؟", new DialogInterface.OnClickListener() {
                                                 @Override
@@ -930,9 +971,19 @@ public class MainActivity extends FragmentActivity {
         spinner2.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1,
                 android.R.id.text1, quranData.surahs2));
         QuranImageView image = getCurrentPage();
+        if (image == null) {
+            Toast.makeText(this, "يستخدم هذا الزر لتكرار التلاوة", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (image.myBitmap == null) {
+            AnalyticsTrackers.sendFatalError(MainActivity.this, "MainActivit.displayRepeatDlg",
+                    "image.myBitmap == null (recycled ??)");
+            Toast.makeText(this, "حدث خطأ ما.", Toast.LENGTH_LONG).show();
+            return;
+        }
         final EditText from = (EditText) dialog.findViewById(R.id.fromAyah);
         final EditText to = (EditText) dialog.findViewById(R.id.toAyah);
-        if (image != null && image.currentPage != null && image.currentPage.ayahs.size() >0) {
+        if (image.currentPage != null && image.currentPage.ayahs.size() >0) {
             spinner1.setSelection(image.currentPage.ayahs.get(0).sura);
             spinner2.setSelection(image.currentPage.ayahs.get(image.currentPage.ayahs.size() - 1).sura);
             from.setText(Math.max(1, image.currentPage.ayahs.get(0).ayah) + "");
@@ -946,7 +997,6 @@ public class MainActivity extends FragmentActivity {
                 String tt = to.getText().toString();
                 if (spinner1.getSelectedItemPosition() < 1
                         || spinner2.getSelectedItemPosition() < 1
-                        || ff == null || tt == null
                         || ff.isEmpty() || tt.isEmpty()) {
                     showError("الرجاء تعبئة جميع الحقول");
                     return;
@@ -1105,23 +1155,11 @@ public class MainActivity extends FragmentActivity {
             }
             reader.close();
             totalDeviceRamMg = (int) (Double.parseDouble(value) / 1024.0);
-        } catch (IOException ex) {
-            ex.printStackTrace();
-            totalDeviceRamMg = -1;
         } catch (Exception ex) {
             ex.printStackTrace();
             totalDeviceRamMg = -1;
         }
         System.out.println("Ram = " + totalDeviceRamMg);
-    }
-
-    @Override
-    public void onBackPressed() {
-        //super.onBackPressed();
-        Intent i = new Intent();
-        i.putExtra(EXTRA_NON_DOWNLOADED_PAGES, notDownloaded);
-        setResult(RESULT_OK, i);
-        finish();
     }
 
     @Override
@@ -1131,12 +1169,24 @@ public class MainActivity extends FragmentActivity {
             Toast.makeText(this,
                     "فشل بدء التطبيق. لا يمكن الكتابة في ذاكرة الجهاز",
                     Toast.LENGTH_LONG).show();
+            AnalyticsTrackers.sendFatalError(this, "MainActivity.onCreate", "getDatabaseDir() == null");
             finish();
             return;
         }
-        notDownloaded = (ConcurrentLinkedQueue<Integer>)
-                    getIntent().getSerializableExtra(EXTRA_NON_DOWNLOADED_PAGES);
+        notDownloaded = Utils.getNonExistPagesFromFile(this);
+        if (notDownloaded == null) {
+            Toast.makeText(this, "فشل بدء التطبيق. أغلق التطبيق ثم افتحه ثانية", Toast.LENGTH_LONG).show();
+            AnalyticsTrackers.sendFatalError(this, "MainActivity.onCreate",
+                    "serializable == null");
+        }
         calcTotalDeviceRam();
+        try {
+            ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+            recommendedRamMg = am.getMemoryClass();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            recommendedRamMg = -1;
+        }
         db = DbManager.getInstance(this);
         deleteAll();
         quranData = QuranData.getInstance(this);
@@ -1151,9 +1201,10 @@ public class MainActivity extends FragmentActivity {
             initButtons();
             ActionBar bar = getActionBar();
             if (bar != null) bar.hide();
-        } catch (Exception ex) { //notDownloaded, views maybe null?
+        } catch (Exception ex) { //views maybe null?
             ex.printStackTrace();
-            Toast.makeText(this, "فشل بدء التطبيق.",
+            AnalyticsTrackers.sendException(this, ex);
+            Toast.makeText(this, "فشل بدء التطبيق.\n" + ex.getMessage(),
                     Toast.LENGTH_LONG).show();
             finish();
         }
@@ -1162,15 +1213,15 @@ public class MainActivity extends FragmentActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        if (adapter.getCount() < FullScreenImageAdapter.MAX_PAGE) {
+        if (adapter != null && adapter.getCount() < FullScreenImageAdapter.MAX_PAGE) {
             Utils.showConfirm(this, "تحميل المصحف",
                     "مرحبا بك في تطبيق مصحف الشمرلي.\n نحتاج أولا قبل بدء استخدام التطبيق لتحميل المصحف على جهازك، وذلك حتى يمكنك استخدام التطبيق دون اتصال فيما بعد. البدء بالتحميل الآن؟",
                     new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    downloadAll();
-                }
-            }, null);
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            downloadAll();
+                        }
+                    }, null);
         }
     }
 
@@ -1259,49 +1310,46 @@ public class MainActivity extends FragmentActivity {
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inDither = true;
             Bitmap.Config config;
-            //if (totalDeviceRamMg > 500)
+            if (recommendedRamMg < 64)
                 config = Bitmap.Config.RGB_565;
-            //else {
-            //    config = Bitmap.Config.ARGB_4444;
-            //}
+            else
+                config = Bitmap.Config.ARGB_8888;
             Display display = getWindowManager().getDefaultDisplay();
             Point p = new Point();
             display.getSize(p);
             options.inSampleSize = calculateInSampleSize(p.x, p.y);
             options.inPreferredConfig = config;
-            System.gc();
             Bitmap bitmap = BitmapFactory.decodeFile(Utils.getPageFile(this, idx).getAbsolutePath(), options);
             bitmap.setHasAlpha(true);
+            if (PageBitmapPool[currentBitmap] == null
+                    || PageBitmapPool[currentBitmap].isRecycled())
+                PageBitmapPool[currentBitmap] = idx > 3 ?
+                        Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), config) : bitmap;
             if (idx > 3) {
-                Bitmap tmp = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(),
-                        config);
-                tmp.eraseColor(Color.WHITE);  // set its background to white, or whatever color you want
+                Bitmap tmp = PageBitmapPool[currentBitmap];
+                boolean night = pref.getBoolean("nightMode", false);
+                Paint invertPaint = night ? new Paint() : null;
+                if (night) invertPaint.setColorFilter(filter);
+                tmp.eraseColor(!night ? Color.WHITE : Color.BLACK);  // set its background to white, or whatever color you want
                 Canvas canvas = new Canvas(tmp);
-                canvas.drawBitmap(bitmap, 0, 0, null);
+                canvas.drawBitmap(bitmap, 0, 0, invertPaint);
                 bitmap.recycle();
                 bitmap = tmp;
-                if (pref.getBoolean("nightMode", false)) {
-                    Paint invertPaint = new Paint();
-                    invertPaint.setColorFilter(filter);
-                    tmp = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(),
-                            config);
-                    canvas = new Canvas(tmp);
-                    canvas.drawBitmap(bitmap, 0, 0, invertPaint);
-                    bitmap.recycle();
-                    bitmap = tmp;
-                }
             }
+            currentBitmap = (currentBitmap + 1) % PageBitmapPool.length;
             return bitmap;
         } catch (OutOfMemoryError err) {
-            Toast.makeText(this, "خطأ: الذاكرة ممتلئة. قم بإغلاق التطبيقات الأخرى",
+            Toast.makeText(this, "خطأ: الذاكرة ممتلئة. أعد تشغيل التطبيق",
                     Toast.LENGTH_LONG).show();
             err.printStackTrace();
-            finish();
+            AnalyticsTrackers.sendException(this, err);
+            System.exit(-1);
             return null;
         } catch (Exception ex) { //maybe deleted files during app run
             Toast.makeText(this, "حدث خطأ أثناء فتح الصفحة\n" + ex.getMessage(),
                     Toast.LENGTH_LONG).show();
             ex.printStackTrace();
+            AnalyticsTrackers.sendException(this, ex);
             finish();
             return null;
         }
@@ -1383,8 +1431,10 @@ public class MainActivity extends FragmentActivity {
                 //super.onPostExecute(strings);
                 show.dismiss();
                 Utils.showAlert(MainActivity.this, strings[0], strings[1], null);
-                if (strings[1] != null && strings[1].contains("نجاح"))
+                if (strings[1] != null && strings[1].contains("نجاح")) {
                     initViewPagerAdapter();
+                    AnalyticsTrackers.sendDownloadPages(MainActivity.this);
+                }
             }
         }.execute();
         show.setOnCancelListener(new DialogInterface.OnCancelListener() {

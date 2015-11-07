@@ -73,6 +73,7 @@ public class TafseerDbManager extends SQLiteOpenHelper {
             results.add(res);
             cursor.moveToNext();
         }
+        cursor.close();
         return tafaseer = results;
     }
 
@@ -82,9 +83,13 @@ public class TafseerDbManager extends SQLiteOpenHelper {
                 "select nass from tafseer where tafseer = %d and sura = %d and ayah = %d",
                 id, sura, ayah), null);
         cursor.moveToFirst();
-        if (cursor.isAfterLast() == false) {
-            return cursor.getString(cursor.getColumnIndex("nass"));
+        try {
+            if (cursor.isAfterLast() == false) {
+                return cursor.getString(cursor.getColumnIndex("nass"));
+            }
+            return null;
+        } finally {
+            cursor.close();
         }
-        return null;
     }
 }

@@ -9,9 +9,11 @@
 <LinearLayout
     android:weightSum="3"
     android:orientation="horizontal"
+    android:alpha="0.8"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent">
     <LinearLayout
+        android:orientation="vertical"
         android:layout_weight="1"
         android:weightSum="2"
         android:layout_width="fill_parent"
@@ -30,6 +32,7 @@
             android:layout_height="fill_parent" />
     </LinearLayout>
     <LinearLayout
+        android:orientation="vertical"
         android:layout_weight="1"
         android:weightSum="2"
         android:layout_width="fill_parent"
@@ -40,9 +43,16 @@
             android:layout_weight="1"
             android:layout_width="fill_parent"
             android:layout_height="fill_parent" />
+        <ImageButton
+            android:id="@+id/sendComments"
+            android:background="@android:drawable/ic_dialog_email"
+            android:layout_weight="1"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
     </LinearLayout>
 
     <LinearLayout
+        android:orientation="vertical"
         android:layout_weight="1"
         android:weightSum="2"
         android:layout_width="fill_parent"

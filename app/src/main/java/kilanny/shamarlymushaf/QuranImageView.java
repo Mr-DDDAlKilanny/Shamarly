@@ -91,6 +91,11 @@ public class QuranImageView extends TouchImageView {
 
     @Override
     public void draw(Canvas canvas) {
+        if (myBitmap != null && myBitmap.isRecycled()) {
+            AnalyticsTrackers.sendFatalError(getContext(), "QuranImageView.draw",
+                    "myBitmap.isRecycled() == true");
+            return;
+        }
         super.draw(canvas);
         if (currentPage != null) {
             initPrefs();
@@ -199,8 +204,6 @@ public class QuranImageView extends TouchImageView {
                 outputStream = new FileOutputStream(file, false);
                 draw.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
                 outputStream.close();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -210,10 +213,9 @@ public class QuranImageView extends TouchImageView {
     
     @Override
     public void finalize() throws Throwable {
-        super.finalize();
         if (this.myBitmap != null) {
-            this.myBitmap.recycle();
-            this.myBitmap = null;
+            //this.myBitmap.recycle();
+            setImageBitmap(this.myBitmap = null);
         }
         this.mutliSelectList.clear();
         if (this.currentPage != null) {
@@ -229,5 +231,7 @@ public class QuranImageView extends TouchImageView {
         this.res = null;
         this.rectPaint = null;
         this.fontPaint = null;
+        super.finalize();
+        System.out.println("Finalized Image");
     }
 }

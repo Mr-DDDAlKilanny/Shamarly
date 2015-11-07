@@ -1,21 +1,13 @@
 package kilanny.shamarlymushaf;
 
-import android.annotation.SuppressLint;
-import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.content.Intent;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.RecoverySystem;
-import android.support.v7.app.ActionBar;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
-import android.os.Handler;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ProgressBar;
-
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import kilanny.shamarlymushaf.util.SystemUiHider;
 
@@ -47,17 +39,36 @@ public class SplashScreenActivity extends Activity {
         mSystemUiHider.hide();
         final ProgressBar bar = (ProgressBar) findViewById(R.id.progressBarLoadingPages);
         bar.setMax(FullScreenImageAdapter.MAX_PAGE);
-        new AsyncTask<Void, Integer, ConcurrentLinkedQueue<Integer>>() {
+        int tmp;
+        try {
+            ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+            tmp = am.getMemoryClass();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            tmp = -1;
+        }
+        if (tmp >= 64)
+            tmp = 16;
+        else if (tmp >= 32)
+            tmp = 8;
+        else tmp = 4;
+        final int numThreads = tmp;
+        new AsyncTask<Void, Integer, Void>() {
 
             @Override
-            protected ConcurrentLinkedQueue<Integer> doInBackground(Void... params) {
-                return Utils.getNonExistPages(SplashScreenActivity.this, FullScreenImageAdapter.MAX_PAGE,
-                        new RecoverySystem.ProgressListener() {
-                            @Override
-                            public void onProgress(int progress) {
-                                publishProgress(progress);
-                            }
-                        });
+            protected Void doInBackground(Void... params) {
+                try {
+                    Utils.getNonExistPages(SplashScreenActivity.this, FullScreenImageAdapter.MAX_PAGE,
+                            new RecoverySystem.ProgressListener() {
+                                @Override
+                                public void onProgress(int progress) {
+                                    publishProgress(progress);
+                                }
+                            }, numThreads);
+                } catch (Throwable throwable) {
+                    AnalyticsTrackers.sendException(SplashScreenActivity.this, throwable);
+                }
+                return null;
             }
 
             @Override
@@ -67,10 +78,9 @@ public class SplashScreenActivity extends Activity {
             }
 
             @Override
-            protected void onPostExecute(ConcurrentLinkedQueue<Integer> integers) {
+            protected void onPostExecute(Void result) {
                 //super.onPostExecute(integers);
                 Intent i = new Intent();
-                i.putExtra(MainActivity.EXTRA_NON_DOWNLOADED_PAGES, integers);
                 i.setClass(SplashScreenActivity.this, WelcomeActivity.class);
                 startActivity(i);
             }

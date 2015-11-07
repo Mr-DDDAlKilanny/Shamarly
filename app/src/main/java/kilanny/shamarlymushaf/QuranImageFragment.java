@@ -10,11 +10,14 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import java.lang.ref.WeakReference;
+
 public class QuranImageFragment extends Fragment {
     int fragPos;
     MainActivity _activity;
     FullScreenImageAdapter.OnInstantiateQuranImageViewListener listener;
-    private QuranImageView imgDisplay;
+    private boolean finalized = false;
+    private WeakReference<QuranImageView> imgDisplay;
 
     public static QuranImageFragment newInstance(int val, MainActivity _activity,
                               FullScreenImageAdapter.OnInstantiateQuranImageViewListener listener) {
@@ -29,24 +32,25 @@ public class QuranImageFragment extends Fragment {
     }
 
     @Override
-    public void onDestroy() {
-        super.onDestroy();
-        if (imgDisplay != null) {
-            try {
-                imgDisplay.finalize();
-            } catch (Throwable throwable) {
-                throwable.printStackTrace();
-            }
+    protected void finalize() throws Throwable {
+        super.finalize();
+        if (imgDisplay != null && imgDisplay.get() != null) {
+            imgDisplay.get().finalize();
             imgDisplay = null;
         }
         this._activity = null;
         this.listener = null;
-        System.gc();
+        finalized = true;
     }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (finalized) { // explicit GC collect causes errors !!
+            AnalyticsTrackers.sendFatalError(getActivity(), "QuranImageFragment.onCreate",
+                    "finalized = true");
+            return;
+        }
         fragPos = getArguments() != null ? getArguments().getInt("pos") : -1;
     }
 
@@ -54,9 +58,13 @@ public class QuranImageFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View viewLayout = inflater.inflate(R.layout.layout_fullscreen_image, container, false);
-        imgDisplay = (QuranImageView) viewLayout.findViewById(R.id.quranPage);
-        if (imgDisplay == null) return viewLayout;
-        imgDisplay.pref = _activity.pref;
+        if (finalized) { // explicit GC collect causes errors !!
+            AnalyticsTrackers.sendFatalError(getActivity(), "QuranImageFragment.onCreateView",
+                    "finalized = true");
+            return viewLayout;
+        }
+        imgDisplay = new WeakReference<>((QuranImageView) viewLayout.findViewById(R.id.quranPage));
+        imgDisplay.get().pref = _activity.pref;
         Bitmap bitmap;
         if (fragPos == -1) {
             Display display = _activity.getWindowManager().getDefaultDisplay();
@@ -72,12 +80,12 @@ public class QuranImageFragment extends Fragment {
             int position = FullScreenImageAdapter.MAX_PAGE - fragPos;
             if (position > 1) {
                 DbManager db = DbManager.getInstance(_activity);
-                imgDisplay.currentPage = db.getPage(position);
+                imgDisplay.get().currentPage = db.getPage(position);
             }
             bitmap = _activity.readPage(position);
             viewLayout.setTag(position);
         }
-        imgDisplay.setImageBitmap(bitmap);
+        imgDisplay.get().setImageBitmap(bitmap);
         //container.addView(viewLayout);
         if (listener != null)
             listener.onInstantiate(imgDisplay, viewLayout);

@@ -8,7 +8,7 @@
     <TextView
         android:layout_weight="1"
         android:text="من"
-        android:textSize="20dp"
+        android:textSize="20sp"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent" />
     <LinearLayout
@@ -24,10 +24,9 @@
             android:inputType="number"
             android:ems="10"
             android:id="@+id/fromAyah"
-            android:editable="true"
             android:hint="رقم الآية..."/>
         <Spinner android:id="@+id/fromSurah"
-            android:layout_marginTop="30px"
+            android:layout_marginTop="30dp"
             android:layout_weight="1"
             android:layout_width="fill_parent"
             android:layout_height="fill_parent" />
@@ -36,7 +35,7 @@
     <TextView
         android:layout_weight="1"
         android:text="إلى"
-        android:textSize="20dp"
+        android:textSize="20sp"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent" />
     <LinearLayout
@@ -52,10 +51,9 @@
             android:inputType="number"
             android:ems="10"
             android:id="@+id/toAyah"
-            android:editable="true"
             android:hint="رقم الآية..."/>
         <Spinner android:id="@+id/toSurah"
-            android:layout_marginTop="30px"
+            android:layout_marginTop="30dp"
             android:layout_weight="1"
             android:layout_width="fill_parent"
             android:layout_height="fill_parent" />

@@ -1,41 +1,34 @@
 package kilanny.shamarlymushaf;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.text.InputType;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.ImageButton;
-
-import java.io.Serializable;
+import android.widget.Toast;
 
 public class WelcomeActivity extends AppCompatActivity {
-
-    private Serializable serializable;
-    private static final int MAIN_REQUEST = 6236;
-    private static final int SEARCH_REQUEST = 6214;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_welcome);
-        Intent myIntent = getIntent();
-        serializable = myIntent.getSerializableExtra(MainActivity.EXTRA_NON_DOWNLOADED_PAGES);
         ImageButton btn = (ImageButton) findViewById(R.id.openQuran);
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent i = new Intent(WelcomeActivity.this, MainActivity.class);
-                i.putExtra(MainActivity.EXTRA_NON_DOWNLOADED_PAGES, serializable);
-                startActivityForResult(i, MAIN_REQUEST);
+                startActivity(new Intent(WelcomeActivity.this, MainActivity.class));
             }
         });
         btn = (ImageButton) findViewById(R.id.openSearch);
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent i = new Intent(WelcomeActivity.this, SearchActivity.class);
-                i.putExtra(MainActivity.EXTRA_NON_DOWNLOADED_PAGES, serializable);
-                startActivityForResult(i, SEARCH_REQUEST);
+                startActivity(new Intent(WelcomeActivity.this, SearchActivity.class));
             }
         });
         btn = (ImageButton) findViewById(R.id.openSettings);
@@ -59,17 +52,35 @@ public class WelcomeActivity extends AppCompatActivity {
                 startActivity(new Intent(WelcomeActivity.this, ReciterListActivity.class));
             }
         });
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == MAIN_REQUEST || requestCode == SEARCH_REQUEST) {
-            if (resultCode == RESULT_OK && data != null) {
-                Serializable tmp = data.getSerializableExtra(MainActivity.EXTRA_NON_DOWNLOADED_PAGES);
-                if (tmp != null)
-                    serializable = tmp;
+        findViewById(R.id.sendComments).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(WelcomeActivity.this);
+                builder.setTitle("إرسال تعليقات");
+                // Set up the input
+                final EditText input = new EditText(WelcomeActivity.this);
+                input.setHint("يمكنك كتابة بريدك الإلكتروني لنرد عليك");
+                // Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
+                input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+                builder.setView(input);
+                // Set up the buttons
+                builder.setPositiveButton("إرسال", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String m_Text = input.getText().toString().trim();
+                        if (m_Text.length() < 5) {
+                            Utils.showAlert(WelcomeActivity.this, "خطأ", "أدخل تفاصيل كافية لإرسالها", null);
+                            return;
+                        }
+                        AnalyticsTrackers.sendComment(WelcomeActivity.this, m_Text);
+                        Toast.makeText(WelcomeActivity.this,
+                                "شكرا. سيتم إرسال تعليقاتك في أقرب فرصة ممكنة إن شاء الله",
+                                Toast.LENGTH_LONG).show();
+                        dialog.dismiss();
+                    }
+                });
+                builder.show();
             }
-        }
+        });
     }
 }

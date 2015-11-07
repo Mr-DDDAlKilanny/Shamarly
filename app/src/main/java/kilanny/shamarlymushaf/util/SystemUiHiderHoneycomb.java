@@ -1,6 +1,7 @@
 package kilanny.shamarlymushaf.util;
 
 import android.annotation.TargetApi;
+import android.app.ActionBar;
 import android.app.Activity;
 import android.os.Build;
 import android.view.View;
@@ -111,7 +112,8 @@ public class SystemUiHiderHoneycomb extends SystemUiHiderBase {
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
                     // Pre-Jelly Bean, we must manually hide the action bar
                     // and use the old window flags API.
-                    mActivity.getActionBar().hide();
+                    ActionBar bar = mActivity.getActionBar();
+                    if (bar != null) bar.hide();
                     mActivity.getWindow().setFlags(
                             WindowManager.LayoutParams.FLAG_FULLSCREEN,
                             WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -127,7 +129,8 @@ public class SystemUiHiderHoneycomb extends SystemUiHiderBase {
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
                     // Pre-Jelly Bean, we must manually show the action bar
                     // and use the old window flags API.
-                    mActivity.getActionBar().show();
+                    ActionBar bar = mActivity.getActionBar();
+                    if (bar != null) bar.show();
                     mActivity.getWindow().setFlags(
                             0,
                             WindowManager.LayoutParams.FLAG_FULLSCREEN);

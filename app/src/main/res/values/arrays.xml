@@ -151,4 +151,18 @@
         <item>@string/violet</item>
     </string-array>
 
+    <string name="defaultPageInfo">3</string>
+    <string-array name="pageInfoTitles">
+        <item>رقم الصفحة</item>
+        <item>اسم السورة</item>
+        <item>رقم الجزء</item>
+        <item>رقم الحزب</item>
+    </string-array>
+    <string-array name="pageInfoValues">
+        <item>@string/defaultPageInfo</item>
+        <item>2</item>
+        <item>1</item>
+        <item>0</item>
+    </string-array>
+
 </resources>
