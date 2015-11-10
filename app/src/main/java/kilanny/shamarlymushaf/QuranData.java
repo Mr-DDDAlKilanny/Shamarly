@@ -195,7 +195,7 @@ public class QuranData {
     }
 
     public Surah findSurahAtPage(int page) {
-        if (page <= 0)
+        if (page <= 1)
             throw new IllegalArgumentException();
         for (int i = 0; i < surahs.length; ++i) {
             if (surahs[i].page == page)

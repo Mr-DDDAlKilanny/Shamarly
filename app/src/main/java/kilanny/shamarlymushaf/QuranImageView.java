@@ -85,8 +85,14 @@ public class QuranImageView extends TouchImageView {
 
     @Override
     public void setImageBitmap(Bitmap bm) {
+        setImageDrawable(null);
         super.setImageBitmap(bm);
         myBitmap = bm;
+    }
+
+    public void showProgress() {
+        setImageBitmap(null);
+        setImageDrawable(res.getDrawable(R.drawable.progress));
     }
 
     @Override
@@ -212,25 +218,27 @@ public class QuranImageView extends TouchImageView {
     }
     
     @Override
-    public void finalize() throws Throwable {
-        if (this.myBitmap != null) {
-            //this.myBitmap.recycle();
-            setImageBitmap(this.myBitmap = null);
-        }
+    protected void finalize() throws Throwable {
         this.mutliSelectList.clear();
         if (this.currentPage != null) {
-            for (Ayah a : this.currentPage.ayahs) {
+            Page page = currentPage;
+            currentPage = null;
+            for (Ayah a : page.ayahs) {
                 a.rects.clear();
                 a.rects = null;
             }
-            this.currentPage.ayahs.clear();
-            this.currentPage.ayahs = null;
-            this.currentPage = null;
+            page.ayahs.clear();
+            page.ayahs = null;
+            page = null;
         }
         this.pref = null;
         this.res = null;
         this.rectPaint = null;
         this.fontPaint = null;
+        if (this.myBitmap != null) {
+            //this.myBitmap.recycle();
+            setImageBitmap(this.myBitmap = null);
+        }
         super.finalize();
         System.out.println("Finalized Image");
     }

@@ -34,10 +34,7 @@ public class QuranImageFragment extends Fragment {
     @Override
     protected void finalize() throws Throwable {
         super.finalize();
-        if (imgDisplay != null && imgDisplay.get() != null) {
-            imgDisplay.get().finalize();
-            imgDisplay = null;
-        }
+        imgDisplay.clear();
         this._activity = null;
         this.listener = null;
         finalized = true;
@@ -54,6 +51,10 @@ public class QuranImageFragment extends Fragment {
         fragPos = getArguments() != null ? getArguments().getInt("pos") : -1;
     }
 
+    public void setBitmap(Bitmap bitmap) {
+        imgDisplay.get().setImageBitmap(bitmap);
+    }
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -65,7 +66,6 @@ public class QuranImageFragment extends Fragment {
         }
         imgDisplay = new WeakReference<>((QuranImageView) viewLayout.findViewById(R.id.quranPage));
         imgDisplay.get().pref = _activity.pref;
-        Bitmap bitmap;
         if (fragPos == -1) {
             Display display = _activity.getWindowManager().getDefaultDisplay();
             Point p = new Point();
@@ -74,18 +74,18 @@ public class QuranImageFragment extends Fragment {
             options.inDither = true;
             options.inPreferredConfig = Bitmap.Config.RGB_565;
             options.inSampleSize = MainActivity.calculateInSampleSize(p.x, p.y);
-            bitmap = BitmapFactory.decodeResource(_activity.getResources(), R.drawable.pls_download,
+            Bitmap bitmap = BitmapFactory.decodeResource(_activity.getResources(), R.drawable.pls_download,
                     options);
+            imgDisplay.get().setImageBitmap(bitmap);
         } else {
             int position = FullScreenImageAdapter.MAX_PAGE - fragPos;
             if (position > 1) {
                 DbManager db = DbManager.getInstance(_activity);
                 imgDisplay.get().currentPage = db.getPage(position);
+                imgDisplay.get().showProgress();
             }
-            bitmap = _activity.readPage(position);
             viewLayout.setTag(position);
         }
-        imgDisplay.get().setImageBitmap(bitmap);
         //container.addView(viewLayout);
         if (listener != null)
             listener.onInstantiate(imgDisplay, viewLayout);

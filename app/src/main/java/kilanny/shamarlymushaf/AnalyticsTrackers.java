@@ -2,6 +2,7 @@ package kilanny.shamarlymushaf;
 
 import android.app.ActivityManager;
 import android.content.Context;
+import android.content.pm.PackageInfo;
 import android.os.Build;
 
 import com.google.android.gms.analytics.GoogleAnalytics;
@@ -64,9 +65,10 @@ public final class AnalyticsTrackers {
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return String.format("Os Version: %s\nSDK: %d\nDevice: %s\nModel: %s\nProduct: %s\n" +
+        return String.format("Version: %s, code: %d\nOs Version: %s\nSDK: %d\nDevice: %s\nModel: %s\nProduct: %s\n" +
                         "recomendHeap: %d\nfreeMemory: %d\nprocessors: %d\nvmHeap: %d\n" +
                         "Total Memory: %d",
+                BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE,
                 System.getProperty("os.version"), // OS version
                 Build.VERSION.SDK_INT,      // API Level
                 Build.DEVICE,           // Device
@@ -77,6 +79,8 @@ public final class AnalyticsTrackers {
     }
 
     public static void sendException(Context context, Throwable throwable) {
+        sendFatalError(context, throwable.getMessage(),
+                Arrays.toString(throwable.getStackTrace()));
         try {
             if (sInstance == null) initialize(context);
             AnalyticsTrackers instance = getInstance();

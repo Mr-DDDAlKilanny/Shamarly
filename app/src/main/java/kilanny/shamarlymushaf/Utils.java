@@ -12,6 +12,10 @@ import android.os.RecoverySystem;
 import android.view.View;
 import android.widget.ListView;
 
+import org.htmlcleaner.CleanerProperties;
+import org.htmlcleaner.HtmlCleaner;
+import org.htmlcleaner.TagNode;
+import org.htmlcleaner.XPatherException;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
@@ -31,6 +35,7 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.SocketException;
 import java.net.URL;
+import java.net.URLConnection;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -252,16 +257,16 @@ public class Utils {
             // instead of the file
             if (connection.getResponseCode() != HttpURLConnection.HTTP_OK)
                 return DOWNLOAD_SERVER_INVALID_RESPONSE;
-            int fileLength = connection.getContentLength();
+            //int fileLength = connection.getContentLength();
             // download the file
             InputStream input = connection.getInputStream();
             conn = false;
             FileOutputStream output = new FileOutputStream(saveTo);
             int count;
-            long total = 0;
+            //long total = 0;
             while ((count = input.read(buffer)) != -1) {
                 output.write(buffer, 0, count);
-                total += count;
+                //total += count;
             }
             input.close();
             output.close();
@@ -345,9 +350,13 @@ public class Utils {
         }
     }
 
+    private static File getNonExistPagesFile(Context context) {
+        return new File(context.getFilesDir(), NON_DOWNLOADED_QUEUE_FILE_PATH);
+    }
+
     public static void getNonExistPages(final Context context, final int maxPage,
                               final RecoverySystem.ProgressListener listener, int numThreads) {
-        File file = new File(context.getFilesDir(), NON_DOWNLOADED_QUEUE_FILE_PATH);
+        File file = getNonExistPagesFile(context);
         if (file.exists()) file.delete();
         final ConcurrentLinkedQueue<Integer> q = new ConcurrentLinkedQueue<>();
         final Shared progress = new Shared();
@@ -378,18 +387,11 @@ public class Utils {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        try {
-            FileOutputStream outputStream = new FileOutputStream(file);
-            ObjectOutputStream stream = new ObjectOutputStream(outputStream);
-            stream.writeObject(q);
-            stream.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        saveNonExistPagesToFile(context, q);
     }
 
     public static ConcurrentLinkedQueue<Integer> getNonExistPagesFromFile(Context context) {
-        File file = new File(context.getFilesDir(), NON_DOWNLOADED_QUEUE_FILE_PATH);
+        File file = getNonExistPagesFile(context);
         if (!file.exists()) return null;
         try {
             FileInputStream inputStream = new FileInputStream(file);
@@ -400,6 +402,18 @@ public class Utils {
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
             return null;
+        }
+    }
+
+    public static void saveNonExistPagesToFile(Context context, ConcurrentLinkedQueue<Integer> q) {
+        File file = getNonExistPagesFile(context);
+        try {
+            FileOutputStream outputStream = new FileOutputStream(file);
+            ObjectOutputStream stream = new ObjectOutputStream(outputStream);
+            stream.writeObject(q);
+            stream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -677,6 +691,37 @@ public class Utils {
                     .append("https://play.google.com/store/apps/details?id=kilanny.shamarlymushaf");
             return all.toString();
         } catch (XPathExpressionException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public static String[] getAppVersionInfo(String playPackage) {
+        HtmlCleaner cleaner = new HtmlCleaner();
+        CleanerProperties props = cleaner.getProperties();
+        props.setAllowHtmlInsideAttributes(true);
+        props.setAllowMultiWordAttributes(true);
+        props.setRecognizeUnicodeChars(true);
+        props.setOmitComments(true);
+        try {
+            URL url = new URL("https://play.google.com/store/apps/details?id=" + playPackage);
+            URLConnection conn = url.openConnection();
+            TagNode node = cleaner.clean(new InputStreamReader(conn.getInputStream()));
+            Object[] new_nodes = node.evaluateXPath("//*[@class='recent-change']");
+            Object[] version_nodes = node.evaluateXPath("//*[@itemprop='softwareVersion']");
+
+            String version = "", whatsNew = "";
+            for (Object new_node : new_nodes) {
+                TagNode info_node = (TagNode) new_node;
+                whatsNew += info_node.getAllChildren().get(0).toString().trim()
+                        + "\n";
+            }
+            if (version_nodes.length > 0) {
+                TagNode ver = (TagNode) version_nodes[0];
+                version = ver.getAllChildren().get(0).toString().trim();
+            }
+            return new String[]{version, whatsNew};
+        } catch (IOException | XPatherException e) {
             e.printStackTrace();
             return null;
         }

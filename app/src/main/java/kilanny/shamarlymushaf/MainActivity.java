@@ -62,6 +62,7 @@ import java.io.RandomAccessFile;
 import java.io.Serializable;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Locale;
@@ -81,6 +82,22 @@ import kilanny.shamarlymushaf.util.SystemUiHider;
  * @see SystemUiHider
  */
 public class MainActivity extends FragmentActivity {
+    private static abstract class BitmapPool {
+        static final Bitmap[] POOL = new Bitmap[3];
+        static final int[] idx = new int[3];
+
+        static void reset() {
+            Arrays.fill(idx, -1);
+        }
+
+        static int exists(int page) {
+            for (int i = 0; i < idx.length; ++i)
+                if (idx[i] == page)
+                    return i;
+            return -1;
+        }
+    }
+
     /**
      * Whether or not the system UI should be auto-hidden after
      * {@link #AUTO_HIDE_DELAY_MILLIS} milliseconds.
@@ -135,8 +152,6 @@ public class MainActivity extends FragmentActivity {
     private int totalDeviceRamMg;
     private int recommendedRamMg;
     private ConcurrentLinkedQueue<Integer> notDownloaded;
-    private static final Bitmap[] PageBitmapPool = new Bitmap[3];
-    private int currentBitmap = 0;
 
     //google analytics fields
     private HashSet<Integer> pagesViewed;
@@ -147,17 +162,26 @@ public class MainActivity extends FragmentActivity {
     protected void onStop() {
         super.onStop();
         stopPlayback();
-        if (pagesViewed != null) {
-            AnalyticsTrackers.sendPageReadStats(this, pagesViewed,
-                    new Date().getTime() - startDate.getTime());
-            if (listenRecite != null)
-                AnalyticsTrackers.sendListenReciteStats(this, listenRecite);
-            if (viewTafseer != null)
-                AnalyticsTrackers.sendTafseerStats(this, viewTafseer);
+        if (pagesViewed != null && pagesViewed.size() > 1) {
+            final long diff = new Date().getTime() - startDate.getTime();
+            if (diff >= 60 * 1000) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Context context = getApplicationContext();
+                        AnalyticsTrackers.sendPageReadStats(context, pagesViewed, diff);
+                        if (listenRecite != null)
+                            AnalyticsTrackers.sendListenReciteStats(context, listenRecite);
+                        if (viewTafseer != null)
+                            AnalyticsTrackers.sendTafseerStats(context, viewTafseer);
+                    }
+                }).start();
+            }
             listenRecite = null;
             pagesViewed = null;
             startDate = null;
         }
+        finish(); // prevent re-use the activity after stopping it (causes exceptions)
     }
 
     private void stopPlayback() {
@@ -389,6 +413,78 @@ public class MainActivity extends FragmentActivity {
         viewPager = (ViewPager) contentView;
         viewPager.addOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
             private WeakReference<QuranImageView> last;
+            private AsyncTask current;
+
+            private void config(final int page) {
+                current = new AsyncTask<Void, Integer, Void>() {
+
+                    int arr[] = { page, page + 1, page - 1 };
+                    final int idx[] = {1, 2, 0};
+                    OutOfMemoryError outOfMemoryError;
+                    Exception exception;
+
+                    @Override
+                    protected Void doInBackground(Void... params) {
+                        for (int i = 0; i < arr.length; ++i) {
+                            if (isCancelled()) return null;
+                            if (arr[i] < 1 || arr[i] > FullScreenImageAdapter.MAX_PAGE)
+                                continue;
+                            try {
+                                readPage(arr[i], idx[i]);
+                                publishProgress(arr[i], idx[i]);
+                            } catch (OutOfMemoryError err) {
+                                outOfMemoryError = err;
+                                publishProgress(arr[i], idx[i]);
+                                err.printStackTrace();
+                                AnalyticsTrackers.sendException(MainActivity.this, err);
+                                return null;
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                                exception = ex;
+                                publishProgress(arr[i], idx[i]);
+                                AnalyticsTrackers.sendException(MainActivity.this, ex);
+                                return null;
+                            }
+                        }
+                        return null;
+                    }
+
+                    @Override
+                    protected void onPreExecute() {
+                        //super.onPreExecute();
+                        for (int item : arr) {
+                            View v = viewPager.findViewWithTag(item);
+                            if (v != null) {
+                                ((QuranImageView) v.findViewById(R.id.quranPage)).showProgress();
+                            } else System.out.println("v is null");
+                        }
+                    }
+
+                    @Override
+                    protected void onProgressUpdate(Integer... values) {
+                        //super.onProgressUpdate(values);
+                        if (isFinishing()) return;
+                        if (outOfMemoryError != null) {
+                            Toast.makeText(MainActivity.this, "خطأ: الذاكرة ممتلئة. أعد تشغيل التطبيق",
+                                    Toast.LENGTH_LONG).show();
+                            finish();
+                            return;
+                        }
+                        if (exception != null) {
+                            Toast.makeText(MainActivity.this, "حدث خطأ أثناء فتح الصفحة\n" + exception.getMessage(),
+                                    Toast.LENGTH_LONG).show();
+                            finish();
+                            return;
+                        }
+                        View v = viewPager.findViewWithTag(values[0]);
+                        if (v != null) {
+                            QuranImageView image = (QuranImageView) v.findViewById(R.id.quranPage);
+                            image.setImageBitmap(BitmapPool.POOL[values[1]]);
+                            image.invalidate();
+                        } else System.out.println("v is null");
+                    }
+                }.execute();
+            }
 
             @Override
             public void onPageSelected(int position) {
@@ -396,6 +492,9 @@ public class MainActivity extends FragmentActivity {
                     stopPlayback();
                 else autoSwipPage = false;
                 setting.page = adapter.getCount() - position;
+                if (current != null && !current.isCancelled())
+                    current.cancel(false);
+                config(setting.page);
                 if (pagesViewed == null) {
                     pagesViewed = new HashSet<>();
                     startDate = new Date();
@@ -767,7 +866,7 @@ public class MainActivity extends FragmentActivity {
             @Override
             public void onClick(View v) {
                 if (adapter.getCount() < FullScreenImageAdapter.MAX_PAGE ||
-                        viewPager.getCurrentItem() == FullScreenImageAdapter.MAX_PAGE) {
+                        setting.page == 0) {
                     Toast.makeText(MainActivity.this, "يستخدم هذا الزر لإضافة الصفحة الحالية للمفضلة",
                             Toast.LENGTH_LONG).show();
                     return;
@@ -880,12 +979,14 @@ public class MainActivity extends FragmentActivity {
                                         @Override
                                         protected void onProgressUpdate(Integer... values) {
                                             //super.onProgressUpdate(values);
-                                            show.setProgress(values[0]);
+                                            if (show.isShowing() && !isFinishing())
+                                                show.setProgress(values[0]);
                                         }
 
                                         @Override
                                         protected void onPostExecute(Integer integer) {
-                                            //super.onPostExecute(integer);
+                                            if (!show.isShowing() || isFinishing())
+                                                return;
                                             show.dismiss();
                                             if (integer == Utils.DOWNLOAD_FILE_NOT_FOUND ||
                                                     integer == Utils.DOWNLOAD_IO_EXCEPTION)
@@ -1179,6 +1280,7 @@ public class MainActivity extends FragmentActivity {
             AnalyticsTrackers.sendFatalError(this, "MainActivity.onCreate",
                     "serializable == null");
         }
+        BitmapPool.reset();
         calcTotalDeviceRam();
         try {
             ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
@@ -1305,54 +1407,56 @@ public class MainActivity extends FragmentActivity {
         return inSampleSize;
     }
 
-    public Bitmap readPage(int idx) {
-        try {
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inDither = true;
-            Bitmap.Config config;
-            if (recommendedRamMg < 64)
-                config = Bitmap.Config.RGB_565;
-            else
-                config = Bitmap.Config.ARGB_8888;
-            Display display = getWindowManager().getDefaultDisplay();
-            Point p = new Point();
-            display.getSize(p);
-            options.inSampleSize = calculateInSampleSize(p.x, p.y);
-            options.inPreferredConfig = config;
-            Bitmap bitmap = BitmapFactory.decodeFile(Utils.getPageFile(this, idx).getAbsolutePath(), options);
-            bitmap.setHasAlpha(true);
-            if (PageBitmapPool[currentBitmap] == null
-                    || PageBitmapPool[currentBitmap].isRecycled())
-                PageBitmapPool[currentBitmap] = idx > 3 ?
-                        Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), config) : bitmap;
-            if (idx > 3) {
-                Bitmap tmp = PageBitmapPool[currentBitmap];
-                boolean night = pref.getBoolean("nightMode", false);
-                Paint invertPaint = night ? new Paint() : null;
-                if (night) invertPaint.setColorFilter(filter);
-                tmp.eraseColor(!night ? Color.WHITE : Color.BLACK);  // set its background to white, or whatever color you want
-                Canvas canvas = new Canvas(tmp);
-                canvas.drawBitmap(bitmap, 0, 0, invertPaint);
-                bitmap.recycle();
-                bitmap = tmp;
-            }
-            currentBitmap = (currentBitmap + 1) % PageBitmapPool.length;
-            return bitmap;
-        } catch (OutOfMemoryError err) {
-            Toast.makeText(this, "خطأ: الذاكرة ممتلئة. أعد تشغيل التطبيق",
-                    Toast.LENGTH_LONG).show();
-            err.printStackTrace();
-            AnalyticsTrackers.sendException(this, err);
-            System.exit(-1);
-            return null;
-        } catch (Exception ex) { //maybe deleted files during app run
-            Toast.makeText(this, "حدث خطأ أثناء فتح الصفحة\n" + ex.getMessage(),
-                    Toast.LENGTH_LONG).show();
-            ex.printStackTrace();
-            AnalyticsTrackers.sendException(this, ex);
-            finish();
-            return null;
+    private Bitmap readPage(int page, int pos) {
+        int current = BitmapPool.exists(page);
+        if (current >= 0) {
+            int swap = BitmapPool.idx[pos];
+            BitmapPool.idx[pos] = page;
+            BitmapPool.idx[current] = swap;
+            Bitmap swp = BitmapPool.POOL[pos];
+            BitmapPool.POOL[pos] = BitmapPool.POOL[current];
+            BitmapPool.POOL[current] = swp;
+            return BitmapPool.POOL[pos];
         }
+        current = pos;
+        BitmapPool.idx[current] = page;
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inDither = true;
+        Bitmap.Config config;
+        if (recommendedRamMg < 64)
+            config = Bitmap.Config.RGB_565;
+        else
+            config = Bitmap.Config.ARGB_8888;
+        Display display = getWindowManager().getDefaultDisplay();
+        Point p = new Point();
+        display.getSize(p);
+        options.inSampleSize = calculateInSampleSize(p.x, p.y);
+        options.inPreferredConfig = config;
+        options.inMutable = true;
+        Bitmap bitmap = BitmapFactory.decodeFile(Utils.getPageFile(this, page)
+                .getAbsolutePath(), options);
+        bitmap.setHasAlpha(true);
+        if (BitmapPool.POOL[current] == null
+                || BitmapPool.POOL[current].isRecycled()
+                || page <= 3) {
+            if (BitmapPool.POOL[current] != null && !BitmapPool.POOL[current].isRecycled())
+                BitmapPool.POOL[current].recycle();
+            BitmapPool.POOL[current] = page > 3 ?
+                    Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), config)
+                    : bitmap;
+        }
+        if (page > 3) {
+            Bitmap tmp = BitmapPool.POOL[current];
+            boolean night = pref.getBoolean("nightMode", false);
+            Paint invertPaint = night ? new Paint() : null;
+            if (night) invertPaint.setColorFilter(filter);
+            tmp.eraseColor(!night ? Color.WHITE : Color.BLACK);  // set its background to white, or whatever color you want
+            Canvas canvas = new Canvas(tmp);
+            canvas.drawBitmap(bitmap, 0, 0, invertPaint);
+            bitmap.recycle();
+            bitmap = tmp;
+        }
+        return bitmap;
     }
 
     private void downloadAll() {
@@ -1402,6 +1506,7 @@ public class MainActivity extends FragmentActivity {
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
+                Utils.saveNonExistPagesToFile(getApplicationContext(), notDownloaded);
                 int err = error.getFirstError();
                 if (err == Utils.DOWNLOAD_MALFORMED_URL
                         || err == Utils.DOWNLOAD_SERVER_INVALID_RESPONSE)
@@ -1417,23 +1522,26 @@ public class MainActivity extends FragmentActivity {
 
             @Override
             protected void onProgressUpdate(final Integer... values) {
-                show.setProgress(values[0]);
+                if (!isFinishing() && show.isShowing())
+                    show.setProgress(values[0]);
             }
 
             @Override
             protected void onCancelled() {
                 //super.onCancelled();
-                show.dismiss();
+                if (!isFinishing() && show.isShowing()) show.dismiss();
             }
 
             @Override
             protected void onPostExecute(String[] strings) {
                 //super.onPostExecute(strings);
-                show.dismiss();
-                Utils.showAlert(MainActivity.this, strings[0], strings[1], null);
-                if (strings[1] != null && strings[1].contains("نجاح")) {
-                    initViewPagerAdapter();
-                    AnalyticsTrackers.sendDownloadPages(MainActivity.this);
+                if (!isFinishing() && show.isShowing()) {
+                    show.dismiss();
+                    Utils.showAlert(MainActivity.this, strings[0], strings[1], null);
+                    if (strings[1] != null && strings[1].contains("نجاح")) {
+                        initViewPagerAdapter();
+                        AnalyticsTrackers.sendDownloadPages(MainActivity.this);
+                    }
                 }
             }
         }.execute();

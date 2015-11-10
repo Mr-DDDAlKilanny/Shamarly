@@ -3,6 +3,8 @@ package kilanny.shamarlymushaf;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.InputType;
@@ -12,6 +14,39 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 
 public class WelcomeActivity extends AppCompatActivity {
+
+    private void checkForUpdates() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+        boolean isConnected = activeNetwork != null &&
+                activeNetwork.isConnectedOrConnecting();
+        if (isConnected) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    final String[] info = Utils.getAppVersionInfo("kilanny.shamarlymushaf");
+                    if (info != null
+                            && info[0] != null && !info[0].isEmpty()
+                            && !info[0].equals(BuildConfig.VERSION_NAME)) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Utils.showAlert(WelcomeActivity.this, "إصدار أحدث " + info[0],
+                                        "قم بتحديث التطبيق من المتجر الآن"
+                                        + "\nمالجديد:\n" + info[1], null);
+                            }
+                        });
+                    }
+                }
+            }).start();
+        }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        checkForUpdates();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
