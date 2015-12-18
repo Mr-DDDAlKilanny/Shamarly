@@ -123,8 +123,7 @@ public class ReciterListActivity extends ActionBarActivity
         super.onStop();
         if (downloadAll != null && !downloadAll.isCancelled())
             downloadAll.cancel(true);
-        if (fragment != null && fragment.isDownloadActive())
-            fragment.cancelActiveOperations();
+        fragment.cancelActiveOperations();
     }
 
     @Override
@@ -156,7 +155,7 @@ public class ReciterListActivity extends ActionBarActivity
         }
         if (item.getItemId() == R.id.chooseDownloadDir)
             chooseDir(false);
-        else if (fragment != null) {
+        else {
             final String myReciter = fragment.mItem;
             switch (item.getItemId()) {
                 case R.id.downloadAll:
@@ -248,8 +247,7 @@ public class ReciterListActivity extends ActionBarActivity
             Bundle arguments = new Bundle();
             arguments.putString(ReciterDetailFragment.ARG_ITEM_ID, id);
             itemChanged = true;
-            if (fragment != null && fragment.isDownloadActive())
-                fragment.cancelActiveOperations();
+            fragment.cancelActiveOperations();
             fragment = new ReciterDetailFragment();
             fragment.setArguments(arguments);
             getSupportFragmentManager().beginTransaction()

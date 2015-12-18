@@ -5,4 +5,6 @@
     <string name="title_reciter_list">تحميل التلاوات</string>
     <string name="title_reciter_detail">تحميل تلاوات قارئ</string>
     <string name="downloadPageUrl">http://archive.org/download/shamraly/%03d.png</string>
+    <string name="downloadPageUrl2">https://raw.githubusercontent.com/Mr-DDDAlKilanny/Shamarly/14576964b864a1b5f74e92497e89074b3aea8486/app/src/main/assets/pages/%03d.png</string>
+    <string name="title_activity_goto">GotoActivity</string>
 </resources>

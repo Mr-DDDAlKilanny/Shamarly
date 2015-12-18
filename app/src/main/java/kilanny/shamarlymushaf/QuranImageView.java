@@ -32,8 +32,6 @@ public class QuranImageView extends TouchImageView {
 
     public static final int SELECTION_ALL = -1;
     public static final int SELECTION_NONE = -2;
-    public static final int IMAGE_WIDTH = 886;
-    public static final int IMAGE_HEIGHT = 1377;
 
     private int[] colors;
     private final float[] matrixVals = new float[9];
@@ -85,21 +83,15 @@ public class QuranImageView extends TouchImageView {
 
     @Override
     public void setImageBitmap(Bitmap bm) {
-        setImageDrawable(null);
         super.setImageBitmap(bm);
         myBitmap = bm;
     }
 
-    public void showProgress() {
-        setImageBitmap(null);
-        setImageDrawable(res.getDrawable(R.drawable.progress));
-    }
-
     @Override
-    public void draw(Canvas canvas) {
-        if (myBitmap != null && myBitmap.isRecycled()) {
+    public synchronized void draw(Canvas canvas) {
+        if (rectPaint == null || myBitmap != null && myBitmap.isRecycled()) {
             AnalyticsTrackers.sendFatalError(getContext(), "QuranImageView.draw",
-                    "myBitmap.isRecycled() == true");
+                    "Attempted to draw finalized Image");
             return;
         }
         super.draw(canvas);
@@ -136,8 +128,8 @@ public class QuranImageView extends TouchImageView {
         matrix.getValues(matrixVals);
         float x = Math.abs(matrixVals[Matrix.MTRANS_X]);
         float y = Math.abs(matrixVals[Matrix.MTRANS_Y]);
-        float w = getImageWidth() / (float) IMAGE_WIDTH;
-        float h = getImageHeight() / (float) IMAGE_HEIGHT;
+        float w = getImageWidth() / (float) QuranData.NORMAL_PAGE_WIDTH;
+        float h = getImageHeight() / (float) QuranData.NORMAL_PAGE_HEIGHT;
         return new RectF(r.left * w - x, r.top * h - y, r.right * w - x, r.bottom * h - y);
     }
 
@@ -177,12 +169,13 @@ public class QuranImageView extends TouchImageView {
                 //TODO: check intersecting rects
                 totalHeight += mxy - mny + 100;
             }
-            Bitmap draw = Bitmap.createBitmap(IMAGE_WIDTH, (int) Math.ceil(totalHeight), myBitmap.getConfig());
+            Bitmap draw = Bitmap.createBitmap(QuranData.NORMAL_PAGE_WIDTH, (int) Math.ceil(totalHeight),
+                    myBitmap.getConfig());
             Canvas canvas = new Canvas(draw);
             String text = "سورة " + quranData.surahs[mutliSelectList.get(0).sura - 1].name;
             Rect bounds = new Rect();
             fontPaint.getTextBounds(text, 0, text.length(), bounds);
-            canvas.drawText(text, IMAGE_WIDTH / 2 - bounds.height() / 2, 45, fontPaint);
+            canvas.drawText(text, QuranData.NORMAL_PAGE_WIDTH / 2 - bounds.height() / 2, 45, fontPaint);
             int y = 100;
             for (Ayah a : mutliSelectList) {
                 for (int i = 0; i < a.rects.size(); ++i) {
@@ -200,7 +193,7 @@ public class QuranImageView extends TouchImageView {
             options.inPreferredConfig = myBitmap.getConfig();
             Bitmap tmp = BitmapFactory.decodeResource(res, R.drawable.googleplay, options);
             canvas.drawBitmap(tmp, null,
-                    new Rect(2, (int) totalHeight - 90, IMAGE_WIDTH - 2, (int) totalHeight - 5),
+                    new Rect(2, (int) totalHeight - 90, QuranData.NORMAL_PAGE_WIDTH - 2, (int) totalHeight - 5),
                     null);
             tmp.recycle();
             FileOutputStream outputStream;

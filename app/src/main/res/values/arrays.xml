@@ -165,4 +165,43 @@
         <item>0</item>
     </string-array>
 
+    <string name="defaultBoldSize">0</string>
+    <string-array name="boldSizeTitles">
+        <item>عادي</item>
+        <item>أوضح</item>
+        <item>غامق خفيف</item>
+        <item>غامق</item>
+        <item>غامق ثقيل</item>
+    </string-array>
+    <string-array name="boldSizeValues">
+        <item>-1</item>
+        <item>@string/defaultBoldSize</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+
+    <string name="defaultDisplayPageMode">0</string>
+    <string-array name="displayPageModeTitles">
+        <item>خلفية صفراء</item>
+        <item>خلفية بيضاء</item>
+        <item>الوضع الليلي</item>
+    </string-array>
+    <string-array name="displayPageModeValues">
+        <item>@string/defaultDisplayPageMode</item>
+        <item>1</item>
+        <item>2</item>
+    </string-array>
+
+    <string name="defaultPageRotationMode">0</string>
+    <string-array name="pageRotationModeValues">
+        <item>@string/defaultPageRotationMode</item>
+        <item>1</item>
+        <item>2</item>
+    </string-array>
+    <string-array name="pageRotationModeTitles">
+        <item>وضع حر - حسب وضعية الجهاز</item>
+        <item>وضع طولي دائما</item>
+        <item>وضع أفقي دائما</item>
+    </string-array>
 </resources>

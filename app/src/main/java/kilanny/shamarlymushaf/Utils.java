@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Environment;
@@ -332,8 +333,26 @@ public class Utils {
 
     public static int downloadPage(Context context, int idx, String pageUrl, byte[] buffer) {
         File file = getPageFile(context, idx);
-        return pageExists(context, idx) ? DOWNLOAD_OK :
-                downloadFile(buffer, pageUrl, file);
+        if (pageExists(context, idx)) return DOWNLOAD_OK;
+        int res = downloadFile(buffer, pageUrl, file);
+        if (res != DOWNLOAD_OK) return res;
+        // make sure bitmap is ok
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inDither = true;
+        options.inSampleSize = 64;
+        options.inPreferredConfig = Bitmap.Config.RGB_565;
+        Bitmap bitmap = null;
+        try {
+            bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), options);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        if (bitmap == null) {
+            file.delete();
+            return DOWNLOAD_SERVER_INVALID_RESPONSE;
+        }
+        bitmap.recycle();
+        return res;
     }
 
     public static boolean pageExists(Context context, int page) {
@@ -400,6 +419,7 @@ public class Utils {
             objectInputStream.close();
             return q;
         } catch (IOException | ClassNotFoundException e) {
+            file.delete();
             e.printStackTrace();
             return null;
         }

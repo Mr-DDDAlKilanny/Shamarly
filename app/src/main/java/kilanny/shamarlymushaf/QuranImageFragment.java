@@ -9,6 +9,7 @@ import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 
 import java.lang.ref.WeakReference;
 
@@ -51,8 +52,18 @@ public class QuranImageFragment extends Fragment {
         fragPos = getArguments() != null ? getArguments().getInt("pos") : -1;
     }
 
-    public void setBitmap(Bitmap bitmap) {
-        imgDisplay.get().setImageBitmap(bitmap);
+    public static void showProgress(View view, Bitmap bitmap, Page page) {
+        QuranImageView imgDisplay = (QuranImageView) view.findViewById(R.id.quranPage);
+        LinearLayout linlaHeaderProgress = (LinearLayout) view.findViewById(R.id.linlaHeaderProgress);
+        imgDisplay.setVisibility(bitmap == null ? View.GONE : View.VISIBLE);
+        linlaHeaderProgress.setVisibility(bitmap != null ? View.GONE : View.VISIBLE);
+        if (bitmap != null) {
+            imgDisplay.currentPage = page;
+            imgDisplay.setImageBitmap(bitmap);
+            imgDisplay.invalidate();
+        } else {
+            imgDisplay.setImageDrawable(view.getResources().getDrawable(R.drawable.background_tab));
+        }
     }
 
     @Override
@@ -80,9 +91,7 @@ public class QuranImageFragment extends Fragment {
         } else {
             int position = FullScreenImageAdapter.MAX_PAGE - fragPos;
             if (position > 1) {
-                DbManager db = DbManager.getInstance(_activity);
-                imgDisplay.get().currentPage = db.getPage(position);
-                imgDisplay.get().showProgress();
+                showProgress(viewLayout, null, null);
             }
             viewLayout.setTag(position);
         }

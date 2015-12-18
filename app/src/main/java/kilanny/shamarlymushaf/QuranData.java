@@ -12,6 +12,8 @@ import java.io.IOException;
  * Created by Yasser on 10/26/2015.
  */
 public class QuranData {
+    public static final int NORMAL_PAGE_WIDTH = 886;
+    public static final int NORMAL_PAGE_HEIGHT = 1377;
     public static final int[] AYAH_COUNT = {
             7,
             286,

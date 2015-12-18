@@ -12,6 +12,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -19,8 +20,13 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Point;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.RectF;
+import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -56,6 +62,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
@@ -88,6 +95,7 @@ public class MainActivity extends FragmentActivity {
 
         static void reset() {
             Arrays.fill(idx, -1);
+            Arrays.fill(POOL, null); // user may change page border display then open activity again
         }
 
         static int exists(int page) {
@@ -135,7 +143,26 @@ public class MainActivity extends FragmentActivity {
                 0.0f, 0.0f, 0.0f, 1.0f, 0.0f
         }));
 
+    private static final ColorMatrixColorFilter grayScaleFilter = new ColorMatrixColorFilter(
+            new ColorMatrix(new float[] {
+                    0.2989f, 0.5870f, 0.1140f, 0, 0,
+                    0.2989f, 0.5870f, 0.1140f, 0, 0,
+                    0.2989f, 0.5870f, 0.1140f, 0, 0,
+                    0, 0, 0, 1, 0
+            }));
+    private static final int threshold = 128;
+    private static final ColorMatrixColorFilter thresholdFilter = new ColorMatrixColorFilter(
+            new ColorMatrix(new float[] {
+                    85.f, 85.f, 85.f, 0.f, -255.f * threshold,
+                    85.f, 85.f, 85.f, 0.f, -255.f * threshold,
+                    85.f, 85.f, 85.f, 0.f, -255.f * threshold,
+                    0f, 0f, 0f, 1f, 0f
+            }));
+    private final static int dilationBuffer[][]
+            = new int[QuranData.NORMAL_PAGE_HEIGHT][QuranData.NORMAL_PAGE_WIDTH];
+
     public static final String SHOW_PAGE_MESSAGE = "kilanny.shamarlymushaf.MainActivity.showPage";
+    public static final String SHOW_AYAH_MESSAGE = "kilanny.shamarlymushaf.MainActivity.showPage#withAyah";
     private FullScreenImageAdapter adapter;
     private ViewPager viewPager;
     private Setting setting;
@@ -152,6 +179,9 @@ public class MainActivity extends FragmentActivity {
     private int totalDeviceRamMg;
     private int recommendedRamMg;
     private ConcurrentLinkedQueue<Integer> notDownloaded;
+    private String initialHighlightAyah; // used for hilighting search result
+    private int rotationMode;
+    private int currentAyahTafseerIdx; //current Ayah displayed in Tafseerdlg navigation
 
     //google analytics fields
     private HashSet<Integer> pagesViewed;
@@ -181,6 +211,7 @@ public class MainActivity extends FragmentActivity {
             pagesViewed = null;
             startDate = null;
         }
+        BitmapPool.reset();
         finish(); // prevent re-use the activity after stopping it (causes exceptions)
     }
 
@@ -254,17 +285,34 @@ public class MainActivity extends FragmentActivity {
                 // when activity starts in landscape, so call here
                 configOrientation(image.get());
                 initCurrentPageInfo(image.get(), parent);
+                if (initialHighlightAyah != null && image.get().currentPage != null
+                        && image.get().currentPage.ayahs != null) {
+                    String strs[] = initialHighlightAyah.split(",");
+                    int ss = Integer.parseInt(strs[0]),
+                            aa = Integer.parseInt(strs[1]);
+                    for (int i = 0; i < image.get().currentPage.ayahs.size(); ++i) {
+                        Ayah a = image.get().currentPage.ayahs.get(i);
+                        if (a.sura == ss && a.ayah == aa) {
+                            image.get().selectedAyahIndex = i;
+                            image.get().invalidate();
+                            initialHighlightAyah = null;
+                            break;
+                        }
+                    }
+                }
             }
         });
         viewPager.setAdapter(adapter);
-        // displaying selected image first
-        Intent i = getIntent();
-        int page = i.getIntExtra(SHOW_PAGE_MESSAGE, -1);
-        page = page == -1 ? setting.page : page;
         if (adapter.getCount() < FullScreenImageAdapter.MAX_PAGE)
             viewPager.setCurrentItem(0);
-        else
+        else {
+            // displaying selected image first
+            Intent i = getIntent();
+            int page = i.getIntExtra(SHOW_PAGE_MESSAGE, -1);
+            initialHighlightAyah = i.getStringExtra(SHOW_AYAH_MESSAGE);
+            page = page == -1 ? setting.page : page;
             showPage(page);
+        }
     }
 
     private QuranImageView getCurrentPage() {
@@ -277,6 +325,7 @@ public class MainActivity extends FragmentActivity {
 
     private void initCurrentPageInfo(QuranImageView image, View parent) {
         if (adapter.getCount() < FullScreenImageAdapter.MAX_PAGE ||
+                pref.getBoolean("showPageBorders", false) ||
                 !pref.getBoolean("showPageInfo", true)) {
             parent.findViewById(R.id.pageInfoLayout).setVisibility(View.GONE);
         } else if (image.currentPage != null && image.currentPage.ayahs.size() > 0) {
@@ -341,6 +390,16 @@ public class MainActivity extends FragmentActivity {
     }
 
     private void configOrientation(int orientation, QuranImageView image) {
+        if (rotationMode != 0) {
+            //force orientation is enabled
+            if (rotationMode == 1) {
+                image.setScaleType(ImageView.ScaleType.FIT_XY);
+            } else {
+                image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                image.setScrollPosition(0, 0);
+            }
+            return;
+        }
         switch (orientation) {
             case Configuration.ORIENTATION_LANDSCAPE:
                 image.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -361,6 +420,21 @@ public class MainActivity extends FragmentActivity {
         configOrientation(newConfig.orientation);
         if (shareImageView != null)
             configOrientation(newConfig.orientation, shareImageView);
+    }
+
+    private Page getPage(int idx) {
+        DbManager db = DbManager.getInstance(this);
+        Page page = db.getPage(idx);
+        if (page.ayahs != null && pref.getBoolean("showPageBorders", false)) {
+            //161, 141, 881, 1373
+            for (Ayah a : page.ayahs) {
+                for (RectF rect : a.rects) {
+                    rect.set(rect.left + 161, rect.top + 141,
+                            rect.right + 161, rect.bottom + 141);
+                }
+            }
+        }
+        return page;
     }
 
     private void initViewPager() {
@@ -416,7 +490,7 @@ public class MainActivity extends FragmentActivity {
             private AsyncTask current;
 
             private void config(final int page) {
-                current = new AsyncTask<Void, Integer, Void>() {
+                current = new AsyncTask<Void, Object, Void>() {
 
                     int arr[] = { page, page + 1, page - 1 };
                     final int idx[] = {1, 2, 0};
@@ -430,8 +504,9 @@ public class MainActivity extends FragmentActivity {
                             if (arr[i] < 1 || arr[i] > FullScreenImageAdapter.MAX_PAGE)
                                 continue;
                             try {
+                                Page page = getPage(arr[i]);
                                 readPage(arr[i], idx[i]);
-                                publishProgress(arr[i], idx[i]);
+                                publishProgress(arr[i], idx[i], page);
                             } catch (OutOfMemoryError err) {
                                 outOfMemoryError = err;
                                 publishProgress(arr[i], idx[i]);
@@ -455,13 +530,13 @@ public class MainActivity extends FragmentActivity {
                         for (int item : arr) {
                             View v = viewPager.findViewWithTag(item);
                             if (v != null) {
-                                ((QuranImageView) v.findViewById(R.id.quranPage)).showProgress();
+                                QuranImageFragment.showProgress(v, null, null);
                             } else System.out.println("v is null");
                         }
                     }
 
                     @Override
-                    protected void onProgressUpdate(Integer... values) {
+                    protected void onProgressUpdate(Object... values) {
                         //super.onProgressUpdate(values);
                         if (isFinishing()) return;
                         if (outOfMemoryError != null) {
@@ -478,9 +553,8 @@ public class MainActivity extends FragmentActivity {
                         }
                         View v = viewPager.findViewWithTag(values[0]);
                         if (v != null) {
-                            QuranImageView image = (QuranImageView) v.findViewById(R.id.quranPage);
-                            image.setImageBitmap(BitmapPool.POOL[values[1]]);
-                            image.invalidate();
+                            QuranImageFragment.showProgress(v, BitmapPool.POOL[(int) values[1]],
+                                    (Page) values[2]);
                         } else System.out.println("v is null");
                     }
                 }.execute();
@@ -513,18 +587,20 @@ public class MainActivity extends FragmentActivity {
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
-                // find hizb-juz
-                for (int i = 1; i < quranData.hizbs.length; ++i) {
-                    int val = (int) quranData.hizbs[i].value;
-                    if (val == setting.page) {
-                        String txt;
-                        if (i % 2 == 1)
-                            txt = quranData.juzs[1 + i / 2].name;
-                        else
-                            txt = quranData.hizbs[i].name;
-                        Toast.makeText(MainActivity.this, txt, Toast.LENGTH_SHORT).show();
-                        break;
-                    } else if (val > setting.page) break;
+                if (pref.getBoolean("showHizbToast", true)) {
+                    // find hizb-juz
+                    for (int i = 1; i < quranData.hizbs.length; ++i) {
+                        int val = (int) quranData.hizbs[i].value;
+                        if (val == setting.page) {
+                            String txt;
+                            if (i % 2 == 1)
+                                txt = quranData.juzs[1 + i / 2].name;
+                            else
+                                txt = quranData.hizbs[i].name;
+                            Toast.makeText(MainActivity.this, txt, Toast.LENGTH_SHORT).show();
+                            break;
+                        } else if (val > setting.page) break;
+                    }
                 }
             }
         });
@@ -577,6 +653,14 @@ public class MainActivity extends FragmentActivity {
                 showPage(itemValue.page);
             }
         });
+        //some users have bookmarked first page, remove it
+        int min = quranData.surahs[0].page,
+                max = quranData.surahs[quranData.surahs.length - 1].page;
+        for (int i = setting.bookmarks.size() - 1; i >= 0; --i) {
+            int num = Integer.parseInt(setting.bookmarks.get(i).name);
+            if (num < min || num > max)
+                setting.bookmarks.remove(i);
+        }
         final ListView l4 = (ListView) dialog.findViewById(R.id.listViewBookmarks);
         String[] book = new String[setting.bookmarks.size()];
         for (int i = 0; i < setting.bookmarks.size(); ++i) {
@@ -899,19 +983,18 @@ public class MainActivity extends FragmentActivity {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                QuranImageView image = getCurrentPage();
+                final QuranImageView image = getCurrentPage();
                 if (image == null || image.currentPage == null) {
                     Toast.makeText(MainActivity.this, "يستخدم هذا الزر لعرض تفسير آية",
                             Toast.LENGTH_LONG).show();
                     return;
                 }
-                int sel = image.selectedAyahIndex; // prevent errors caused by other threads modifying this field
+                final int sel = image.selectedAyahIndex; // prevent errors caused by other threads modifying this field
                 if (sel < 0) {
                     Toast.makeText(MainActivity.this, "حدد آية لتفسيرها، بالضغط عليها مطولا",
                             Toast.LENGTH_LONG).show();
                     return;
                 }
-                final Ayah a = image.currentPage.ayahs.get(sel);
                 AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
                 builder.setTitle("اختر التفسير");
                 String tmp[] = null;
@@ -944,12 +1027,8 @@ public class MainActivity extends FragmentActivity {
                         new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                if (viewTafseer == null)
-                                    viewTafseer = new HashSet<>();
                                 if (which == 0) {
-                                    viewTafseer.add("ميسر بلا تحميل:" + a.sura + "," + a.ayah);
-                                    displayTafseer(MainActivity.this.db.getTafseer(a.sura, a.ayah),
-                                            "التفسير الميسر");
+                                    displayTafseer(-1, db, sel, image.currentPage.ayahs, "التفسير الميسر");
                                 } else if (items.length == 2) {
                                     final ProgressDialog show = new ProgressDialog(MainActivity.this);
                                     show.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
@@ -1006,10 +1085,9 @@ public class MainActivity extends FragmentActivity {
                                         }
                                     });
                                 } else if (which - 1 < tafseers.length) {
-                                    viewTafseer.add(tafseers[which - 1].name + ": " +
-                                            a.sura + "," + a.ayah);
-                                    displayTafseer(db.getTafseer((int) tafseers[which - 1].value,
-                                            a.sura, a.ayah), tafseers[which - 1].name);
+                                    displayTafseer((int) tafseers[which - 1].value, db,
+                                            sel, image.currentPage.ayahs,
+                                            tafseers[which - 1].name);
                                 } else
                                     Utils.showConfirm(MainActivity.this, "حذف التفاسير",
                                             "حذف التفسير المحملة وتحرير 140 ميغا والإبقاء فقط على التفسير الميسر؟", new DialogInterface.OnClickListener() {
@@ -1049,16 +1127,54 @@ public class MainActivity extends FragmentActivity {
         });
     }
 
-    private void displayTafseer(String tafseer, String name) {
+    private void displayAyahTafseerHelper(TafseerDbManager db2, int id, String name,
+                                  ArrayList<Ayah> all, int idx,
+                                          TextView tafseerTxt, TextView tafseerTitle) {
+        Ayah a = all.get(currentAyahTafseerIdx = idx);
+        String txt;
+        if (viewTafseer == null)
+            viewTafseer = new HashSet<>();
+        if (db2 == null) {
+            txt = db.getTafseer(a.sura, a.ayah);
+            viewTafseer.add("ميسر" + a.sura + "," + a.ayah);
+        } else {
+            viewTafseer.add(name + ": " + a.sura + "," + a.ayah);
+            txt = db2.getTafseer(id, a.sura, a.ayah);
+        }
+        tafseerTxt.setText(txt);
+        tafseerTitle.setText("سورة " + quranData.surahs[a.sura - 1].name + ": " + a.ayah);
+    }
+
+    private void displayTafseer(final int tafseer, final TafseerDbManager db2,
+                                int currnet, final ArrayList<Ayah> all, final String name) {
         final Dialog dialog = new Dialog(this);
         dialog.setContentView(R.layout.fragment_view_tafseer);
-        TextView textView = (TextView) dialog.findViewById(R.id.tafseerText);
+        final TextView textView = (TextView) dialog.findViewById(R.id.tafseerText);
+        final TextView titleTextView = (TextView) dialog.findViewById(R.id.txtTafseerDlgTitle);
         textView.setTypeface(pref.getBoolean("fontBold", false) ?
                 tradionalArabicFont : tradionalArabicBoldFont);
         textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP,
                 Float.parseFloat(pref.getString("fontSize", "20")));
-        textView.setText(tafseer);
-        dialog.setTitle("عرض تفسير آية - " + name);
+        displayAyahTafseerHelper(db2, tafseer, name, all, currnet, textView, titleTextView);
+        dialog.findViewById(R.id.btnTafseerNext).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (currentAyahTafseerIdx + 1 < all.size()) {
+                    displayAyahTafseerHelper(db2, tafseer, name, all, currentAyahTafseerIdx + 1,
+                            textView, titleTextView);
+                }
+            }
+        });
+        dialog.findViewById(R.id.btnTafseerPrev).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (currentAyahTafseerIdx - 1 >= 0) {
+                    displayAyahTafseerHelper(db2, tafseer, name, all, currentAyahTafseerIdx - 1,
+                            textView, titleTextView);
+                }
+            }
+        });
+        dialog.setTitle("عرض تفسير: " + name);
         dialog.show();
     }
 
@@ -1140,7 +1256,8 @@ public class MainActivity extends FragmentActivity {
             return;
         }
         QuranImageView image = getCurrentPage();
-        if (image == null || image.currentPage == null || image.currentPage.ayahs.size() == 0) {
+        if (image == null || image.currentPage == null || image.currentPage.ayahs == null
+                || image.currentPage.ayahs.size() == 0) {
             Toast.makeText(this, "يستخدم هذا الزر لمشاركة مجموعة من الآيات", Toast.LENGTH_LONG).show();
             return;
         }
@@ -1279,6 +1396,8 @@ public class MainActivity extends FragmentActivity {
             Toast.makeText(this, "فشل بدء التطبيق. أغلق التطبيق ثم افتحه ثانية", Toast.LENGTH_LONG).show();
             AnalyticsTrackers.sendFatalError(this, "MainActivity.onCreate",
                     "serializable == null");
+            finish();
+            return;
         }
         BitmapPool.reset();
         calcTotalDeviceRam();
@@ -1298,6 +1417,12 @@ public class MainActivity extends FragmentActivity {
         tradionalArabicBoldFont = Typeface.createFromAsset(getAssets(), "DroidNaskh-Bold.ttf");
         try {
             pref = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+            rotationMode = Integer.parseInt(pref.getString("pageRotationMode",
+                    getString(R.string.defaultPageRotationMode)));
+            if (rotationMode == 1)
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            else if (rotationMode == 2)
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
             setting = Setting.getInstance(this);
             initViewPager();
             initButtons();
@@ -1386,15 +1511,12 @@ public class MainActivity extends FragmentActivity {
     }
 
     public static int calculateInSampleSize(int reqWidth, int reqHeight) {
-        // Raw height and width of image
-        final int height = 1377;
-        final int width = 886;
         int inSampleSize = 1;
 
-        if (height > reqHeight || width > reqWidth) {
+        if (QuranData.NORMAL_PAGE_HEIGHT > reqHeight || QuranData.NORMAL_PAGE_WIDTH > reqWidth) {
 
-            final int halfHeight = height / 2;
-            final int halfWidth = width / 2;
+            final int halfHeight = QuranData.NORMAL_PAGE_HEIGHT / 2;
+            final int halfWidth = QuranData.NORMAL_PAGE_WIDTH / 2;
 
             // Calculate the largest inSampleSize value that is a power of 2 and keeps both
             // height and width larger than the requested height and width.
@@ -1407,7 +1529,55 @@ public class MainActivity extends FragmentActivity {
         return inSampleSize;
     }
 
-    private Bitmap readPage(int page, int pos) {
+    private static void manhattan(int[][] image) {
+        // traverse from top left to bottom right
+        for (int i = 0; i < image.length; i++) {
+            for (int j = 0; j < image[i].length; j++) {
+                if (image[i][j] == 1) {
+                    // first pass and pixel was on, it gets a zero
+                    image[i][j] = 0;
+                } else {
+                    // pixel was off
+                    // It is at most the sum of the lengths of the array
+                    // away from a pixel that is on
+                    image[i][j] = image.length + image[i].length;
+                    // or one more than the pixel to the north
+                    if (i > 0) {
+                        image[i][j] = Math.min(image[i][j], image[i - 1][j] + 1);
+                    }
+                    // or one more than the pixel to the west
+                    if (j > 0) {
+                        image[i][j] = Math.min(image[i][j], image[i][j - 1] + 1);
+                    }
+                }
+            }
+        }
+        // traverse from bottom right to top left
+        for (int i = image.length - 1; i >= 0; i--) {
+            for (int j = image[i].length - 1; j >= 0; j--) {
+                // either what we had on the first pass
+                // or one more than the pixel to the south
+                if (i + 1 < image.length) {
+                    image[i][j] = Math.min(image[i][j], image[i + 1][j] + 1);
+                }
+                // or one more than the pixel to the east
+                if (j + 1 < image[i].length) {
+                    image[i][j] = Math.min(image[i][j], image[i][j + 1] + 1);
+                }
+            }
+        }
+    }
+
+    private static void dilate(int[][] image, int k) {
+        manhattan(image);
+        for (int i = 0; i < image.length; i++) {
+            for (int j = 0; j < image[i].length; j++) {
+                image[i][j] = image[i][j] <= k ? 1 : 0;
+            }
+        }
+    }
+
+    private synchronized Bitmap readPage(int page, int pos) {
         int current = BitmapPool.exists(page);
         if (current >= 0) {
             int swap = BitmapPool.idx[pos];
@@ -1418,43 +1588,143 @@ public class MainActivity extends FragmentActivity {
             BitmapPool.POOL[current] = swp;
             return BitmapPool.POOL[pos];
         }
-        current = pos;
-        BitmapPool.idx[current] = page;
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inDither = true;
         Bitmap.Config config;
-        if (recommendedRamMg < 64)
+        //if (recommendedRamMg < 64)
             config = Bitmap.Config.RGB_565;
-        else
-            config = Bitmap.Config.ARGB_8888;
+        //else
+        //    config = Bitmap.Config.ARGB_8888;
         Display display = getWindowManager().getDefaultDisplay();
         Point p = new Point();
         display.getSize(p);
         options.inSampleSize = calculateInSampleSize(p.x, p.y);
         options.inPreferredConfig = config;
         options.inMutable = true;
-        Bitmap bitmap = BitmapFactory.decodeFile(Utils.getPageFile(this, page)
-                .getAbsolutePath(), options);
+        File file = Utils.getPageFile(this, page);
+        Bitmap bitmap;
+        try {
+            bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), options);
+        } catch (OutOfMemoryError e) {
+            throw e;
+        }
+//        if (bitmap == null) {
+//            //if not outOfMemory
+//            if (Runtime.getRuntime().maxMemory() - Runtime.getRuntime().totalMemory() >
+//                    5 * 1024 * 1024)
+//                file.delete();
+//            return null;
+//        }
         bitmap.setHasAlpha(true);
+        current = pos;
+        BitmapPool.idx[current] = page;
         if (BitmapPool.POOL[current] == null
                 || BitmapPool.POOL[current].isRecycled()
                 || page <= 3) {
-            if (BitmapPool.POOL[current] != null && !BitmapPool.POOL[current].isRecycled())
-                BitmapPool.POOL[current].recycle();
+            //causes crashes, since the bitmap is used in imageview
+            //if (BitmapPool.POOL[current] != null && !BitmapPool.POOL[current].isRecycled())
+            //    BitmapPool.POOL[current].recycle();
             BitmapPool.POOL[current] = page > 3 ?
                     Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), config)
                     : bitmap;
         }
         if (page > 3) {
-            Bitmap tmp = BitmapPool.POOL[current];
-            boolean night = pref.getBoolean("nightMode", false);
-            Paint invertPaint = night ? new Paint() : null;
-            if (night) invertPaint.setColorFilter(filter);
-            tmp.eraseColor(!night ? Color.WHITE : Color.BLACK);  // set its background to white, or whatever color you want
-            Canvas canvas = new Canvas(tmp);
-            canvas.drawBitmap(bitmap, 0, 0, invertPaint);
-            bitmap.recycle();
+            final Bitmap tmp = BitmapPool.POOL[current];
+            final int displayMode = Integer.parseInt(pref.getString("displayPageMode",
+                    getString(R.string.defaultDisplayPageMode)));
+            final boolean night =  displayMode == 2;
+            int boldSize = Integer.parseInt(pref.getString("boldSize",
+                    getString(R.string.defaultBoldSize)));
+            Canvas c;
+            int yellowColor = Color.rgb(255, 255, 225);
+            if (boldSize < 0) {
+                Paint invertPaint = night ? new Paint() : null;
+                if (night) invertPaint.setColorFilter(filter);
+                int color;
+                if (displayMode == 0)
+                    color = yellowColor;
+                else if (displayMode == 2)
+                    color = Color.BLACK;
+                else color = Color.WHITE;
+                tmp.eraseColor(color);  // set its background to white, or whatever color you want
+                c = new Canvas(tmp);
+                c.drawBitmap(bitmap, 0, 0, invertPaint);
+            } else {
+                tmp.eraseColor(Color.WHITE);
+                c = new Canvas(tmp);
+                Paint bitmapPaint = new Paint();
+                //first convert bitmap to grey scale:
+                bitmapPaint.setColorFilter(grayScaleFilter);
+                c.drawBitmap(bitmap, 0, 0, bitmapPaint);
+                //then convert the resulting bitmap to black and white using threshold matrix
+                bitmapPaint.setColorFilter(thresholdFilter);
+                c.drawBitmap(tmp, 0, 0, bitmapPaint);
+                System.out.printf("%d, %d\n", tmp.getWidth(), tmp.getHeight());
+                for (int i = 0; i < tmp.getHeight(); ++i) {
+                    tmp.getPixels(dilationBuffer[i], 0, tmp.getWidth(), 0, i, tmp.getWidth(), 1);
+                    for (int j = 0; j < dilationBuffer[i].length; ++j) {
+                        if (dilationBuffer[i][j] == -1)
+                            dilationBuffer[i][j] = 0;
+                        else
+                            dilationBuffer[i][j] = 1;
+                    }
+                }
+                if (boldSize > 0)
+                    dilate(dilationBuffer, boldSize);
+                //-1 == 0xFFFFFF (WHITE)
+                int background = !night ? displayMode == 0 ? yellowColor : -1 : 0;
+                int font = !night ? 0 : -1;
+                for (int i = 0; i < tmp.getHeight(); ++i) {
+                    for (int j = 0; j < dilationBuffer[i].length; ++j)
+                        if (dilationBuffer[i][j] == 1)
+                            dilationBuffer[i][j] = font;
+                        else
+                            dilationBuffer[i][j] = background;
+                    tmp.setPixels(dilationBuffer[i], 0, tmp.getWidth(), 0, i, tmp.getWidth(), 1);
+                }
+            }
+            if (pref.getBoolean("showPageLeftRightIndicator", true)) {
+                boolean isLeftPage = (page - 1) % 2 == 1;
+                Paint paint = new Paint();
+                paint.setAntiAlias(true);
+                paint.setXfermode(new PorterDuffXfermode(night ? PorterDuff.Mode.LIGHTEN
+                        : PorterDuff.Mode.DARKEN));
+                paint.setStyle(Paint.Style.FILL_AND_STROKE);
+                final int offset = 75;
+                if (!isLeftPage) {
+                    int first = night ? Color.BLACK : Color.WHITE,
+                            second = Color.GRAY;
+                    paint.setShader(new LinearGradient(offset, 0, 0, 0,
+                            first, second, Shader.TileMode.MIRROR));
+                    c.drawRect(tmp.getWidth() - offset, 0, tmp.getWidth(), tmp.getHeight(), paint);
+                } else {
+                    int first = Color.GRAY,
+                            second = night ? Color.BLACK : Color.WHITE;
+                    paint.setShader(new LinearGradient(0, 0, offset, 0,
+                            first, second, Shader.TileMode.MIRROR));
+                    c.drawRect(0, 0, offset, tmp.getHeight(), paint);
+                }
+            }
+            if (!bitmap.isRecycled()) bitmap.recycle();
             bitmap = tmp;
+            if (pref.getBoolean("showPageBorders", false)) {
+                try {
+                    InputStream stream = getAssets().open("page_template.png");
+                    Bitmap pageBackground = BitmapFactory.decodeStream(stream, null, options);
+                    stream.close();
+                    c = new Canvas(pageBackground);
+                    RectF rect = new RectF();
+                    rect.set(161, 141,
+                            161 + bitmap.getWidth(),// + 881,
+                            141 + bitmap.getHeight()// + 1373
+                            );
+                    c.drawBitmap(bitmap, null, rect, null);
+                    if (!bitmap.isRecycled()) bitmap.recycle();
+                    BitmapPool.POOL[current] = bitmap = pageBackground;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
         return bitmap;
     }
@@ -1468,6 +1738,10 @@ public class MainActivity extends FragmentActivity {
         show.setMax(MAX_PAGE);
         show.setProgress(0);
         show.show();
+        final String downloadUrls[] = {
+                getString(R.string.downloadPageUrl),
+                getString(R.string.downloadPageUrl2)
+        };
         final AsyncTask<Void, Integer, String[]> execute = new AsyncTask<Void, Integer, String[]>() {
             @Override
             protected String[] doInBackground(Void... params) {
@@ -1485,16 +1759,20 @@ public class MainActivity extends FragmentActivity {
                             while (!isCancelled() && error.isAllOk()) {
                                 Integer per = notDownloaded.poll();
                                 if (per == null) break;
-                                String path = String.format(Locale.ENGLISH,
-                                        getString(R.string.downloadPageUrl), per);
-                                int result = Utils.downloadPage(MainActivity.this, per, path, buf);
-                                error.status[myIdx].setData(result);
-                                if (result != Utils.DOWNLOAD_OK)
-                                    notDownloaded.add(per);
-                                else {
-                                    progress.increment();
-                                    publishProgress(progress.getData());
+                                boolean yes = false;
+                                for (String url : downloadUrls) {
+                                    String path = String.format(Locale.ENGLISH, url, per);
+                                    int result = Utils.downloadPage(MainActivity.this,
+                                            per, path, buf);
+                                    error.status[myIdx].setData(result);
+                                    if (result == Utils.DOWNLOAD_OK) {
+                                        progress.increment();
+                                        publishProgress(progress.getData());
+                                        yes = true;
+                                        break;
+                                    }
                                 }
+                                if (!yes) notDownloaded.add(per);
                             }
                         }
                     });
@@ -1510,7 +1788,7 @@ public class MainActivity extends FragmentActivity {
                 int err = error.getFirstError();
                 if (err == Utils.DOWNLOAD_MALFORMED_URL
                         || err == Utils.DOWNLOAD_SERVER_INVALID_RESPONSE)
-                    return new String[]{"خطأ", "فشلت عملية التحميل. تأكد من اتصالك بالانترنت"};
+                    return new String[]{"خطأ", "لا يمكن الاتصال بخادم التحميل. تأكد من اتصالك بالإنترنت أو حاول لاحقا"};
                 else if (err == Utils.DOWNLOAD_IO_EXCEPTION
                         || err == Utils.DOWNLOAD_FILE_NOT_FOUND)
                     return new String[]{"خطأ", "لا يمكن كتابة الملف. تأكد من وجود مساحة كافية"};

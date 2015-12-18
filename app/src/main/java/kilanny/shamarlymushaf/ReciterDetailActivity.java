@@ -72,6 +72,9 @@ public class ReciterDetailActivity extends ActionBarActivity {
                 setTitle(name);
                 getSupportActionBar().setTitle(name);
             }
+        } else {
+            fragment = (ReciterDetailFragment) getSupportFragmentManager()
+                    .findFragmentById(R.id.reciter_detail_container);
         }
     }
 
@@ -80,8 +83,7 @@ public class ReciterDetailActivity extends ActionBarActivity {
         super.onStop();
         if (downloadAll != null && !downloadAll.isCancelled())
             downloadAll.cancel(true);
-        if (fragment != null && fragment.isDownloadActive())
-            fragment.cancelActiveOperations();
+        fragment.cancelActiveOperations();
     }
 
     @Override

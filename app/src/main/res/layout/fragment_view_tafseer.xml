@@ -3,7 +3,15 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     style="@android:style/Theme.DeviceDefault.Light">
+    <TextView
+        android:gravity="center"
+        android:background="#999999"
+        android:id="@+id/txtTafseerDlgTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
     <ScrollView
+        android:layout_below="@id/txtTafseerDlgTitle"
+        android:id="@+id/tafseerScrollView"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:scrollbars="vertical"
@@ -15,4 +23,22 @@
             android:layout_width="fill_parent"
             android:layout_height="wrap_content" />
     </ScrollView>
+    <LinearLayout
+        android:layout_below="@id/tafseerScrollView"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <Button
+            android:text="&lt;"
+            android:id="@+id/btnTafseerNext"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+        <Button
+            android:text="&gt;"
+            android:layout_marginLeft="10dp"
+            android:id="@+id/btnTafseerPrev"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
 </RelativeLayout>

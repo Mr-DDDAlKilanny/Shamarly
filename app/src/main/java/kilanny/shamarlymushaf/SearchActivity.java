@@ -24,6 +24,8 @@ public class SearchActivity extends Activity {
                 SearchResult result = (SearchResult) results.getItemAtPosition(position);
                 Intent intent = new Intent(SearchActivity.this, MainActivity.class);
                 intent.putExtra(MainActivity.SHOW_PAGE_MESSAGE, result.page);
+                intent.putExtra(MainActivity.SHOW_AYAH_MESSAGE,
+                        String.format("%d,%d", result.surah, result.ayah));
                 startActivity(intent);
             }
         });

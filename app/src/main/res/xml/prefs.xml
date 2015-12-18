@@ -30,15 +30,54 @@
             />
         </PreferenceCategory>
     <PreferenceCategory android:title="العرض" android:summary="إعدادات العرض">
+        <ListPreference
+            android:key="boldSize"
+            android:title="مدى غمق الرسم"
+            android:summary="تحديد مدى غمق رسم المصحف"
+            android:entries="@array/boldSizeTitles"
+            android:entryValues="@array/boldSizeValues"
+            android:defaultValue="@string/defaultBoldSize"
+            />
+        <ListPreference
+            android:key="displayPageMode"
+            android:title="خلفية الصفحة"
+            android:summary="تحديد طريقة عرض خلفية المصحف"
+            android:entries="@array/displayPageModeTitles"
+            android:entryValues="@array/displayPageModeValues"
+            android:defaultValue="@string/defaultDisplayPageMode"
+            />
+        <ListPreference
+            android:key="pageRotationMode"
+            android:title="اتجاه عرض الصفحة"
+            android:summary="استخدام الوضع الأفقي أو الطولي للعرض"
+            android:entries="@array/pageRotationModeTitles"
+            android:entryValues="@array/pageRotationModeValues"
+            android:defaultValue="@string/defaultPageRotationMode"
+            />
         <CheckBoxPreference
-            android:key="nightMode"
-            android:title="الوضع الليلي"
-            android:summary="تفعيل الوضع الليلي للقراءة"
-            android:defaultValue="false" />
+            android:key="showPageLeftRightIndicator"
+            android:title="توضيح اتجاه الصفحة"
+            android:summary="عرض ما يميز الصفحة اليمنى عن اليسرى"
+            android:defaultValue="true"
+            />
+        <CheckBoxPreference
+            android:key="showHizbToast"
+            android:title="عرض تنبيه الأحزاب والأجزاء"
+            android:summary="عرض تنبيه سريع عند الوصول لصفحة بها حزب أو جزء"
+            android:defaultValue="true"
+            />
+        <CheckBoxPreference
+            android:key="showPageBorders"
+            android:title="عرض إطار للصفحة"
+            android:summary="عرض إطار للصفحة به رقم الصفحة واسم الجزء/السورة"
+            android:defaultValue="false"
+            android:disableDependentsState="true"
+            />
         <CheckBoxPreference
             android:key="showPageInfo"
             android:title="عرض معلومات الصفحة"
             android:summary="عرض رقم الصفحة واسم السورة ورقم الجزء والحزب في أعلى الصفحة"
+            android:dependency="showPageBorders"
             android:defaultValue="true" />
         <CheckBoxPreference
             android:key="manuallyScrollPageInfo"
