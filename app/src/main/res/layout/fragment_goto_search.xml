@@ -7,6 +7,11 @@
         android:id="@+id/searchTextView"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"></SearchView>
+    <TextView
+        android:id="@+id/textViewNumResults"
+        android:text="اضغط العدسة أعلاه ثم أدخل نص البحث"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
     <ListView
         android:layout_below="@id/searchTextView"
         android:id="@+id/listViewResults"

@@ -26,8 +26,7 @@
             android:layout_width="fill_parent"
             android:layout_height="fill_parent"
             android:gravity="center"
-            android:orientation="vertical"
-            android:visibility="gone" >
+            android:orientation="vertical">
 
             <ProgressBar
                 android:id="@+id/pbHeaderProgress"
@@ -36,12 +35,28 @@
                 android:layout_height="wrap_content" >
             </ProgressBar>
         </LinearLayout>
-        <kilanny.shamarlymushaf.QuranImageView
-            android:id="@+id/quranPage"
+        <RelativeLayout
+            android:gravity="center"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:focusableInTouchMode="false"
-            android:scaleType="fitXY" />
+            android:layout_height="match_parent">
+            <ImageView
+                android:id="@+id/quranPageBorder"
+                android:layout_alignParentBottom="true"
+                android:layout_alignParentLeft="true"
+                android:layout_alignParentRight="true"
+                android:layout_alignParentTop="true"
+                android:scaleType="fitXY"
+                android:visibility="gone"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+            <kilanny.shamarlymushaf.QuranImageView
+                android:id="@+id/quranPage"
+                android:visibility="gone"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:focusableInTouchMode="false"
+                android:scaleType="fitXY" />
+        </RelativeLayout>
     </LinearLayout>
 
 </LinearLayout>

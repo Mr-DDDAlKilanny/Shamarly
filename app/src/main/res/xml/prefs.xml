@@ -29,7 +29,7 @@
             android:defaultValue="true"
             />
         </PreferenceCategory>
-    <PreferenceCategory android:title="العرض" android:summary="إعدادات العرض">
+    <PreferenceCategory android:title="المصحف" android:summary="إعدادات شاشة المصحف">
         <ListPreference
             android:key="boldSize"
             android:title="مدى غمق الرسم"
@@ -53,6 +53,12 @@
             android:entries="@array/pageRotationModeTitles"
             android:entryValues="@array/pageRotationModeValues"
             android:defaultValue="@string/defaultPageRotationMode"
+            />
+        <CheckBoxPreference
+            android:key="displayDualPages"
+            android:title="عرض صفحتين معا"
+            android:summary="عرض صفحتين من المصحف معا في الوضع الأفقي"
+            android:defaultValue="false"
             />
         <CheckBoxPreference
             android:key="showPageLeftRightIndicator"
@@ -110,6 +116,12 @@
             android:title="خط غامق"
             android:summary="استخدام خط غامق"
             android:defaultValue="false" />
+        <CheckBoxPreference
+            android:key="showTafseerNavigation"
+            android:title="عرض أزرار الانتقال السريع"
+            android:summary="عرض أزرار تصفح الآيات السابقة واللاحقة في شاشة التفسير"
+            android:defaultValue="true"
+            />
     </PreferenceCategory>
 
     <!-- This preference simply launches an intent when selected. Use this UI sparingly, per

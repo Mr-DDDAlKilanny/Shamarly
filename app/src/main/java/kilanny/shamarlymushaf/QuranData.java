@@ -14,6 +14,8 @@ import java.io.IOException;
 public class QuranData {
     public static final int NORMAL_PAGE_WIDTH = 886;
     public static final int NORMAL_PAGE_HEIGHT = 1377;
+    public static final int BORDERED_PAGE_WIDTH = 1190;
+    public static final int BORDERED_PAGE_HEIGHT = 1684;
     public static final int[] AYAH_COUNT = {
             7,
             286,
@@ -137,6 +139,9 @@ public class QuranData {
     public final ListItem[] hizbs = new ListItem[61];
     public final ListItem[] surahs2 = new ListItem[115];
     public final Surah[] surahs = new Surah[114];
+    public final String[] reciterNames;
+    public final String[] reciterValues;
+    public final String[] reciterValues_alt;
 
     public static QuranData getInstance(Context context) {
         if (instance == null)
@@ -146,6 +151,9 @@ public class QuranData {
 
     private QuranData(Context context) {
         XmlResourceParser parser = context.getResources().getXml(R.xml.qurandata);
+        reciterNames = context.getResources().getStringArray(R.array.reciter_names);
+        reciterValues = context.getResources().getStringArray(R.array.reciter_values);
+        reciterValues_alt = context.getResources().getStringArray(R.array.reciter_values_alt);
         try {
             int eventType = parser.getEventType();
             while (eventType != XmlPullParser.END_DOCUMENT){
@@ -207,6 +215,22 @@ public class QuranData {
         }
         if (page > surahs[surahs.length - 1].page)
             return surahs[surahs.length - 1];
+        return null;
+    }
+
+    public ListItem findJuzAtPage(int page) {
+        if (page <= 1)
+            throw new IllegalArgumentException();
+        for (int i = 1; i < juzs.length; ++i) {
+            int val = (int) juzs[i].value;
+            if (page == val) {
+                return juzs[i];
+            } else if (page < val) {
+                return juzs[i - 1];
+            }
+        }
+        if ((int) juzs[juzs.length - 1].value < page)
+            return juzs[juzs.length - 1];
         return null;
     }
 }

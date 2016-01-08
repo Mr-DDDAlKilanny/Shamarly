@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <TextView
+        android:text="الذهاب بواسطة رقم الصفحة"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+    <EditText android:gravity="right"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:inputType="number"
+        android:ems="10"
+        android:layout_marginTop="20dp"
+        android:id="@+id/editTextPageNum"
+        android:hint="رقم الصفحة..."/>
+    <Button
+        android:layout_width="fill_parent"
+        android:layout_marginTop="30dp"
+        android:layout_height="wrap_content"
+        android:text="ذهاب"
+        android:id="@+id/buttonGotoPage" />
+    <TextView
+        android:text="الذهاب بواسطة رقم السورة والآية"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+    <LinearLayout
+        android:layout_marginTop="30dp"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content">
+        <EditText android:gravity="right"
+            android:layout_width="0dip"
+            android:layout_weight="0.50"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:ems="10"
+            android:id="@+id/editTextAyahNum"
+            android:hint="رقم الآية..."/>
+        <EditText android:gravity="right"
+            android:layout_width="0dip"
+            android:layout_weight="0.50"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:ems="10"
+            android:id="@+id/editTextSuraNum"
+            android:hint="رقم السورة..."/>
+    </LinearLayout>
+    <Button
+        android:layout_width="fill_parent"
+        android:layout_marginTop="30dp"
+        android:layout_height="wrap_content"
+        android:text="ذهاب"
+        android:id="@+id/buttonGotoSuraAyahNumber" />
+</LinearLayout>

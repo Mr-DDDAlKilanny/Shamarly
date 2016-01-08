@@ -22,10 +22,10 @@
             <Button android:id="@+id/bookmarkBtn" style="?metaButtonBarButtonStyle"
                 android:layout_width="0dp" android:layout_height="wrap_content"
                 android:layout_weight="1" android:background="@drawable/abc_btn_rating_star_off_mtrl_alpha" />
-            <Button android:id="@+id/gotoBtn" style="?metaButtonBarButtonStyle"
+            <Button android:id="@+id/listenBackground" style="?metaButtonBarButtonStyle"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:background="@android:drawable/ic_menu_directions"/>
+                android:background="@android:drawable/ic_lock_idle_low_battery"/>
             <Button android:id="@+id/listen" style="?metaButtonBarStyle"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content"

@@ -7,6 +7,8 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Environment;
 import android.os.RecoverySystem;
@@ -32,6 +34,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.SocketException;
@@ -40,6 +43,7 @@ import java.net.URLConnection;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.zip.ZipEntry;
@@ -63,7 +67,11 @@ public class Utils {
             DOWNLOAD_MALFORMED_URL = -2,
             DOWNLOAD_FILE_NOT_FOUND = -3,
             DOWNLOAD_IO_EXCEPTION = -4,
-            DOWNLOAD_USER_CANCEL = -5;
+            DOWNLOAD_USER_CANCEL = -5,
+            DOWNLOAD_QUOTA_EXCEEDED = -6;
+    public static final byte CONNECTION_STATUS_CONNECTED = 1,
+            CONNECTION_STATUS_NOT_CONNECTED = 2,
+            CONNECTION_STATUS_UNKNOWN_STATUS = 3;
     public static final String NON_DOWNLOADED_QUEUE_FILE_PATH = "nonDownloaded";
 
     public static class DownloadStatusArray {
@@ -133,6 +141,7 @@ public class Utils {
 
     public static File getSurahDir(Context context, String reciter, int surah) {
         Setting s = Setting.getInstance(context);
+        if (s.saveSoundsDirectory == null) return null;
         File dir = new File(s.saveSoundsDirectory, "recites/" + reciter
                 + "/" + surah);
         return dir;
@@ -141,6 +150,7 @@ public class Utils {
     public static File getAyahFile(Context context, String reciter, int surah, int ayah,
                                    boolean createDirIfNotExists) {
         File dir = getSurahDir(context, reciter, surah);
+        if (dir == null) return null;
         if (createDirIfNotExists && !dir.exists())
             dir.mkdirs();
         return new File(dir, "" + ayah);
@@ -153,30 +163,42 @@ public class Utils {
         return new File(surahDir, ayah + "");
     }
 
-    public static String getAyahUrl(String reciter, int surah, int ayah) {
-        return String.format(Locale.ENGLISH,
-                "http://www.everyayah.com/data/%s/%03d%03d.mp3",
-                reciter, surah, ayah);
+    public static int indexOf(String[] array, String value) {
+        for (int i = 0; i < array.length; ++i)
+            if (array[i].equals(value))
+                return i;
+        return -1;
     }
 
-    public static String getAyahPath(Context context, String reciter, int surah, int ayah) {
+    public static String getAyahUrl(String reciter, int surah, int ayah, QuranData data, int numAttempt) {
+        if (numAttempt == 1) {
+            if (!reciter.startsWith("null"))
+                return String.format(Locale.ENGLISH, "http://www.everyayah.com/data/%s/%03d%03d.mp3",
+                        reciter, surah, ayah);
+        }
+        int idx = indexOf(data.reciterValues, reciter); //should never be == -1
+        String alt = data.reciterValues_alt[idx];
+        if (alt.startsWith("null"))
+            return null;
+        return String.format(Locale.ENGLISH, alt.replace("%%", "%"), surah, ayah);
+    }
+
+    public static String getAyahPath(Context context, String reciter, int surah, int ayah, QuranData data, int numAttempt) {
         File f = getAyahFile(context, reciter, surah, ayah, false);
-        if (f.exists())
+        if (f != null && f.exists())
             return f.getAbsolutePath();
-        return getAyahUrl(reciter, surah, ayah);
+        return getAyahUrl(reciter, surah, ayah, data, numAttempt);
     }
 
-    public static int downloadTafaseerDb(Context context,
-                                         RecoverySystem.ProgressListener progressListener,
-                                         CancelOperationListener cancel) {
-        File dbFile = getTafaseerDbFile(context);
+    private static int downloadTafaseerDbHelper(RecoverySystem.ProgressListener progressListener,
+                                                CancelOperationListener cancel,
+                                                File dbFile, String downloadUrl,
+                                                byte[] buffer) {
         boolean error = true;
-        if (dbFile.exists()) return DOWNLOAD_OK;
-        byte[] buffer = new byte[4096];
         URL url;
         boolean conn = true;
         try {
-            url = new URL("http://archive.org/download/shamraly/tafaseer.zip");
+            url = new URL(downloadUrl);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestProperty("connection", "close");
             connection.connect();
@@ -226,6 +248,41 @@ public class Utils {
             if ((error || cancel != null && !cancel.canContinue()) && dbFile.exists())
                 dbFile.delete();
         }
+    }
+
+    public static byte isConnected(Context context) {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+            return activeNetwork != null && activeNetwork.isConnectedOrConnecting() ?
+                    CONNECTION_STATUS_CONNECTED : CONNECTION_STATUS_NOT_CONNECTED;
+        } catch (Exception ignored) {
+            return CONNECTION_STATUS_UNKNOWN_STATUS;
+        }
+    }
+
+    public static int downloadTafaseerDb(Context context,
+                                         RecoverySystem.ProgressListener progressListener,
+                                         CancelOperationListener cancel) {
+        File dbFile = getTafaseerDbFile(context);
+        if (dbFile.exists()) return DOWNLOAD_OK;
+        long space = 0;
+        try {
+            space = getDatabaseDir(context).getUsableSpace();
+        } catch (SecurityException ignored) {
+        }
+        if (space > 0 && space < 140 * 1024 * 1024)
+            return DOWNLOAD_IO_EXCEPTION;
+        int urls[] = {R.string.donwloadTafaseerDbUrl, R.string.donwloadTafaseerDbUrl2};
+        int res = -1;
+        byte[] buffer = new byte[4096];
+        for (int id : urls) {
+            res = downloadTafaseerDbHelper(progressListener, cancel, dbFile,
+                    context.getResources().getString(id), buffer);
+            if (res == DOWNLOAD_OK || res == DOWNLOAD_USER_CANCEL)
+                break;
+        }
+        return res;
     }
 
     public static void extractZippedFile(InputStream zip, File output) throws IOException {
@@ -290,15 +347,29 @@ public class Utils {
         }
     }
 
-    public static int downloadAyah(String reciter, int surah, int ayah,
-                                   byte[] buffer, File surahDir) {
-        return downloadFile(buffer, getAyahUrl(reciter, surah, ayah),
-                getAyahFile(ayah, surahDir));
+    public static int downloadAyah(Context context, String reciter, int surah, int ayah,
+                                   byte[] buffer, File surahDir, QuranData data) {
+        DownloadQuota q = DownloadQuota.getInstance(context);
+        if (!q.canDownloadNow()) return DOWNLOAD_QUOTA_EXCEEDED;
+        int res = -1;
+        File file = getAyahFile(ayah, surahDir);
+        try {
+            res = downloadFile(buffer, getAyahUrl(reciter, surah, ayah, data, 1), file);
+            if (res == DOWNLOAD_OK) return res;
+            String next = getAyahUrl(reciter, surah, ayah, data, 2);
+            if (next == null) return res;
+            return res = downloadFile(buffer, next, file);
+        } finally {
+            if (res == DOWNLOAD_OK) {
+                q.incrementBytes(file.length());
+                q.save(context);
+            }
+        }
     }
 
     private static File[] listAyahs(Context context, String reciter, int surah) {
         File file = getSurahDir(context, reciter, surah);
-        if (!file.exists())
+        if (file == null || !file.exists())
             return null;
         return file.listFiles(new FilenameFilter() {
             @Override
@@ -339,7 +410,7 @@ public class Utils {
         // make sure bitmap is ok
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inDither = true;
-        options.inSampleSize = 64;
+        options.inSampleSize = 32;
         options.inPreferredConfig = Bitmap.Config.RGB_565;
         Bitmap bitmap = null;
         try {
@@ -442,10 +513,13 @@ public class Utils {
                                         final RecoverySystem.ProgressListener progressListener,
                                         final DownloadTaskCompleteListener listener,
                                         final CancelOperationListener cancel,
-                                        final boolean[] buffer2) {
+                                        final boolean[] buffer2,
+                                        final QuranData data) {
         final ConcurrentLinkedQueue<Integer> q =
                 Utils.getNotDownloaded(context, reciter, surah, buffer2);
         final File surahDir = getSurahDir(context, reciter, surah);
+        if (surahDir == null)
+            throw new IllegalStateException("User has not selected download dir");
         if (!surahDir.exists())
             surahDir.mkdirs();
         Thread[] threads = new Thread[4];
@@ -465,7 +539,8 @@ public class Utils {
                             cancel.canContinue() && error.isAllOk()) {
                         Integer per = q.poll();
                         if (per == null) break;
-                        int code = downloadAyah(reciter, surah, per, buf, surahDir);
+                        int code = downloadAyah(context, reciter, surah, per,
+                                buf, surahDir, data);
                         error.status[myIdx].setData(code);
                         if (code == DOWNLOAD_OK) {
                             progress.increment();
@@ -491,7 +566,8 @@ public class Utils {
     public static AsyncTask downloadSurah(final Context context,
                               final String reciter, final int surah,
                               final RecoverySystem.ProgressListener progress,
-                              final DownloadTaskCompleteListener listener) {
+                              final DownloadTaskCompleteListener listener,
+                              final QuranData data) {
         return new AsyncTask<Void, Integer, Integer>() {
 
             @Override
@@ -512,7 +588,7 @@ public class Utils {
                     public boolean canContinue() {
                         return !isCancelled();
                     }
-                }, new boolean[290]);
+                }, new boolean[290], data);
                 return res.getData();
             }
 
@@ -554,6 +630,18 @@ public class Utils {
                 .setPositiveButton("نعم", ok)
                 .setNegativeButton("لا", cancel)
                 .show();
+    }
+
+    public static void showSelectionDlg(Context context, String title, String[] options,
+                                        boolean cancelabe,
+                                        DialogInterface.OnClickListener onClickListener,
+                                        DialogInterface.OnCancelListener cancelListener) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle(title);
+        builder.setItems(options, onClickListener);
+        builder.setOnCancelListener(cancelListener);
+        builder.setCancelable(cancelabe);
+        builder.show();
     }
 
     public static void deleteAll(final Context context, final String reciter,
@@ -612,7 +700,8 @@ public class Utils {
 
     public static AsyncTask downloadAll(final Activity context, final String reciter,
                                    final DownloadAllProgressChangeListener progress,
-                                   final DownloadTaskCompleteListener listener) {
+                                   final DownloadTaskCompleteListener listener,
+                                    final QuranData data) {
         return new AsyncTask<Void, Integer, Integer>() {
 
             @Override
@@ -637,7 +726,7 @@ public class Utils {
                         public boolean canContinue() {
                             return !isCancelled();
                         }
-                    }, buffer);
+                    }, buffer, data);
                 }
                 return isCancelled() ? DOWNLOAD_USER_CANCEL : error.getData();
             }
@@ -758,4 +847,67 @@ interface DownloadAllProgressChangeListener {
 
 interface CancelOperationListener {
     boolean canContinue();
+}
+
+class DownloadQuota implements Serializable {
+    public static final long DAILY_DOWNLOAD_QUOTA_BYTES = 30 * 1024 * 1024;
+    private static final String settingFileName = "downloadQuota";
+    private static DownloadQuota instance;
+
+    private final Date beginDate;
+    private long usedQuota;
+
+    public Date getBeginDate() {
+        return beginDate;
+    }
+
+    public long getUsedQuota() {
+        return usedQuota;
+    }
+
+    public boolean canDownloadNow() {
+        Date now = new Date();
+        int days = (int) Math.ceil((now.getTime() - getBeginDate().getTime())
+                / (1000.0 * 60 * 60 * 24));
+        return getUsedQuota() < days * DAILY_DOWNLOAD_QUOTA_BYTES;
+    }
+
+    private DownloadQuota() {
+        beginDate = new Date();
+    }
+
+    public boolean save(Context context) {
+        try {
+            FileOutputStream fos = context.openFileOutput(settingFileName, Context.MODE_PRIVATE);
+            ObjectOutputStream os = new ObjectOutputStream(fos);
+            os.writeObject(this);
+            os.close();
+            fos.close();
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public static DownloadQuota getInstance(Context context) {
+        if (instance == null) {
+            try {
+                FileInputStream fis = context.openFileInput(settingFileName);
+                ObjectInputStream is = new ObjectInputStream(fis);
+                instance = (DownloadQuota) is.readObject();
+                is.close();
+                fis.close();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+            if (instance == null)
+                instance = new DownloadQuota();
+        }
+        return instance;
+    }
+
+    public void incrementBytes(long bytes) {
+        usedQuota += bytes;
+    }
 }

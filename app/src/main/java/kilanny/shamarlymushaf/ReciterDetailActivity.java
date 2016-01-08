@@ -147,7 +147,9 @@ public class ReciterDetailActivity extends ActionBarActivity {
                                 msg = "تم تحميل جميع التلاوات بنجاح";
                                 break;
                             default:
-                                msg = "فشل تحميل التلاوات. تأكد من اتصالك بالإنترنت ووجود مساحة كافية";
+                                msg = result == Utils.DOWNLOAD_QUOTA_EXCEEDED ?
+                                        "تم بلوغ الكمية القصوى للتحميل لهذا اليوم. نرجوا المحاولة غدا"
+                                        : "فشل التحميل. تأكد من اتصالك بالشبكة ووجود مساحة كافية بجهازك";
                         }
                         if (!integers.isEmpty())
                             AnalyticsTrackers.sendDownloadRecites(ReciterDetailActivity.this,
@@ -156,7 +158,7 @@ public class ReciterDetailActivity extends ActionBarActivity {
                         if (msg != null)
                             Utils.showAlert(ReciterDetailActivity.this, "تحميل جميع التلاوات", msg, null);
                     }
-                });
+                }, QuranData.getInstance(this));
                 return true;
             case R.id.deleteAll:
                 if (downloadAll != null) return true;

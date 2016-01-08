@@ -111,7 +111,7 @@ public class ReciterDetailFragment extends Fragment {
         if (mItem != null) {
             rootView.findViewById(R.id.progressBarLoading).setVisibility(View.VISIBLE);
             rootView.findViewById(R.id.listview_reciter_detail).setVisibility(View.GONE);
-            QuranData quranData = QuranData.getInstance(getActivity());
+            final QuranData quranData = QuranData.getInstance(getActivity());
             SurahDownload[] arr = new SurahDownload[quranData.surahs.length];
             for (int i = 0; i < quranData.surahs.length; ++i) {
                 arr[i] = new SurahDownload();
@@ -167,15 +167,16 @@ public class ReciterDetailFragment extends Fragment {
                                         public void taskCompleted(int result) {
                                             prevTask = null;
                                             if (result != Utils.DOWNLOAD_OK && result != Utils.DOWNLOAD_USER_CANCEL) {
-                                                Toast.makeText(getActivity(),
-                                                        "فشل التحميل. تأكد من اتصالك بالشبكة ووجود مساحة كافية بجهازك",
-                                                        Toast.LENGTH_LONG).show();
+                                                String text = result == Utils.DOWNLOAD_QUOTA_EXCEEDED ?
+                                                        "تم بلوغ الكمية القصوى للتحميل لهذا اليوم. نرجوا المحاولة غدا"
+                                                        : "فشل التحميل. تأكد من اتصالك بالشبكة ووجود مساحة كافية بجهازك";
+                                                Toast.makeText(getActivity(), text, Toast.LENGTH_LONG).show();
                                             } else if (result == Utils.DOWNLOAD_OK)
                                                 AnalyticsTrackers.sendDownloadRecites(getActivity(),
                                                         mItem, position + 1);
                                             setCurrentDownloadSurah(CURRENT_SURAH_NONE);
                                         }
-                                    });
+                                    }, quranData);
                             Toast.makeText(getActivity(),
                                     "يتم التحميل...", Toast.LENGTH_SHORT).show();
                         }
@@ -205,7 +206,7 @@ public class ReciterDetailFragment extends Fragment {
                                                 protected Void doInBackground(Void... params) {
                                                     File surahDir = Utils.getSurahDir(getActivity(),
                                                             mItem, position + 1);
-                                                    if (surahDir.exists()) {
+                                                    if (surahDir != null && surahDir.exists()) {
                                                         for (int i = 0; i <= item.totalAyah; ++i) {
                                                             File file = Utils.getAyahFile(i, surahDir);
                                                             if (file.exists())

@@ -53,10 +53,10 @@ public class SplashScreenActivity extends Activity {
             tmp = 8;
         else tmp = 4;
         final int numThreads = tmp;
-        new AsyncTask<Void, Integer, Void>() {
+        new AsyncTask<Void, Integer, Throwable>() {
 
             @Override
-            protected Void doInBackground(Void... params) {
+            protected Throwable doInBackground(Void... params) {
                 try {
                     Utils.getNonExistPages(SplashScreenActivity.this, FullScreenImageAdapter.MAX_PAGE,
                             new RecoverySystem.ProgressListener() {
@@ -67,6 +67,7 @@ public class SplashScreenActivity extends Activity {
                             }, numThreads);
                 } catch (Throwable throwable) {
                     AnalyticsTrackers.sendException(SplashScreenActivity.this, throwable);
+                    return throwable;
                 }
                 return null;
             }
@@ -78,11 +79,16 @@ public class SplashScreenActivity extends Activity {
             }
 
             @Override
-            protected void onPostExecute(Void result) {
+            protected void onPostExecute(Throwable result) {
                 //super.onPostExecute(integers);
-                Intent i = new Intent();
-                i.setClass(SplashScreenActivity.this, WelcomeActivity.class);
-                startActivity(i);
+                if (result != null) {
+                    Utils.showAlert(SplashScreenActivity.this, "خطأ", "حدث خطأ: لا يمكن بدء التطبيق\n"
+                            + result.getMessage(), null);
+                } else {
+                    Intent i = new Intent();
+                    i.setClass(SplashScreenActivity.this, WelcomeActivity.class);
+                    startActivity(i);
+                }
             }
         }.execute();
     }

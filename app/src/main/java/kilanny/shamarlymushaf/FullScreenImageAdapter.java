@@ -3,8 +3,10 @@ package kilanny.shamarlymushaf;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentStatePagerAdapter;
 import android.view.View;
+import android.view.ViewGroup;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 
 public class FullScreenImageAdapter extends FragmentStatePagerAdapter {
 
@@ -12,23 +14,64 @@ public class FullScreenImageAdapter extends FragmentStatePagerAdapter {
     public static final int MAX_PAGE = 522;
     private final int actualDownloaded;
     private OnInstantiateQuranImageViewListener instantiateQuranImageViewListener;
+    private final ArrayList<QuranImageFragment> fragments = new ArrayList<>();
+    public final boolean isDualPage;
 
     // constructor
-    public FullScreenImageAdapter(MainActivity activity, int count) {
+    public FullScreenImageAdapter(MainActivity activity, int count, boolean isDualPage) {
         super(activity.getSupportFragmentManager());
         this._activity = activity;
+        this.isDualPage = isDualPage;
         this.actualDownloaded = count;
     }
 
     @Override
+    protected void finalize() throws Throwable {
+        super.finalize();
+        if (fragments == null) return;
+        synchronized (fragments) {
+            for (QuranImageFragment f : fragments)
+                try {
+                    f.finalize();
+                } catch (Throwable throwable) {
+                    throwable.printStackTrace();
+                }
+            fragments.clear();
+        }
+    }
+
+    @Override
     public int getCount() {
-        return Math.max(1, actualDownloaded);
+        return Math.max(1, actualDownloaded / (isDualPage ? 2 : 1));
+    }
+
+    public boolean isNotAllDownloaded() {
+        if (!isDualPage) return getCount() < MAX_PAGE;
+        return getCount() * 2 < MAX_PAGE;
     }
 
     @Override
     public Fragment getItem(int position) {
-        return QuranImageFragment.newInstance(getCount() < MAX_PAGE ? -1 : position, _activity,
-                getInstantiateQuranImageViewListener());
+        QuranImageFragment fragment = QuranImageFragment.newInstance(isNotAllDownloaded() ? -1 : position,
+                isDualPage, _activity, getInstantiateQuranImageViewListener());
+        synchronized (fragments) {
+            fragments.add(fragment);
+        }
+        return fragment;
+    }
+
+    @Override
+    public void destroyItem(ViewGroup container, int position, Object object) {
+        try {
+            QuranImageFragment fragment = (QuranImageFragment) object;
+            synchronized (fragments) {
+                fragments.remove(fragment);
+            }
+            fragment.finalize();
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
+        }
+        super.destroyItem(container, position, object);
     }
 
     public OnInstantiateQuranImageViewListener getInstantiateQuranImageViewListener() {

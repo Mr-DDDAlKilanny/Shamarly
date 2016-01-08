@@ -27,6 +27,7 @@
         <item>ماهر المعيقلي</item>
         <item>المنشاوي (المرتل)</item>
         <item>المنشاوي (المجود)</item>
+        <item>المنشاوي (المعلم)</item>
         <item>محمد عبد الكريم</item>
         <item>محمد أيوب</item>
         <item>محمد جبريل</item>
@@ -42,6 +43,7 @@
         <item>عزيز عليلي</item>
         <item>خليفة الطنيجي</item>
         <item>محمود علي البنا</item>
+        <item>محمد الطبلاوي</item>
     </string-array>
     <string name="defaultReciter">Abdul_Basit_Murattal_64kbps</string>
     <string-array name="reciter_values">
@@ -71,6 +73,7 @@
         <item>Maher_AlMuaiqly_64kbps</item>
         <item>Menshawi_32kbps</item>
         <item>Minshawy_Mujawwad_64kbps</item>
+        <item>null_1</item>
         <item>Muhammad_AbdulKareem_128kbps</item>
         <item>Muhammad_Ayyoub_64kbps</item>
         <item>Muhammad_Jibreel_64kbps</item>
@@ -86,6 +89,52 @@
         <item>aziz_alili_128kbps</item>
         <item>khalefa_al_tunaiji_64kbps</item>
         <item>mahmoud_ali_al_banna_32kbps</item>
+        <item>null_2</item>
+    </string-array>
+    <string-array name="reciter_values_alt">
+        <item>http://www.yaquran.com/audio/ayah/AbdulBaset-TMP3/%%03d%%03d.mp3</item>
+        <item>http://www.yaquran.com/audio/ayah/AbdulBasetMP3/%%03d%%03d.mp3</item>
+        <item>http://audio.recitequran.com/vbv/arabic/abdullah_awwad_al-juhani/%%03d%%03d.mp3</item>
+        <item>http://www.yaquran.com/audio/ayah/BasfarMP3/%%03d%%03d.mp3</item>
+        <item>null</item>
+        <item>http://audio.recitequran.com/vbv/arabic/abdur-rahman_as-sudais/%%03d%%03d.mp3</item>
+        <item>http://www.yaquran.com/audio/ayah/ShaatreeMP3/%%03d%%03d.mp3</item>
+        <item>null</item>
+        <item>http://www.yaquran.com/audio/ayah/AjamyMP3/%%03d%%03d.mp3</item>
+        <item>null</item>
+        <item>http://www.yaquran.com/audio/ayah/AlafasyMP3/%%03d%%03d.mp3</item>
+        <item>null</item>
+        <item>http://audio.recitequran.com/vbv/arabic/ali_jabir/%%03d%%03d.mp3</item>
+        <item>null</item>
+        <item>http://www.yaquran.com/audio/ayah/GhamadiMP3/%%03d%%03d.mp3</item>
+        <item>http://www.yaquran.com/audio/ayah/RifaiMP3/%%03d%%03d.mp3</item>
+        <item>http://www.yaquran.com/audio/ayah/HudhaifyMP3/%%03d%%03d.mp3</item>
+        <item>http://www.yaquran.com/audio/ayah/HussaryMP3/%%03d%%03d.mp3</item>
+        <item>http://audio.recitequran.com/vbv/arabic/mahmoud_khalil_al-husari_teacher/%%03d%%03d.mp3</item>
+        <item>http://audio.recitequran.com/vbv/arabic/mahmoud_khalil_al-husari_mujawwad/%%03d%%03d.mp3</item>
+        <item>http://audio.recitequran.com/vbv/arabic/ibrahim_al-akhdar/%%03d%%03d.mp3</item>
+        <item>null</item>
+        <item>http://audio.recitequran.com/vbv/arabic/khalid_abdullah_al-qahtani/%%03d%%03d.mp3</item>
+        <item>http://audio.recitequran.com/vbv/arabic/maher_al-muayqli/%%03d%%03d.mp3</item>
+        <item>http://audio.recitequran.com/vbv/arabic/muhammad_siddiq_al-minshawi_murattal/%%03d%%03d.mp3</item>
+        <item>http://audio.recitequran.com/vbv/arabic/muhammad_siddiq_al-minshawi_mujawwad/%%03d%%03d.mp3</item>
+        <item>http://audio.recitequran.com/vbv/arabic/muhammad_siddiq_al-minshawi_teacher/%%03d%%03d.mp3</item>
+        <item>http://audio.recitequran.com/vbv/arabic/muhammad_abdul-karim/%%03d%%03d.mp3</item>
+        <item>http://www.yaquran.com/audio/ayah/AyyoubMP3/%%03d%%03d.mp3</item>
+        <item>http://www.yaquran.com/audio/ayah/JibreelMP3/%%03d%%03d.mp3</item>
+        <item>http://audio.recitequran.com/vbv/arabic/abdul-muhsin_al-qasim/%%03d%%03d.mp3</item>
+        <item>null</item>
+        <item>http://audio.recitequran.com/vbv/arabic/nasir_al-qatami/%%03d%%03d.mp3</item>
+        <item>null</item>
+        <item>http://audio.recitequran.com/vbv/arabic/salah_bukhatir/%%03d%%03d.mp3</item>
+        <item>http://audio.recitequran.com/vbv/arabic/salah_al-budair/%%03d%%03d.mp3</item>
+        <item>http://www.yaquran.com/audio/ayah/Ash-ShuraymMP3/%%03d%%03d.mp3</item>
+        <item>http://audio.recitequran.com/vbv/arabic/yasir_salamah/%%03d%%03d.mp3</item>
+        <item>null</item>
+        <item>null</item>
+        <item>http://audio.recitequran.com/vbv/arabic/khalifah_at-tunayji/%%03d%%03d.mp3</item>
+        <item>null</item>
+        <item>http://audio.recitequran.com/vbv/arabic/muhammad_at-tablawi/%%03d%%03d.mp3</item>
     </string-array>
 
     <string-array name="fontSizes">

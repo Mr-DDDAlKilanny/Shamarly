@@ -15,27 +15,27 @@ import android.widget.Toast;
 
 public class WelcomeActivity extends AppCompatActivity {
 
+    private static boolean hasCheckedForUpdates = false;
+
     private void checkForUpdates() {
-        ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
-        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-        boolean isConnected = activeNetwork != null &&
-                activeNetwork.isConnectedOrConnecting();
-        if (isConnected) {
+        if (hasCheckedForUpdates) return;
+        if (Utils.isConnected(this) != Utils.CONNECTION_STATUS_NOT_CONNECTED) {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
                     final String[] info = Utils.getAppVersionInfo("kilanny.shamarlymushaf");
-                    if (info != null
-                            && info[0] != null && !info[0].isEmpty()
-                            && !info[0].equals(BuildConfig.VERSION_NAME)) {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                Utils.showAlert(WelcomeActivity.this, "إصدار أحدث " + info[0],
-                                        "قم بتحديث التطبيق من المتجر الآن"
-                                        + "\nمالجديد:\n" + info[1], null);
-                            }
-                        });
+                    if (info != null && info[0] != null && !info[0].isEmpty()) {
+                        hasCheckedForUpdates = true;
+                        if (!info[0].equals(BuildConfig.VERSION_NAME)) {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Utils.showAlert(WelcomeActivity.this, "إصدار أحدث " + info[0],
+                                            "قم بتحديث التطبيق من المتجر الآن"
+                                                    + "\nمالجديد:\n" + info[1], null);
+                                }
+                            });
+                        }
                     }
                 }
             }).start();
@@ -63,7 +63,7 @@ public class WelcomeActivity extends AppCompatActivity {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startActivity(new Intent(WelcomeActivity.this, SearchActivity.class));
+                startActivity(new Intent(WelcomeActivity.this, GotoActivity.class));
             }
         });
         btn = (ImageButton) findViewById(R.id.openSettings);

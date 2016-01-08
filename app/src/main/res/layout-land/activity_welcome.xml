@@ -41,12 +41,14 @@
             android:id="@+id/openQuran"
             android:background="@drawable/ic_launcher"
             android:layout_weight="1"
+            android:alpha="0.7"
             android:layout_width="fill_parent"
             android:layout_height="fill_parent" />
         <ImageButton
             android:id="@+id/sendComments"
             android:background="@android:drawable/ic_dialog_email"
             android:layout_weight="1"
+            android:alpha="0.7"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
     </LinearLayout>
@@ -59,8 +61,9 @@
         android:layout_height="fill_parent">
         <ImageButton
             android:id="@+id/openSearch"
-            android:background="@android:drawable/ic_menu_search"
+            android:background="@drawable/index"
             android:layout_weight="1"
+            android:alpha=".6"
             android:layout_width="fill_parent"
             android:layout_height="fill_parent" />
         <ImageButton

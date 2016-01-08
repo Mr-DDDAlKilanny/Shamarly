@@ -123,7 +123,8 @@ public class ReciterListActivity extends ActionBarActivity
         super.onStop();
         if (downloadAll != null && !downloadAll.isCancelled())
             downloadAll.cancel(true);
-        fragment.cancelActiveOperations();
+        if (fragment != null)
+            fragment.cancelActiveOperations();
     }
 
     @Override
@@ -155,7 +156,7 @@ public class ReciterListActivity extends ActionBarActivity
         }
         if (item.getItemId() == R.id.chooseDownloadDir)
             chooseDir(false);
-        else {
+        else if (fragment != null) { //make sure user has selected a reciter
             final String myReciter = fragment.mItem;
             switch (item.getItemId()) {
                 case R.id.downloadAll:
@@ -191,7 +192,9 @@ public class ReciterListActivity extends ActionBarActivity
                                     msg = "تم تحميل جميع التلاوات بنجاح";
                                     break;
                                 default:
-                                    msg = "فشل تحميل التلاوات. تأكد من اتصالك بالإنترنت ووجود مساحة كافية";
+                                    msg = result == Utils.DOWNLOAD_QUOTA_EXCEEDED ?
+                                            "تم بلوغ الكمية القصوى للتحميل لهذا اليوم. نرجوا المحاولة غدا"
+                                            : "فشل التحميل. تأكد من اتصالك بالشبكة ووجود مساحة كافية بجهازك";
                             }
                             if (!integers.isEmpty())
                                 AnalyticsTrackers
@@ -201,7 +204,7 @@ public class ReciterListActivity extends ActionBarActivity
                             if (msg != null)
                                 Utils.showAlert(ReciterListActivity.this, "تحميل جميع التلاوات", msg, null);
                         }
-                    });
+                    }, QuranData.getInstance(this));
                     return true;
                 case R.id.deleteAll:
                     if (downloadAll != null) return true;
@@ -247,7 +250,8 @@ public class ReciterListActivity extends ActionBarActivity
             Bundle arguments = new Bundle();
             arguments.putString(ReciterDetailFragment.ARG_ITEM_ID, id);
             itemChanged = true;
-            fragment.cancelActiveOperations();
+            if (fragment != null)
+                fragment.cancelActiveOperations();
             fragment = new ReciterDetailFragment();
             fragment.setArguments(arguments);
             getSupportFragmentManager().beginTransaction()
@@ -267,12 +271,12 @@ public class ReciterListActivity extends ActionBarActivity
     public void onSelectDirectory(@NonNull String path) {
         setting.saveSoundsDirectory = path;
         setting.save(this);
-        mDialog.dismiss();
+        if (mDialog != null) mDialog.dismiss();
     }
 
     @Override
     public void onCancelChooser() {
-        mDialog.dismiss();
+        if (mDialog != null) mDialog.dismiss();
         if (forceDialogSelection) {
             Utils.showConfirm(this, "اختيار الحافظة", "لا بد من اختيار حافظة للتحميل. اختيار الآن؟", new DialogInterface.OnClickListener() {
                 @Override
