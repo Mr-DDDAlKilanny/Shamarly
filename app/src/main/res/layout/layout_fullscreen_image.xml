@@ -8,7 +8,8 @@
         android:id="@+id/pageInfoLayout"
         android:layout_width="fill_parent"
         android:background="@color/button_material_dark"
-        android:layout_height="42dp">
+        android:visibility="gone"
+        android:layout_height="42dip">
         <cn.trinea.android.view.autoscrollviewpager.AutoScrollViewPager
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -23,8 +24,8 @@
 
         <LinearLayout
             android:id="@+id/linlaHeaderProgress"
-            android:layout_width="fill_parent"
-            android:layout_height="fill_parent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:gravity="center"
             android:orientation="vertical">
 

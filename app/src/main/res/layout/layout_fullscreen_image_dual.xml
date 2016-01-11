@@ -8,6 +8,7 @@
         android:id="@+id/pageInfoLayout"
         android:layout_width="fill_parent"
         android:background="@color/button_material_dark"
+        android:visibility="gone"
         android:layout_height="42dp">
         <cn.trinea.android.view.autoscrollviewpager.AutoScrollViewPager
             android:layout_width="match_parent"

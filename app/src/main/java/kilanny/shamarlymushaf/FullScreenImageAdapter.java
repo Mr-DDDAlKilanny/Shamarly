@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class FullScreenImageAdapter extends FragmentStatePagerAdapter {
 
@@ -14,7 +15,7 @@ public class FullScreenImageAdapter extends FragmentStatePagerAdapter {
     public static final int MAX_PAGE = 522;
     private final int actualDownloaded;
     private OnInstantiateQuranImageViewListener instantiateQuranImageViewListener;
-    private final ArrayList<QuranImageFragment> fragments = new ArrayList<>();
+    private final CopyOnWriteArrayList<QuranImageFragment> fragments = new CopyOnWriteArrayList<>();
     public final boolean isDualPage;
 
     // constructor
@@ -29,15 +30,13 @@ public class FullScreenImageAdapter extends FragmentStatePagerAdapter {
     protected void finalize() throws Throwable {
         super.finalize();
         if (fragments == null) return;
-        synchronized (fragments) {
-            for (QuranImageFragment f : fragments)
-                try {
-                    f.finalize();
-                } catch (Throwable throwable) {
-                    throwable.printStackTrace();
-                }
-            fragments.clear();
-        }
+        for (QuranImageFragment f : fragments)
+            try {
+                f.finalize();
+            } catch (Throwable throwable) {
+                throwable.printStackTrace();
+            }
+        fragments.clear();
     }
 
     @Override
@@ -54,9 +53,7 @@ public class FullScreenImageAdapter extends FragmentStatePagerAdapter {
     public Fragment getItem(int position) {
         QuranImageFragment fragment = QuranImageFragment.newInstance(isNotAllDownloaded() ? -1 : position,
                 isDualPage, _activity, getInstantiateQuranImageViewListener());
-        synchronized (fragments) {
-            fragments.add(fragment);
-        }
+        fragments.add(fragment);
         return fragment;
     }
 
@@ -64,9 +61,7 @@ public class FullScreenImageAdapter extends FragmentStatePagerAdapter {
     public void destroyItem(ViewGroup container, int position, Object object) {
         try {
             QuranImageFragment fragment = (QuranImageFragment) object;
-            synchronized (fragments) {
-                fragments.remove(fragment);
-            }
+            fragments.remove(fragment);
             fragment.finalize();
         } catch (Throwable throwable) {
             throwable.printStackTrace();

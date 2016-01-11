@@ -5,8 +5,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Point;
 import android.graphics.drawable.BitmapDrawable;
-import android.os.*;
-import android.os.Process;
+import android.os.AsyncTask;
+import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.view.Display;
@@ -174,7 +174,8 @@ public class QuranImageFragment extends Fragment {
                         isDualPage ? R.id.quranPageBorder_right : R.id.quranPageBorder);
                 if (isDualPage) showProgress(viewLayout, null, null, null,
                         R.id.quranPage_left, R.id.quranPageBorder_left);
-                Runnable runnable = new Runnable() {
+                final String memoryFullError = "الذاكرة ممتلئة. لتوفيرها لا تستخدم (غمق الرسم، عرض حدود الصحفحة، الوضع الليلي)";
+                final Runnable runnable = new Runnable() {
                     @Override
                     public void run() {
                         try {
@@ -190,7 +191,7 @@ public class QuranImageFragment extends Fragment {
                             }
                             final Bitmap bitmapBorders = tmp;
                             if (bitmap == null)
-                                throw new IllegalAccessException("ملف الصورة غير صالح");
+                                throw new IllegalAccessException(memoryFullError);
                             if (!finalized) {
                                 _activity.runOnUiThread(new Runnable() {
                                     @Override
@@ -212,7 +213,7 @@ public class QuranImageFragment extends Fragment {
                                     }
                                     final Bitmap bitmapBorders2 = tmp2;
                                     if (bitmap2 == null)
-                                        throw new IllegalAccessException("ملف الصورة غير صالح");
+                                        throw new IllegalAccessException(memoryFullError);
                                     if (!finalized) _activity.runOnUiThread(new Runnable() {
                                         @Override
                                         public void run() {
@@ -240,8 +241,7 @@ public class QuranImageFragment extends Fragment {
                                 _activity.runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        Toast.makeText(_activity, "خطأ: الذاكرة ممتلئة.",
-                                                Toast.LENGTH_LONG).show();
+                                        Toast.makeText(_activity, memoryFullError, Toast.LENGTH_LONG).show();
                                         _activity.finish();
                                     }
                                 });
@@ -264,9 +264,7 @@ public class QuranImageFragment extends Fragment {
                         }
                     }
                 };
-                runnable.run();
-                //TODO: make page loading multi-threaded
-                //new Thread(runnable).start(); //causes screen flickering
+                new Thread(runnable).start(); //TODO: causes screen flickering
             }
             viewLayout.setTag(position);
         }

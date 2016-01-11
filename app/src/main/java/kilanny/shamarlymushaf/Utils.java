@@ -12,6 +12,7 @@ import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Environment;
 import android.os.RecoverySystem;
+import android.util.Log;
 import android.view.View;
 import android.widget.ListView;
 
@@ -408,21 +409,10 @@ public class Utils {
         int res = downloadFile(buffer, pageUrl, file);
         if (res != DOWNLOAD_OK) return res;
         // make sure bitmap is ok
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inDither = true;
-        options.inSampleSize = 32;
-        options.inPreferredConfig = Bitmap.Config.RGB_565;
-        Bitmap bitmap = null;
-        try {
-            bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), options);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        if (bitmap == null) {
-            file.delete();
+        if (!pageExists(context, idx)) {
+            Log.d("downloadPage", "Fail downloading " + pageUrl);
             return DOWNLOAD_SERVER_INVALID_RESPONSE;
         }
-        bitmap.recycle();
         return res;
     }
 
@@ -430,13 +420,21 @@ public class Utils {
         File file = getPageFile(context, page);
         if (!file.exists()) return false;
         BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;
+        options.inDither = true;
+        options.inSampleSize = 8;
+        options.inPreferredConfig = Bitmap.Config.RGB_565;
+        Bitmap bitmap = null;
         try {
-            BitmapFactory.decodeFile(file.getAbsolutePath(), options);
-            return options.outWidth != -1 && options.outHeight != -1;
-        } catch (Exception ex) {
+            bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), options);
+            return bitmap != null && !bitmap.isMutable(); //cause nullPointerException
+        } catch (Exception ex) { //nullpointerexception, ioexception, etc
             file.delete();
             return false;
+        } finally {
+            try {
+                if (bitmap != null) bitmap.recycle();
+            } catch (Exception ignore) {
+            }
         }
     }
 
@@ -462,8 +460,10 @@ public class Utils {
                     int myEnd = (ii + 1) * work;
                     if (ii == threads.length - 1) myEnd = maxPage;
                     for (int i = myStart; i <= myEnd; ++i) {
-                        if (!pageExists(context, i))
+                        if (!pageExists(context, i)) {
                             q.add(i);
+                            Log.d("getNotExitPages", "Page " + i + " does not exist");
+                        }
                         progress.increment();
                         listener.onProgress(progress.getData());
                     }

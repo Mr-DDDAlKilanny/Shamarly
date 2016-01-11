@@ -124,7 +124,7 @@ public class PlayReciteActivity extends ActionBarActivity {
                             player.prepareAsync();
                         }
                     };
-                    if (currentAyah == 1 && currentSurah > 1)
+                    if (currentAyah == 1 && currentSurah > 1 && currentSurah != 9)
                         MainActivity.playBasmalah(PlayReciteActivity.this,
                                 getSelectedSound(), quranData, tmpRunnable);
                     else tmpRunnable.run();
@@ -180,7 +180,7 @@ public class PlayReciteActivity extends ActionBarActivity {
                     player.prepareAsync();
                 }
             };
-            if (currentAyah == 1 && currentSurah > 1)
+            if (currentAyah == 1 && currentSurah > 1 && currentSurah != 9)
                 MainActivity.playBasmalah(this, getSelectedSound(), quranData, tmpRunnable);
             else tmpRunnable.run();
         } catch (IOException e) {

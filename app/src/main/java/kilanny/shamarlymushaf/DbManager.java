@@ -31,6 +31,16 @@ public class DbManager extends SQLiteOpenHelper {
         return instance;
     }
 
+    public static void dispose() {
+        try {
+            instance.close();
+            instance.getWritableDatabase().close();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        instance = null;
+    }
+
     @Override
     public void onCreate(SQLiteDatabase db) {
     }

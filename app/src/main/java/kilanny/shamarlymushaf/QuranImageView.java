@@ -94,7 +94,16 @@ public class QuranImageView extends TouchImageView {
                     "Attempted to draw finalized Image");
             return;
         }
-        super.draw(canvas);
+        //http://stackoverflow.com/a/17002006/3441905
+        Canvas mCanvas = null;
+        try {
+            super.draw(canvas);
+            mCanvas=canvas;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        if (mCanvas == null) return;
+        canvas = mCanvas;
         if (currentPage != null) {
             initPrefs();
             int sel = selectedAyahIndex; // prevent errors caused by other threads modifying this field

@@ -48,10 +48,10 @@ public class SplashScreenActivity extends Activity {
             tmp = -1;
         }
         if (tmp >= 64)
-            tmp = 16;
-        else if (tmp >= 32)
             tmp = 8;
-        else tmp = 4;
+        else if (tmp >= 32)
+            tmp = 4;
+        else tmp = 2;
         final int numThreads = tmp;
         new AsyncTask<Void, Integer, Throwable>() {
 

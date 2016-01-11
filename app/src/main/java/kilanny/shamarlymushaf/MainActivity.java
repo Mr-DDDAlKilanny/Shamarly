@@ -75,6 +75,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
@@ -130,7 +131,7 @@ public class MainActivity extends FragmentActivity {
      */
     private SystemUiHider mSystemUiHider;
 
-    private final ColorMatrixColorFilter filter = new ColorMatrixColorFilter(
+    private static final ColorMatrixColorFilter filter = new ColorMatrixColorFilter(
             new ColorMatrix(new float[]
         {
                 -1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
@@ -156,7 +157,7 @@ public class MainActivity extends FragmentActivity {
             }));
     private final static int dilationBuffer[][]
             = new int[QuranData.NORMAL_PAGE_HEIGHT][QuranData.NORMAL_PAGE_WIDTH];
-
+    private static final int yellowColor = Color.rgb(255, 255, 225);
     public static final String SHOW_PAGE_MESSAGE = "kilanny.shamarlymushaf.MainActivity.showPage";
     public static final String SHOW_AYAH_MESSAGE = "kilanny.shamarlymushaf.MainActivity.showPage#withAyah";
     FullScreenImageAdapter adapter;
@@ -180,6 +181,8 @@ public class MainActivity extends FragmentActivity {
     private int currentAyahTafseerIdx; //current Ayah displayed in Tafseerdlg navigation
     private int currentSelectedTafseer; //current tafseer selected in Tafseerdlg
     private boolean playRecitePageIsRight = false; // always false in single page mode
+    private final Lock readPageLock = new ReentrantLock(true);
+    private final Lock readBordersLock = new ReentrantLock(true);
 
     //google analytics fields
     private HashSet<Integer> pagesViewed;
@@ -202,13 +205,14 @@ public class MainActivity extends FragmentActivity {
                             AnalyticsTrackers.sendListenReciteStats(context, listenRecite);
                         if (viewTafseer != null)
                             AnalyticsTrackers.sendTafseerStats(context, viewTafseer);
+                        listenRecite = null;
+                        pagesViewed = null;
+                        startDate = null;
                     }
                 }).start();
             }
-            listenRecite = null;
-            pagesViewed = null;
-            startDate = null;
         }
+        DbManager.dispose();
         finish(); // prevent re-use the activity after stopping it (causes exceptions)
     }
 
@@ -358,6 +362,7 @@ public class MainActivity extends FragmentActivity {
                 !pref.getBoolean("showPageInfo", true)) {
             parent.findViewById(R.id.pageInfoLayout).setVisibility(View.GONE);
         } else if (image.currentPage != null && image.currentPage.ayahs.size() > 0) {
+            parent.findViewById(R.id.pageInfoLayout).setVisibility(View.VISIBLE);
             AutoScrollViewPager pager = (AutoScrollViewPager) parent.findViewById(R.id.pageTitleViewPager);
             int page = image.currentPage.page;
             String juz = "", hizb = "";
@@ -944,7 +949,7 @@ public class MainActivity extends FragmentActivity {
                                 }
                             }
                         };
-                        if (ayah == 1 && sura > 1)
+                        if (ayah == 1 && sura > 1 && sura != 9)
                             playBasmalah(MainActivity.this, getSelectedSound(), quranData,
                                     tmpRunnable);
                         else tmpRunnable.run();
@@ -996,7 +1001,7 @@ public class MainActivity extends FragmentActivity {
                     player.prepareAsync();
                 }
             };
-            if (ayah == 1 && sura > 1)
+            if (ayah == 1 && sura > 1 && sura != 9)
                 playBasmalah(this, getSelectedSound(), quranData, tmpRunnable);
             else tmpRunnable.run();
         } catch (Exception e) {
@@ -1558,14 +1563,14 @@ public class MainActivity extends FragmentActivity {
             ex.printStackTrace();
             recommendedRamMg = -1;
         }
-        db = DbManager.getInstance(this);
-        deleteAll();
-        quranData = QuranData.getInstance(this);
-        setContentView(R.layout.activity_main);
-        bar = (ProgressBar) this.findViewById(R.id.progressBar);
-        tradionalArabicFont = Typeface.createFromAsset(getAssets(), "DroidNaskh-Regular.ttf");
-        tradionalArabicBoldFont = Typeface.createFromAsset(getAssets(), "DroidNaskh-Bold.ttf");
         try {
+            db = DbManager.getInstance(this);
+            deleteAll();
+            quranData = QuranData.getInstance(this);
+            setContentView(R.layout.activity_main);
+            bar = (ProgressBar) this.findViewById(R.id.progressBar);
+            tradionalArabicFont = Typeface.createFromAsset(getAssets(), "DroidNaskh-Regular.ttf");
+            tradionalArabicBoldFont = Typeface.createFromAsset(getAssets(), "DroidNaskh-Bold.ttf");
             pref = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
             rotationMode = Integer.parseInt(pref.getString("pageRotationMode",
                     getString(R.string.defaultPageRotationMode)));
@@ -1690,139 +1695,179 @@ public class MainActivity extends FragmentActivity {
     /**
      * Helper method for image processing (dilation)
      */
-    private static void manhattan(int[][] image) {
+    private static void manhattan(int width, int height) {
         // traverse from top left to bottom right
-        for (int i = 0; i < image.length; i++) {
-            for (int j = 0; j < image[i].length; j++) {
-                if (image[i][j] == 1) {
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                if (dilationBuffer[i][j] == 1) {
                     // first pass and pixel was on, it gets a zero
-                    image[i][j] = 0;
+                    dilationBuffer[i][j] = 0;
                 } else {
                     // pixel was off
                     // It is at most the sum of the lengths of the array
                     // away from a pixel that is on
-                    image[i][j] = image.length + image[i].length;
+                    dilationBuffer[i][j] = dilationBuffer.length + dilationBuffer[i].length;
                     // or one more than the pixel to the north
                     if (i > 0) {
-                        image[i][j] = Math.min(image[i][j], image[i - 1][j] + 1);
+                        dilationBuffer[i][j] = Math.min(dilationBuffer[i][j], dilationBuffer[i - 1][j] + 1);
                     }
                     // or one more than the pixel to the west
                     if (j > 0) {
-                        image[i][j] = Math.min(image[i][j], image[i][j - 1] + 1);
+                        dilationBuffer[i][j] = Math.min(dilationBuffer[i][j], dilationBuffer[i][j - 1] + 1);
                     }
                 }
             }
         }
         // traverse from bottom right to top left
-        for (int i = image.length - 1; i >= 0; i--) {
-            for (int j = image[i].length - 1; j >= 0; j--) {
+        for (int i = height - 1; i >= 0; i--) {
+            for (int j = width - 1; j >= 0; j--) {
                 // either what we had on the first pass
                 // or one more than the pixel to the south
-                if (i + 1 < image.length) {
-                    image[i][j] = Math.min(image[i][j], image[i + 1][j] + 1);
+                if (i + 1 < height) {
+                    dilationBuffer[i][j] = Math.min(dilationBuffer[i][j], dilationBuffer[i + 1][j] + 1);
                 }
                 // or one more than the pixel to the east
-                if (j + 1 < image[i].length) {
-                    image[i][j] = Math.min(image[i][j], image[i][j + 1] + 1);
+                if (j + 1 < width) {
+                    dilationBuffer[i][j] = Math.min(dilationBuffer[i][j], dilationBuffer[i][j + 1] + 1);
                 }
             }
         }
     }
 
-    private static void imageProcessing(int[][] image, final int k, final Bitmap tmp,
-                                 int displayMode, int yellowColor, boolean night) {
+    private static void imageProcessing(final int k, final Bitmap tmp,
+                                 int displayMode, boolean night) {
         Thread[] threads = new Thread[4];
-        int threadWork = tmp.getHeight() / threads.length;
+        final Shared shared = new Shared();
+        final Lock lock = new ReentrantLock(true);
+        final Lock lock2 = new ReentrantLock(true);
+        final Condition condition = lock.newCondition();
+        shared.setData(0);
+        final int width = tmp.getWidth(), height = tmp.getHeight();
+        int threadWork = height / threads.length;
         if (k == 0) { //no dilation, just set the font/background colors of the thresholded image
             final int background = !night ? displayMode == 0 ? yellowColor : -1 : 0;
             final int font = !night ? 0 : -1;
             for (int idx = 0; idx < threads.length; ++idx) {
                 final int myStart = threadWork * idx,
-                        myEnd = idx == threads.length - 1 ? tmp.getHeight() : (idx + 1) * threadWork;
+                        myEnd = idx == threads.length - 1 ? height : (idx + 1) * threadWork;
                 threads[idx] = new Thread(new Runnable() {
                     @Override
                     public void run() {
                         for (int i = myStart; i < myEnd; ++i) {
-                            tmp.getPixels(dilationBuffer[i], 0, tmp.getWidth(), 0, i, tmp.getWidth(), 1);
-                            for (int j = 0; j < dilationBuffer[i].length; ++j) {
+                            lock2.lock();
+                            tmp.getPixels(dilationBuffer[i], 0, width, 0, i, width, 1);
+                            lock2.unlock();
+                            for (int j = 0; j < width; ++j) {
                                 if (dilationBuffer[i][j] == -1)
                                     dilationBuffer[i][j] = background;
                                 else
                                     dilationBuffer[i][j] = font;
                             }
-                            tmp.setPixels(dilationBuffer[i], 0, tmp.getWidth(), 0, i, tmp.getWidth(), 1);
+                            lock2.lock();
+                            tmp.setPixels(dilationBuffer[i], 0, width, 0, i, width, 1);
+                            lock2.unlock();
                         }
+                        lock.lock();
+                        shared.increment();
+                        condition.signal();
+                        lock.unlock();
                     }
                 });
             }
             for (Thread thread : threads)
                 thread.start();
-            for (Thread thread : threads)
+            lock.lock();
+            while (shared.getData() < threads.length) {
                 try {
-                    thread.join();
+                    condition.await();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
+                    break;
                 }
+            }
+            lock.unlock();
             return;
         }
 
         //else, prepare for dilation (set all 0/1)
+        //http://blog.ostermiller.org/dilate-and-erode
         for (int idx = 0; idx < threads.length; ++idx) {
             final int myStart = threadWork * idx,
-                    myEnd = idx == threads.length - 1 ? tmp.getHeight() : (idx + 1) * threadWork;
+                    myEnd = idx == threads.length - 1 ? height : (idx + 1) * threadWork;
             threads[idx] = new Thread(new Runnable() {
                 @Override
                 public void run() {
                     for (int i = myStart; i < myEnd; ++i) {
-                        tmp.getPixels(dilationBuffer[i], 0, tmp.getWidth(), 0, i, tmp.getWidth(), 1);
-                        for (int j = 0; j < dilationBuffer[i].length; ++j) {
-                            if (dilationBuffer[i][j] == -1)
+                        lock2.lock();
+                        tmp.getPixels(dilationBuffer[i], 0, width, 0, i, width, 1);
+                        lock2.unlock();
+                        for (int j = 0; j < width; ++j) {
+                            if (dilationBuffer[i][j] == -1 || dilationBuffer[i][j] == 1)
                                 dilationBuffer[i][j] = 0;
                             else
                                 dilationBuffer[i][j] = 1;
                         }
                     }
+                    lock.lock();
+                    shared.increment();
+                    condition.signal();
+                    lock.unlock();
                 }
             });
         }
         for (Thread thread : threads)
             thread.start();
-        for (Thread thread : threads)
+        lock.lock();
+        while (shared.getData() < threads.length) {
             try {
-                thread.join();
+                condition.await();
             } catch (InterruptedException e) {
                 e.printStackTrace();
+                break;
             }
+        }
+        lock.unlock();
         //dilate
-        manhattan(image);
+        manhattan(width, height);
         //restore colors of font/background
         final int background = !night ? displayMode == 0 ? yellowColor : -1 : 0;
         final int font = !night ? 0 : -1;
+        shared.setData(0);
         for (int idx = 0; idx < threads.length; ++idx) {
             final int myStart = threadWork * idx,
-                    myEnd = idx == threads.length - 1 ? tmp.getHeight() : (idx + 1) * threadWork;
+                    myEnd = idx == threads.length - 1 ? height : (idx + 1) * threadWork;
             threads[idx] = new Thread(new Runnable() {
                 @Override
                 public void run() {
                     for (int i = myStart; i < myEnd; ++i) {
-                        for (int j = 0; j < dilationBuffer[i].length; ++j)
+                        for (int j = 0; j < width; ++j)
                             if (dilationBuffer[i][j] <= k)
                                 dilationBuffer[i][j] = font;
                             else
                                 dilationBuffer[i][j] = background;
-                        tmp.setPixels(dilationBuffer[i], 0, tmp.getWidth(), 0, i, tmp.getWidth(), 1);
+                        lock2.lock();
+                        tmp.setPixels(dilationBuffer[i], 0, width, 0, i, width, 1);
+                        lock2.unlock();
                     }
+                    lock.lock();
+                    shared.increment();
+                    condition.signal();
+                    lock.unlock();
                 }
             });
         }
         for (Thread thread : threads)
             thread.start();
-        for (Thread thread : threads)
+        lock.lock();
+        while (shared.getData() < threads.length) {
             try {
-                thread.join();
+                condition.await();
             } catch (InterruptedException e) {
                 e.printStackTrace();
+                break;
             }
+        }
+        lock.unlock();
     }
 
     public Bitmap readBorders(int page) {
@@ -1832,6 +1877,7 @@ Main page (161, 141, 881, 1373)
 Title (509, 73, 183, 58)
 Page number (561, 1528, 75, 38)
                  */
+        readBordersLock.lock();
         checkOutOfMemory();
         try {
             InputStream stream = getAssets().open("page_template.png");
@@ -1875,11 +1921,25 @@ Page number (561, 1528, 75, 38)
             paint.setTextSize(35);
             rect.set(561, 1528, 561 + 75, 1528 + 38);
             c.drawText(text, rect.exactCenterX(), rect.exactCenterY() + 10, paint);
+            if (Integer.parseInt(pref.getString("displayPageMode",
+                    getString(R.string.defaultDisplayPageMode))) == 2) {
+                checkOutOfMemory();
+                Bitmap tmp = Bitmap.createBitmap(pageBackground.getWidth(),
+                        pageBackground.getHeight(), options.inPreferredConfig);
+                c = new Canvas(tmp);
+                paint = new Paint();
+                paint.setColorFilter(filter);
+                c.drawBitmap(pageBackground, 0,0 , paint);
+                pageBackground.recycle();
+                pageBackground = tmp;
+            }
             return pageBackground;
         } catch (Exception e) {
             e.printStackTrace();
             AnalyticsTrackers.sendException(this, e);
             return null;
+        } finally {
+            readBordersLock.unlock();
         }
     }
 
@@ -1895,108 +1955,117 @@ Page number (561, 1528, 75, 38)
             throw new MyOutOfMemoryException(mem, used);
     }
 
-    /**
-     * Must be synchronized because it uses a single one dilation buffer
-     */
-    public synchronized Bitmap readPage(int page)
+    public Bitmap readPage(int page)
             throws OutOfMemoryError, MyOutOfMemoryException {
-        checkOutOfMemory();
-        if (page == FullScreenImageAdapter.MAX_PAGE + 1) // can happen in dual mode
-            page = 1;
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inDither = true;
-        Bitmap.Config config;
-        //if (recommendedRamMg < 64)
+        try {
+            readPageLock.lock(); //it uses a single one dilation buffer,
+            // so only one thread can use at time
+            checkOutOfMemory();
+            if (page == FullScreenImageAdapter.MAX_PAGE + 1) // can happen in dual mode
+                page = 1;
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inDither = true;
+            Bitmap.Config config;
+            //if (recommendedRamMg < 64)
             config = Bitmap.Config.RGB_565;
-        //else
-        //    config = Bitmap.Config.ARGB_8888;
-        Display display = getWindowManager().getDefaultDisplay();
-        Point p = new Point();
-        display.getSize(p);
-        options.inSampleSize = calculateInSampleSize(p.x, p.y);
-        options.inPreferredConfig = config;
-        options.inMutable = true;
-        File file = Utils.getPageFile(this, page);
-        Bitmap bitmap;
-        bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), options);
-        if (bitmap == null) {
-            //try again
-            try {
-                options.inDither = false;
-                bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), options);
-            } catch (OutOfMemoryError e) {
-                throw e;
-            }
+            //else
+            //    config = Bitmap.Config.ARGB_8888;
+            Display display = getWindowManager().getDefaultDisplay();
+            Point p = new Point();
+            display.getSize(p);
+            options.inSampleSize = calculateInSampleSize(p.x, p.y);
+            options.inPreferredConfig = config;
+            options.inMutable = true;
+            File file = Utils.getPageFile(this, page);
+            Bitmap bitmap;
+            bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), options);
             if (bitmap == null) {
-                //file.delete(); //corrupt file
-                return null;
-            }
-        }
-        bitmap.setHasAlpha(true);
-        Bitmap work = page > 3 ?
-                Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), config)
-                : bitmap;
-        if (page > 3) {
-            final int displayMode = Integer.parseInt(pref.getString("displayPageMode",
-                    getString(R.string.defaultDisplayPageMode)));
-            final boolean night = displayMode == 2;
-            int boldSize = Integer.parseInt(pref.getString("boldSize",
-                    getString(R.string.defaultBoldSize)));
-            Canvas c;
-            int yellowColor = Color.rgb(255, 255, 225);
-            if (boldSize < 0) {
-                Paint invertPaint = night ? new Paint() : null;
-                if (night) invertPaint.setColorFilter(filter);
-                int color;
-                if (displayMode == 0)
-                    color = yellowColor;
-                else if (displayMode == 2)
-                    color = Color.BLACK;
-                else color = Color.WHITE;
-                work.eraseColor(color);  // set its background to white, or whatever color you want
-                c = new Canvas(work);
-                c.drawBitmap(bitmap, 0, 0, invertPaint);
-            } else {
-                work.eraseColor(Color.WHITE);
-                c = new Canvas(work);
-                Paint bitmapPaint = new Paint();
-                //first convert bitmap to grey scale:
-                bitmapPaint.setColorFilter(grayScaleFilter);
-                c.drawBitmap(bitmap, 0, 0, bitmapPaint);
-                //then convert the resulting bitmap to black and white using threshold matrix
-                bitmapPaint.setColorFilter(thresholdFilter);
-                c.drawBitmap(work, 0, 0, bitmapPaint);
-                imageProcessing(dilationBuffer, boldSize, work, displayMode, yellowColor, night);
-            }
-            boolean isLeftPage = (page - 1) % 2 == 1;
-            bitmap.recycle();
-            bitmap = work;
-            if (!isShowPageBorders(pref) && pref.getBoolean("showPageLeftRightIndicator", true)) {
-                Paint paint = new Paint();
-                paint.setAntiAlias(true);
-                paint.setXfermode(new PorterDuffXfermode(night ? PorterDuff.Mode.LIGHTEN
-                        : PorterDuff.Mode.DARKEN));
-                paint.setStyle(Paint.Style.FILL_AND_STROKE);
-                final int offset = 75;
-                if (!isLeftPage) {
-                    int first = night ? Color.BLACK :
-                            displayMode == 0 ? yellowColor : Color.WHITE,
-                            second = Color.GRAY;
-                    paint.setShader(new LinearGradient(offset, 0, 0, 0,
-                            first, second, Shader.TileMode.MIRROR));
-                    c.drawRect(bitmap.getWidth() - offset, 0,
-                            bitmap.getWidth(), bitmap.getHeight(), paint);
-                } else {
-                    int first = Color.GRAY,
-                            second = night ? Color.BLACK :
-                                    displayMode == 0 ? yellowColor : Color.WHITE;
-                    paint.setShader(new LinearGradient(0, 0, offset, 0,
-                            first, second, Shader.TileMode.MIRROR));
-                    c.drawRect(0, 0, offset, bitmap.getHeight(), paint);
+                //try again
+                try {
+                    options.inDither = false;
+                    bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), options);
+                } catch (OutOfMemoryError e) {
+                    throw e;
+                }
+                if (bitmap == null) {
+                    //file.delete(); //corrupt file
+                    return null;
                 }
             }
+            bitmap.setHasAlpha(true);
+            if (page > 3)
+                try {
+                    checkOutOfMemory(); //check first before allocating another bitmap
+                } catch (MyOutOfMemoryException ex) {
+                    bitmap.recycle();
+                    throw ex;
+                }
+            Bitmap work = page > 3 ?
+                    Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), config)
+                    : bitmap;
+            if (page > 3) {
+                final int displayMode = Integer.parseInt(pref.getString("displayPageMode",
+                        getString(R.string.defaultDisplayPageMode)));
+                final boolean night = displayMode == 2;
+                int boldSize = Integer.parseInt(pref.getString("boldSize",
+                        getString(R.string.defaultBoldSize)));
+                Canvas c;
+                if (boldSize < 0) {
+                    Paint invertPaint = night ? new Paint() : null;
+                    if (night) invertPaint.setColorFilter(filter);
+                    int color;
+                    if (displayMode == 0)
+                        color = yellowColor;
+                    else if (displayMode == 2)
+                        color = Color.BLACK;
+                    else color = Color.WHITE;
+                    work.eraseColor(color);  // set its background to white, or whatever color you want
+                    c = new Canvas(work);
+                    c.drawBitmap(bitmap, 0, 0, invertPaint);
+                } else {
+                    work.eraseColor(Color.WHITE);
+                    c = new Canvas(work);
+                    Paint bitmapPaint = new Paint();
+                    //first convert bitmap to grey scale:
+                    bitmapPaint.setColorFilter(grayScaleFilter);
+                    c.drawBitmap(bitmap, 0, 0, bitmapPaint);
+                    //then convert the resulting bitmap to black and white using threshold matrix
+                    bitmapPaint.setColorFilter(thresholdFilter);
+                    c.drawBitmap(work, 0, 0, bitmapPaint);
+                    imageProcessing(boldSize, work, displayMode, night);
+                }
+                boolean isLeftPage = (page - 1) % 2 == 1;
+                bitmap.recycle();
+                bitmap = work;
+                if (!isShowPageBorders(pref) && pref.getBoolean("showPageLeftRightIndicator", true)) {
+                    Paint paint = new Paint();
+                    paint.setAntiAlias(true);
+                    paint.setXfermode(new PorterDuffXfermode(night ? PorterDuff.Mode.LIGHTEN
+                            : PorterDuff.Mode.DARKEN));
+                    paint.setStyle(Paint.Style.FILL_AND_STROKE);
+                    final int offset = 75;
+                    if (!isLeftPage) {
+                        int first = night ? Color.BLACK :
+                                displayMode == 0 ? yellowColor : Color.WHITE,
+                                second = Color.GRAY;
+                        paint.setShader(new LinearGradient(offset, 0, 0, 0,
+                                first, second, Shader.TileMode.MIRROR));
+                        c.drawRect(bitmap.getWidth() - offset, 0,
+                                bitmap.getWidth(), bitmap.getHeight(), paint);
+                    } else {
+                        int first = Color.GRAY,
+                                second = night ? Color.BLACK :
+                                        displayMode == 0 ? yellowColor : Color.WHITE;
+                        paint.setShader(new LinearGradient(0, 0, offset, 0,
+                                first, second, Shader.TileMode.MIRROR));
+                        c.drawRect(0, 0, offset, bitmap.getHeight(), paint);
+                    }
+                }
+            }
+            return bitmap;
+        } finally {
+            readPageLock.unlock();
         }
-        return bitmap;
     }
 
     private void downloadAll() {

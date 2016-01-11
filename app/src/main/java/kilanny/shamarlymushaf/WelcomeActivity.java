@@ -30,9 +30,13 @@ public class WelcomeActivity extends AppCompatActivity {
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    Utils.showAlert(WelcomeActivity.this, "إصدار أحدث " + info[0],
-                                            "قم بتحديث التطبيق من المتجر الآن"
-                                                    + "\nمالجديد:\n" + info[1], null);
+                                    try {
+                                        Utils.showAlert(WelcomeActivity.this, "إصدار أحدث " + info[0],
+                                                "قم بتحديث التطبيق من المتجر الآن"
+                                                        + "\nمالجديد:\n" + info[1], null);
+                                    } catch (Exception ex) { //activity not shown now
+                                        ex.printStackTrace();
+                                    }
                                 }
                             });
                         }
