@@ -9,5 +9,6 @@
     <string name="title_activity_goto">مصحف الشمرلي</string>
     <string name="donwloadTafaseerDbUrl">http://archive.org/download/shamraly/tafaseer.zip</string>
     <string name="donwloadTafaseerDbUrl2">https://raw.githubusercontent.com/Mr-DDDAlKilanny/tafseer-sqlite-db/master/tafaseer.zip</string>
-
+    <string name="request_storage_permission_msg">يتطلب التحميل الوصول إلى الذاكرة. اضغط موافق ليظهر لك تأكيد الحصول على إذن الوصول للذاكرة.
+        إذا لم يظهر التأكيد يمكنك تفعيل الإذن من إعدادات الجهاز ثم اختر التطبيقات ثم اختر مصحف الشمرلي ثم فعل الأذونات</string>
 </resources>

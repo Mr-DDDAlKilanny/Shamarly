@@ -73,6 +73,20 @@
             android:defaultValue="true"
             />
         <CheckBoxPreference
+            android:key="showRob3Toast"
+            android:title="عرض تنبيه الأرباع"
+            android:summary="عرض تنبيه سريع لربع ونصف وثلاثة أرباع الأحزاب"
+            android:dependency="showHizbToast"
+            android:defaultValue="false"
+            />
+        <ListPreference
+            android:key="autoCloseScreenMinutes"
+            android:title="إغلاق الشاشة آليا"
+            android:summary="إغلاق شاشة المصحف بعد عدم النشاط لمدة معينة بالدقائق"
+            android:entries="@array/autoCloseScreenValues"
+            android:entryValues="@array/autoCloseScreenValues"
+            android:defaultValue="@string/defaultAutoCloseScreenValue"  />
+        <CheckBoxPreference
             android:key="showPageBorders"
             android:title="عرض إطار للصفحة"
             android:summary="عرض إطار للصفحة به رقم الصفحة واسم الجزء/السورة"
@@ -85,6 +99,12 @@
             android:summary="عرض رقم الصفحة واسم السورة ورقم الجزء والحزب في أعلى الصفحة"
             android:dependency="showPageBorders"
             android:defaultValue="true" />
+        <CheckBoxPreference
+            android:key="autoHidePageInfo"
+            android:title="إخفاء تلقائي لمعلومات الصفحة"
+            android:summary="إخفاء شريط المعلومات العلوي تلقائيا مع الشريط السفلي"
+            android:dependency="showPageInfo"
+            android:defaultValue="false" />
         <CheckBoxPreference
             android:key="manuallyScrollPageInfo"
             android:title="تحريك يدوي لمعلومات الصفحة"
@@ -116,6 +136,14 @@
             android:title="خط غامق"
             android:summary="استخدام خط غامق"
             android:defaultValue="false" />
+        <ListPreference
+            android:key="tafseerTheme"
+            android:title="لون الخلفية والخط"
+            android:summary="تحديد الألوان المستخدمة في عرض شاشة التفسير"
+            android:entries="@array/tafseerThemeTitles"
+            android:entryValues="@array/tafseerThemeValues"
+            android:defaultValue="@string/defaultTafseerTheme"
+            />
         <CheckBoxPreference
             android:key="showTafseerNavigation"
             android:title="عرض أزرار الانتقال السريع"

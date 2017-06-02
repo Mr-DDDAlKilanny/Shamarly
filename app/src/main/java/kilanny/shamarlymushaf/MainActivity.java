@@ -1,5 +1,7 @@
 package kilanny.shamarlymushaf;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
 import android.app.ActionBar;
 import android.app.ActivityManager;
@@ -38,6 +40,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.RecoverySystem;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.view.ViewPager;
@@ -74,6 +77,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -170,6 +175,7 @@ public class MainActivity extends FragmentActivity {
     private int sura, ayah;
     private boolean allPagePlay = false;
     private boolean autoSwipPage = false;
+    private boolean autoHidePageInfo;
     private Typeface tradionalArabicFont, tradionalArabicBoldFont;
     private QuranImageView shareImageView;
     private QuranData quranData;
@@ -188,6 +194,8 @@ public class MainActivity extends FragmentActivity {
     private HashSet<Integer> pagesViewed;
     private Date startDate;
     private HashSet<String> listenRecite, viewTafseer;
+    private final Timer autoCloseTimer = new Timer("autoCloseScreen");
+    private final Shared idleUseCounter = new Shared();
 
     @Override
     protected void onStop() {
@@ -213,12 +221,14 @@ public class MainActivity extends FragmentActivity {
             }
         }
         DbManager.dispose();
+        autoCloseTimer.cancel();
         finish(); // prevent re-use the activity after stopping it (causes exceptions)
     }
 
     @Override
     protected void onDestroy() {
         try {
+            autoCloseTimer.cancel();
             if (adapter != null)
                 adapter.finalize();
         } catch (Throwable throwable) {
@@ -248,6 +258,8 @@ public class MainActivity extends FragmentActivity {
     private void initViewPagerAdapter() {
         adapter = new FullScreenImageAdapter(this, FullScreenImageAdapter.MAX_PAGE
                 - notDownloaded.size(), isDualPage());
+        if (notDownloaded.isEmpty())
+            initAutoCloseTimer();
         final MyGestureDetector listener = new MyGestureDetector() {
 
             @Override
@@ -256,6 +268,12 @@ public class MainActivity extends FragmentActivity {
                 if (adapter.isNotAllDownloaded()) {
                     downloadAll();
                     return;
+                }
+                idleUseCounter.setData(0);
+                if (autoHidePageInfo) {
+                    View pageInfo = getCurrentPageInfo();
+                    if (pageInfo != null)
+                        showAndSchedulePageInfoHide(pageInfo);
                 }
                 QuranImageView imageView = currentImageView.get();
                 int idx = imageView != null ? imageView.getAyahAtPos(e.getX(), e.getY()) : -1;
@@ -284,6 +302,7 @@ public class MainActivity extends FragmentActivity {
                 if (adapter.isNotAllDownloaded())
                     downloadAll();
                 else {
+                    idleUseCounter.setData(0);
                     QuranImageView imageView = getCurrentPage(true);
                     if (imageView != null && imageView.selectedAyahIndex >= QuranImageView.SELECTION_ALL) {
                         imageView.selectedAyahIndex = QuranImageView.SELECTION_NONE;
@@ -293,6 +312,11 @@ public class MainActivity extends FragmentActivity {
                     if (imageView != null && imageView.selectedAyahIndex >= QuranImageView.SELECTION_ALL) {
                         imageView.selectedAyahIndex = QuranImageView.SELECTION_NONE;
                         imageView.invalidate();
+                    }
+                    if (autoHidePageInfo) {
+                        View pageInfo = getCurrentPageInfo();
+                        if (pageInfo != null)
+                            showAndSchedulePageInfoHide(pageInfo);
                     }
                 }
                 return false;
@@ -346,6 +370,7 @@ public class MainActivity extends FragmentActivity {
         }
     }
 
+    @Nullable
     private QuranImageView getCurrentPage(boolean right) {
         try {
             return (QuranImageView) viewPager.findViewWithTag(setting.page)
@@ -356,13 +381,25 @@ public class MainActivity extends FragmentActivity {
         }
     }
 
+    @Nullable
+    private View getCurrentPageInfo() {
+        try {
+            return viewPager.findViewWithTag(setting.page)
+                    .findViewById(R.id.pageInfoLayout);
+        } catch (NullPointerException ex){
+            return null;
+        }
+    }
+
     private void initCurrentPageInfo(QuranImageView image, View parent) {
+        View pageInfo = parent.findViewById(R.id.pageInfoLayout);
         if (adapter.isNotAllDownloaded() ||
                 isShowPageBorders(pref) ||
                 !pref.getBoolean("showPageInfo", true)) {
-            parent.findViewById(R.id.pageInfoLayout).setVisibility(View.GONE);
-        } else if (image.currentPage != null && image.currentPage.ayahs.size() > 0) {
-            parent.findViewById(R.id.pageInfoLayout).setVisibility(View.VISIBLE);
+            pageInfo.setVisibility(View.GONE);
+        } else if (image.currentPage != null && image.currentPage.ayahs != null
+                && image.currentPage.ayahs.size() > 0) {
+            pageInfo.setVisibility(View.VISIBLE);
             AutoScrollViewPager pager = (AutoScrollViewPager) parent.findViewById(R.id.pageTitleViewPager);
             int page = image.currentPage.page;
             String juz = "", hizb = "";
@@ -399,7 +436,45 @@ public class MainActivity extends FragmentActivity {
                         .getString("defaultPageInfoItem",
                                 getString(R.string.defaultPageInfo))));
             }
+
+            if (autoHidePageInfo) {
+                showAndSchedulePageInfoHide(pageInfo);
+            }
         }
+    }
+
+    private void showAndSchedulePageInfoHide(@NonNull final View pageInfo) {
+        final int duration = getResources().getInteger(android.R.integer.config_mediumAnimTime);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                pageInfo.setVisibility(View.VISIBLE);
+                pageInfo.animate().translationY(0).setDuration(duration)
+                        .setListener(null);
+            }
+        });
+        Runnable delayDone = new Runnable() {
+            @Override
+            public void run() {
+                //no need to check HONEYCOMB_MR2 (3.2), app min is android 4.0
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        pageInfo.animate()
+                                .translationY(-pageInfo.getHeight())
+                                .setDuration(duration)
+                                .setListener(new AnimatorListenerAdapter() {
+                                    @Override
+                                    public void onAnimationEnd(Animator animation) {
+                                        super.onAnimationEnd(animation);
+                                        pageInfo.setVisibility(View.GONE);
+                                    }
+                                });
+                    }
+                });
+            }
+        };
+        mHideHandler.postDelayed(delayDone, AUTO_HIDE_DELAY_MILLIS * 2);
     }
 
     private void configOrientation(int orientation, boolean right) {
@@ -531,19 +606,46 @@ public class MainActivity extends FragmentActivity {
                     ex.printStackTrace();
                 }
                 if (pref.getBoolean("showHizbToast", true)) {
-                    // find hizb-juz
-                    for (int i = 1; i < quranData.hizbs.length; ++i) {
-                        int val = (int) quranData.hizbs[i].value;
-                        if (val == p) {
-                            String txt;
-                            if (i % 2 == 1)
-                                txt = quranData.juzs[1 + i / 2].name;
+                    if (pref.getBoolean("showRob3Toast", false)) {
+                        int low = 1, high = quranData.arba3.length - 1;
+                        while (low <= high) {
+                            int mid = (low + high) / 2;
+                            int val = (int) quranData.arba3[mid].value;
+                            if (val == p) {
+                                String txt;
+                                if ((mid - 1) % 8 == 0)
+                                    txt = quranData.juzs[(mid - 1) / 8 + 1].name;
+                                else if ((mid - 1) % 4 == 0)
+                                    txt = quranData.hizbs[(mid - 1) / 4 + 1].name;
+                                else
+                                    txt = quranData.arba3[mid].name;
+                                Toast.makeText(MainActivity.this, txt, Toast.LENGTH_SHORT).show();
+                                break;
+                            } else if (val < p)
+                                low = mid + 1;
                             else
-                                txt = quranData.hizbs[i].name;
-                            Toast.makeText(MainActivity.this, txt, Toast.LENGTH_SHORT).show();
-                            break;
-                        } else if (val > p) break;
+                                high = mid - 1;
+                        }
+                    } else {
+                        // find hizb-juz
+                        for (int i = 1; i < quranData.hizbs.length; ++i) {
+                            int val = (int) quranData.hizbs[i].value;
+                            if (val == p) {
+                                String txt;
+                                if (i % 2 == 1)
+                                    txt = quranData.juzs[1 + i / 2].name;
+                                else
+                                    txt = quranData.hizbs[i].name;
+                                Toast.makeText(MainActivity.this, txt, Toast.LENGTH_SHORT).show();
+                                break;
+                            } else if (val > p) break;
+                        }
                     }
+                }
+                if (autoHidePageInfo) {
+                    View pageInfo = getCurrentPageInfo();
+                    if (pageInfo != null)
+                        showAndSchedulePageInfoHide(pageInfo);
                 }
             }
         });
@@ -612,9 +714,11 @@ public class MainActivity extends FragmentActivity {
         final EditText to = (EditText) dialog.findViewById(R.id.toAyahR);
         if (image.currentPage != null && image.currentPage.ayahs.size() >0) {
             spinner1.setSelection(image.currentPage.ayahs.get(0).sura);
-            spinner2.setSelection(image.currentPage.ayahs.get(image.currentPage.ayahs.size() - 1).sura);
+            spinner2.setSelection(image.currentPage.ayahs.get(image.currentPage.ayahs.size() - 1)
+                    .sura);
             from.setText(Math.max(1, image.currentPage.ayahs.get(0).ayah) + "");
-            to.setText(Math.max(1, image.currentPage.ayahs.get(image.currentPage.ayahs.size() - 1).ayah) + "");
+            to.setText(Math.max(1, image.currentPage.ayahs.get(image.currentPage.ayahs.size() - 1)
+                    .ayah) + "");
         }
         final CheckBox checkBoxAutoStop = (CheckBox) dialog.findViewById(R.id.checkboxAutoStop);
         checkBoxAutoStop.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -664,8 +768,8 @@ public class MainActivity extends FragmentActivity {
                     }
                     sf = (int) ((ListItem) spinner1.getSelectedItem()).value;
                     st = (int) ((ListItem) spinner2.getSelectedItem()).value;
-                    f = Math.min(f, QuranData.AYAH_COUNT[sf - 1]);
-                    t = Math.min(t, QuranData.AYAH_COUNT[st - 1]);
+                    f = Math.min(f, quranData.surahs[sf - 1].ayahCount);
+                    t = Math.min(t, quranData.surahs[st - 1].ayahCount);
                     if ((sf > st || sf == st && f > t)
                             && !pref.getBoolean("backToBegin", true)) {
                         showError("البداية يجب أن لا تكون أعلى من النهاية. فعل خيار البدء من الفاتحة للاستمرار");
@@ -691,11 +795,11 @@ public class MainActivity extends FragmentActivity {
     private void setBookmarkMenuItem(boolean add) {
         if (add) {
             findViewById(R.id.bookmarkBtn)
-                    .setBackgroundResource(R.drawable.abc_btn_rating_star_on_mtrl_alpha);
+                    .setBackgroundResource(android.R.drawable.star_big_on);
         }
         else {
             findViewById(R.id.bookmarkBtn)
-                    .setBackgroundResource(R.drawable.abc_btn_rating_star_off_mtrl_alpha);
+                    .setBackgroundResource(android.R.drawable.star_big_off);
         }
     }
 
@@ -815,6 +919,12 @@ public class MainActivity extends FragmentActivity {
             FindPageSelectionResult selectionResult = getCurrentPageSelected();
             int sel = selectionResult.selectionIndex;
             image = selectionResult.image;
+            if (image == null || image.currentPage == null) {
+                //user clicks btn before loading completes
+                Toast.makeText(this, "الرجاء انتظار تحميل الصفحة ثم حاول ثانية",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
             if (isDualPage())
                 playRecitePageIsRight = result.isRight;
             if (sel < 0 ||
@@ -849,7 +959,7 @@ public class MainActivity extends FragmentActivity {
                         stopPlayback();
                     } else {
                         QuranImageView image = getCurrentPage(playRecitePageIsRight);
-                        int next = QuranData.AYAH_COUNT[sura - 1] >= ayah + 1 ?
+                        int next = quranData.surahs[sura - 1].ayahCount >= ayah + 1 ?
                                 ayah + 1 : 1;
                         if (repeat) {
                             if (sura == toSurah && ayah == toAyah) {
@@ -866,7 +976,7 @@ public class MainActivity extends FragmentActivity {
                                     }
                                 }
                             } else if (next <= ayah) {
-                                if (++sura > QuranData.AYAH_COUNT.length) {
+                                if (++sura > quranData.surahs.length) {
                                     if (pref.getBoolean("backToBegin", true)) {
                                         sura = ayah = 1;
                                         autoSwipPage = true;
@@ -883,7 +993,7 @@ public class MainActivity extends FragmentActivity {
                             }
                         } else {
                             if (next <= ayah) {
-                                if (++sura > QuranData.AYAH_COUNT.length) {
+                                if (++sura > quranData.surahs.length) {
                                     if (pref.getBoolean("backToBegin", true)) {
                                         sura = next = 1;
                                         autoSwipPage = true;
@@ -1040,7 +1150,7 @@ public class MainActivity extends FragmentActivity {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (adapter.isNotAllDownloaded() || setting.page == 0) {
+                if (adapter.isNotAllDownloaded() || setting.page <= 1) {
                     Toast.makeText(MainActivity.this, "يستخدم هذا الزر لإضافة الصفحة الحالية للمفضلة",
                             Toast.LENGTH_LONG).show();
                     return;
@@ -1052,14 +1162,14 @@ public class MainActivity extends FragmentActivity {
         findViewById(R.id.listenBackground).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (adapter.isNotAllDownloaded() || setting.page == 0) {
+                if (adapter.isNotAllDownloaded() || setting.page <= 1) {
                     Toast.makeText(MainActivity.this, "يستخدم هذا الزر لاستماع التلاوة مع توفير البطارية",
                             Toast.LENGTH_LONG).show();
                     return;
                 }
-                //displayReciteInBackgroundDlg();
-                Toast.makeText(MainActivity.this, "سيتم توفير هذه الميزة قريبا إن شاء الله",
-                        Toast.LENGTH_LONG).show();
+                displayReciteInBackgroundDlg();
+                //Toast.makeText(MainActivity.this, "سيتم توفير هذه الميزة قريبا إن شاء الله",
+                //        Toast.LENGTH_LONG).show();
             }
         });
         btn = (Button) findViewById(R.id.listen);
@@ -1067,7 +1177,7 @@ public class MainActivity extends FragmentActivity {
 
             @Override
             public void onClick(View v) {
-                if (adapter.isNotAllDownloaded() || setting.page == 0) {
+                if (adapter.isNotAllDownloaded() || setting.page <= 1) {
                     Toast.makeText(MainActivity.this, "يستخدم هذا الزر لتشغيل التلاوة",
                             Toast.LENGTH_LONG).show();
                     return;
@@ -1214,7 +1324,7 @@ public class MainActivity extends FragmentActivity {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (adapter.isNotAllDownloaded()) {
+                if (adapter.isNotAllDownloaded() || setting.page <= 1) {
                     Toast.makeText(MainActivity.this, "يستخدم هذا الزر لمشاركة الآيات",
                             Toast.LENGTH_LONG).show();
                     return;
@@ -1260,6 +1370,8 @@ public class MainActivity extends FragmentActivity {
         final ListItem[] items = items_tmp;
         final Dialog dialog = new Dialog(this);
         dialog.setContentView(R.layout.fragment_view_tafseer);
+        String theme = pref.getString("tafseerTheme",
+                getString(R.string.defaultTafseerTheme));
         final TextView textView = (TextView) dialog.findViewById(R.id.tafseerText);
         final TextView titleTextView = (TextView) dialog.findViewById(R.id.txtTafseerDlgTitle);
         textView.setTypeface(pref.getBoolean("fontBold", false) ?
@@ -1343,7 +1455,8 @@ public class MainActivity extends FragmentActivity {
         }
         final EditText from = (EditText) dialog.findViewById(R.id.fromAyah);
         final EditText to = (EditText) dialog.findViewById(R.id.toAyah);
-        if (image.currentPage != null && image.currentPage.ayahs.size() >0) {
+        if (image.currentPage != null && image.currentPage.ayahs != null
+                && image.currentPage.ayahs.size() > 0) {
             spinner1.setSelection(image.currentPage.ayahs.get(0).sura);
             spinner2.setSelection(image.currentPage.ayahs.get(image.currentPage.ayahs.size() - 1).sura);
             from.setText(Math.max(1, image.currentPage.ayahs.get(0).ayah) + "");
@@ -1375,8 +1488,8 @@ public class MainActivity extends FragmentActivity {
                 }
                 int sf = (int) ((ListItem) spinner1.getSelectedItem()).value;
                 int st = (int) ((ListItem) spinner2.getSelectedItem()).value;
-                f = Math.min(f, QuranData.AYAH_COUNT[sf - 1]);
-                t = Math.min(t, QuranData.AYAH_COUNT[st - 1]);
+                f = Math.min(f, quranData.surahs[sf - 1].ayahCount);
+                t = Math.min(t, quranData.surahs[st - 1].ayahCount);
                 if ((sf > st || sf == st && f > t)
                         && !pref.getBoolean("backToBegin", true)) {
                     showError("البداية يجب أن لا تكون أعلى من النهاية. فعل خيار البدء من الفاتحة للاستمرار");
@@ -1393,6 +1506,12 @@ public class MainActivity extends FragmentActivity {
     }
 
     private void displayShareDlg(QuranImageView image) {
+        if (image.currentPage == null || image.currentPage.ayahs == null ||
+                image.currentPage.ayahs.size() == 0) {
+            Toast.makeText(this, "الصفحة المختارة لا تحتوي على آيات",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
         final Dialog dialog = new Dialog(this);
         dialog.setContentView(R.layout.fragment_share_ayat_dlg);
         shareImageView = (QuranImageView) dialog.findViewById(R.id.shareQuranImageView);
@@ -1485,8 +1604,10 @@ public class MainActivity extends FragmentActivity {
         dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
             @Override
             public void onDismiss(DialogInterface dialog) {
-                shareImageView.setImageBitmap(null);
-                shareImageView = null;
+                if (shareImageView != null) {
+                    shareImageView.setImageBitmap(null);
+                    shareImageView = null;
+                }
             }
         });
         dialog.setTitle("مشاركة آية أو أكثر");
@@ -1499,15 +1620,19 @@ public class MainActivity extends FragmentActivity {
                     Toast.LENGTH_LONG).show();
             return;
         }
-        FindPageSelectionResult result = getCurrentPageSelected();
-        if (result == null || result.image.currentPage == null) {
-            Toast.makeText(this, "يستخدم هذا الزر لمشاركة مجموعة من الآيات",
-                    Toast.LENGTH_LONG).show();
-            return;
+        if (!isDualPage()) {
+            FindPageSelectionResult result = getCurrentPageSelected();
+            if (result == null || result.image.currentPage == null) {
+                Toast.makeText(this, "يستخدم هذا الزر لمشاركة مجموعة من الآيات",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+            displayShareDlg(result.image);
         }
-        if (!isDualPage()) displayShareDlg(result.image);
         else {
-            Utils.showSelectionDlg(this, "مشاركة آية أو أكثر", new String[] {"من الصفحة اليمنى", "من الصفحة اليسرى"}, true, new DialogInterface.OnClickListener() {
+            Utils.showSelectionDlg(this, "مشاركة آية أو أكثر",
+                    new String[] {"من الصفحة اليمنى", "من الصفحة اليسرى"}, true,
+                    new DialogInterface.OnClickListener() {
                     @Override
                 public void onClick(DialogInterface dialog, int which) {
                         displayShareDlg(getCurrentPage(which == 0));
@@ -1534,6 +1659,31 @@ public class MainActivity extends FragmentActivity {
             totalDeviceRamMg = -1;
         }
         System.out.println("Ram = " + totalDeviceRamMg);
+    }
+
+    private void initAutoCloseTimer() {
+        autoCloseTimer.scheduleAtFixedRate(new TimerTask() {
+
+            private long period = Long.parseLong(pref.getString("autoCloseScreenMinutes",
+                    getString(R.string.defaultAutoCloseScreenValue)));
+
+            @Override
+            public void run() {
+                idleUseCounter.increment();
+                if (period <= idleUseCounter.getData()) {
+                    autoCloseTimer.cancel();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(MainActivity.this,
+                                    "انتهت مهلة عدم الاستخدام. تم إغلاق الشاشة آليا لتوفير البطارية",
+                                    Toast.LENGTH_LONG).show();
+                            if (!isFinishing()) finish();
+                        }
+                    });
+                }
+            }
+        }, 60000, 60000);
     }
 
     @Override
@@ -1564,7 +1714,7 @@ public class MainActivity extends FragmentActivity {
             recommendedRamMg = -1;
         }
         try {
-            db = DbManager.getInstance(this);
+            db = DbManager.getInstanceWithTest(this);
             deleteAll();
             quranData = QuranData.getInstance(this);
             setContentView(R.layout.activity_main);
@@ -1572,6 +1722,8 @@ public class MainActivity extends FragmentActivity {
             tradionalArabicFont = Typeface.createFromAsset(getAssets(), "DroidNaskh-Regular.ttf");
             tradionalArabicBoldFont = Typeface.createFromAsset(getAssets(), "DroidNaskh-Bold.ttf");
             pref = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+            autoHidePageInfo = pref.getBoolean("showPageInfo", true) &&
+                    pref.getBoolean("autoHidePageInfo", false);
             rotationMode = Integer.parseInt(pref.getString("pageRotationMode",
                     getString(R.string.defaultPageRotationMode)));
             if (rotationMode == 1)
@@ -2146,7 +2298,10 @@ Page number (561, 1528, 75, 38)
             @Override
             protected void onCancelled() {
                 //super.onCancelled();
-                if (!isFinishing() && show.isShowing()) show.dismiss();
+                try {
+                    if (!isFinishing() && show.isShowing()) show.dismiss();
+                } catch (Exception ex) {
+                }
             }
 
             @Override
@@ -2168,104 +2323,17 @@ Page number (561, 1528, 75, 38)
                 execute.cancel(true);
             }
         });
+        //user close activity?
+        show.setOnDismissListener(new DialogInterface.OnDismissListener() {
+            @Override
+            public void onDismiss(DialogInterface dialog) {
+                if (!execute.isCancelled())
+                    execute.cancel(true);
+            }
+        });
     }
 }
-class ListItem implements Serializable {
-    String name;
-    Object value;
 
-    public ListItem() {
-    }
-
-    public ListItem(String name, Object value) {
-        this.name = name;
-        this.value = value;
-    }
-
-    @Override
-    public String toString() {
-        return name;
-    }
-}
-class Setting implements Serializable {
-    private static Setting instnace;
-    private static final String settingFilename = "myfile";
-
-    int page = 1;
-    boolean lastWasDualPage = false;
-    String saveSoundsDirectory;
-    ArrayList<ListItem> bookmarks = new ArrayList<>();
-
-    private Setting() {
-    }
-
-    @Nullable
-    private ListItem getBookmark(int p) {
-        for (ListItem i : bookmarks) {
-            if (Integer.parseInt(i.name) == p)
-                return i;
-        }
-        return null;
-    }
-
-    public boolean isBookmarked(int p) {
-        return getBookmark(p) != null;
-    }
-
-    public boolean toggleBookmark(int p) {
-        ListItem b = getBookmark(p);
-        if (b == null) {
-            b = new ListItem();
-            b.name = p + "";
-            bookmarks.add(b);
-            return true;
-        } else {
-            bookmarks.remove(b);
-            return false;
-        }
-    }
-
-    public void save(Context context) {
-        try {
-            FileOutputStream fos = context.openFileOutput(settingFilename, Context.MODE_PRIVATE);
-            ObjectOutputStream os = new ObjectOutputStream(fos);
-            os.writeObject(this);
-            os.close();
-            fos.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public static Setting getInstance(Context context) {
-        if (instnace != null)
-            return instnace;
-        Setting setting = null;
-        try {
-            FileInputStream fis = context.openFileInput(settingFilename);
-            ObjectInputStream is = new ObjectInputStream(fis);
-            setting = (Setting) is.readObject();
-            is.close();
-            fis.close();
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        if (setting == null) {
-            setting = new Setting();
-        }
-        return instnace = setting;
-    }
-}
-class Surah {
-    String name;
-    int page;
-    int index;
-
-    @Override
-    public String toString() {
-        return "سورة " + name;
-    }
-}
 class Shared {
     private final Lock lock = new ReentrantLock(true);
     private int _data;

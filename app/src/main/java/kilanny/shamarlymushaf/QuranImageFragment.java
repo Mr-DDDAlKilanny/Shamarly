@@ -89,8 +89,7 @@ public class QuranImageFragment extends Fragment {
         fragPos = getArguments() != null ? getArguments().getInt("pos") : -1;
     }
 
-    private static void showProgress(View view, Bitmap bitmap, Bitmap borders,
-                         final Page page, int id, int idBorders) {
+    private static void showProgress(View view, Bitmap bitmap, Bitmap borders, int id, int idBorders) {
         try {
             final QuranImageView imgDisplay = (QuranImageView) view.findViewById(id);
             LinearLayout linlaHeaderProgress = (LinearLayout) view.findViewById(R.id.linlaHeaderProgress);
@@ -120,7 +119,6 @@ public class QuranImageFragment extends Fragment {
                 imgDisplay.post(runnable);
             }
             if (bitmap != null) {
-                imgDisplay.currentPage = page;
                 imgDisplay.setImageBitmap(bitmap);
                 imgDisplay.invalidate();
             } else {
@@ -137,8 +135,9 @@ public class QuranImageFragment extends Fragment {
         final View viewLayout = inflater.inflate(isDualPage ?
                 R.layout.layout_fullscreen_image_dual : R.layout.layout_fullscreen_image,
                 container, false);
-        if (finalized) { // explicit GC collect causes errors !!
+        if (finalized || _activity == null) { // explicit GC collect causes errors !!
             //occurs mostly when activity resume() after stop()
+            //or when out-of-memory error occurs
             AnalyticsTrackers.sendFatalError(getActivity(), "QuranImageFragment.onCreateView",
                     "finalized = true");
             return viewLayout;
@@ -169,18 +168,25 @@ public class QuranImageFragment extends Fragment {
         } else {
             final int position = _activity.adapter.getCount() - fragPos;
             if (position >= 0) {
-                showProgress(viewLayout, null, null, null,
+                DbManager db = DbManager.getInstance(getActivity());
+                final Page page = db.getPage(isDualPage ? position * 2 : position);
+                final Page page2 = isDualPage ? db.getPage(position * 2 + 1) : null;
+                //set pages before anything
+                ((QuranImageView) viewLayout.findViewById(isDualPage ? R.id.quranPage_right : R.id.quranPage))
+                        .currentPage = page;
+                if (isDualPage)
+                    ((QuranImageView) viewLayout.findViewById(R.id.quranPage_left)).currentPage = page2;
+                showProgress(viewLayout, null, null,
                         isDualPage ? R.id.quranPage_right : R.id.quranPage,
                         isDualPage ? R.id.quranPageBorder_right : R.id.quranPageBorder);
-                if (isDualPage) showProgress(viewLayout, null, null, null,
-                        R.id.quranPage_left, R.id.quranPageBorder_left);
+                if (isDualPage)
+                    showProgress(viewLayout, null, null,
+                            R.id.quranPage_left, R.id.quranPageBorder_left);
                 final String memoryFullError = "الذاكرة ممتلئة. لتوفيرها لا تستخدم (غمق الرسم، عرض حدود الصحفحة، الوضع الليلي)";
                 final Runnable runnable = new Runnable() {
                     @Override
                     public void run() {
                         try {
-                            DbManager db = DbManager.getInstance(getActivity());
-                            final Page page = db.getPage(isDualPage ? position * 2 : position);
                             final Bitmap bitmap = _activity.readPage(page.page);
                             Bitmap tmp = null;
                             SharedPreferences pref = null;
@@ -196,7 +202,7 @@ public class QuranImageFragment extends Fragment {
                                 _activity.runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        showProgress(viewLayout, bitmap, bitmapBorders, page,
+                                        showProgress(viewLayout, bitmap, bitmapBorders,
                                                 isDualPage ? R.id.quranPage_right : R.id.quranPage,
                                                 isDualPage ? R.id.quranPageBorder_right : R.id.quranPageBorder);
                                         if (listener != null) {
@@ -205,7 +211,6 @@ public class QuranImageFragment extends Fragment {
                                     }
                                 });
                                 if (isDualPage) {
-                                    final Page page2 = db.getPage(position * 2 + 1);
                                     final Bitmap bitmap2 = _activity.readPage(page2.page);
                                     Bitmap tmp2 = null;
                                     if (!finalized && pref != null && MainActivity.isShowPageBorders(pref)) {
@@ -218,7 +223,7 @@ public class QuranImageFragment extends Fragment {
                                         @Override
                                         public void run() {
                                             showProgress(viewLayout, bitmap2, bitmapBorders2,
-                                                    page2, R.id.quranPage_left, R.id.quranPageBorder_left);
+                                                    R.id.quranPage_left, R.id.quranPageBorder_left);
                                             if (listener != null) {
                                                 listener.onInstantiate(new WeakReference<>(imgDisplay2), viewLayout);
                                             }
@@ -241,8 +246,11 @@ public class QuranImageFragment extends Fragment {
                                 _activity.runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        Toast.makeText(_activity, memoryFullError, Toast.LENGTH_LONG).show();
-                                        _activity.finish();
+                                        try {
+                                            Toast.makeText(_activity, memoryFullError, Toast.LENGTH_LONG).show();
+                                            _activity.finish();
+                                        } catch (Exception ex) {
+                                        }
                                     }
                                 });
                                 AnalyticsTrackers.sendException(_activity, err);

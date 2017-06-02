@@ -71,8 +71,10 @@ public class ReciterDetailFragment extends Fragment {
     }
 
     public void setCurrentDownloadSurah(int currentDownloadSurah) {
-        this.currentDownloadSurah = currentDownloadSurah;
-        adapter.notifyDataSetChanged();
+        if (adapter != null) { //early call before onCreateView() ?
+            this.currentDownloadSurah = currentDownloadSurah;
+            adapter.notifyDataSetChanged();
+        }
     }
 
     @Override
@@ -94,8 +96,8 @@ public class ReciterDetailFragment extends Fragment {
         adapter.notifyDataSetChanged();
     }
 
-    private int getSurahAyahCount(int surah) {
-        return QuranData.AYAH_COUNT[surah - 1] + (surah == 1 ? 1 : 0);
+    private int getSurahAyahCount(QuranData quranData, int surah) {
+        return quranData.surahs[surah - 1].ayahCount + (surah == 1 ? 1 : 0);
     }
 
     class SurahDownload {
@@ -116,7 +118,7 @@ public class ReciterDetailFragment extends Fragment {
             for (int i = 0; i < quranData.surahs.length; ++i) {
                 arr[i] = new SurahDownload();
                 arr[i].surah = quranData.surahs[i];
-                arr[i].totalAyah = getSurahAyahCount(i + 1);
+                arr[i].totalAyah = getSurahAyahCount(quranData, i + 1);
             }
             adapter = new ArrayAdapter<SurahDownload>(
                     getActivity(),

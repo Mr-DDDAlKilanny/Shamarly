@@ -230,15 +230,15 @@
         <item>3</item>
     </string-array>
 
-    <string name="defaultDisplayPageMode">0</string>
+    <string name="defaultDisplayPageMode">1</string>
     <string-array name="displayPageModeTitles">
         <item>خلفية صفراء</item>
         <item>خلفية بيضاء</item>
         <item>الوضع الليلي</item>
     </string-array>
     <string-array name="displayPageModeValues">
+        <item>0</item>
         <item>@string/defaultDisplayPageMode</item>
-        <item>1</item>
         <item>2</item>
     </string-array>
 
@@ -252,5 +252,30 @@
         <item>وضع حر - حسب وضعية الجهاز</item>
         <item>وضع طولي دائما</item>
         <item>وضع أفقي دائما</item>
+    </string-array>
+
+    <string name="defaultAutoCloseScreenValue">15</string>
+    <string-array name="autoCloseScreenValues">
+        <item>3</item>
+        <item>5</item>
+        <item>10</item>
+        <item>15</item>
+        <item>20</item>
+        <item>30</item>
+        <item>45</item>
+        <item>60</item>
+        <item>90</item>
+        <item>120</item>
+        <item>180</item>
+    </string-array>
+
+    <string name="defaultTafseerTheme">0</string>
+    <string-array name="tafseerThemeTitles">
+        <item>خلفية سوداء والخط أبيض</item>
+        <item>خلفية بيضاء والخط أسود</item>
+    </string-array>
+    <string-array name="tafseerThemeValues">
+        <item>@string/defaultTafseerTheme</item>
+        <item>1</item>
     </string-array>
 </resources>

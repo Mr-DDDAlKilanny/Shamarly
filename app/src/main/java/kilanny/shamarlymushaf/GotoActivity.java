@@ -48,10 +48,7 @@ public class GotoActivity extends FragmentActivity {
         setContentView(R.layout.activity_goto);
         tabs = (PagerSlidingTabStrip) findViewById(R.id.gotoTabs);
         ViewPager pager = (ViewPager) findViewById(R.id.gotoPager);
-        GotoAdapter adapter = new GotoAdapter(getSupportFragmentManager(), this,
-                Setting.getInstance(this),
-                DbManager.getInstance(this),
-                QuranData.getInstance(this));
+        GotoAdapter adapter = new GotoAdapter(getSupportFragmentManager());
         pager.setAdapter(adapter);
         final int pageMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 4,
                 getResources().getDisplayMetrics());

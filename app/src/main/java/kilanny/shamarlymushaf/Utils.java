@@ -354,6 +354,8 @@ public class Utils {
         if (!q.canDownloadNow()) return DOWNLOAD_QUOTA_EXCEEDED;
         int res = -1;
         File file = getAyahFile(ayah, surahDir);
+        if (file.exists())
+            return DOWNLOAD_OK;
         try {
             res = downloadFile(buffer, getAyahUrl(reciter, surah, ayah, data, 1), file);
             if (res == DOWNLOAD_OK) return res;
@@ -383,7 +385,7 @@ public class Utils {
     }
 
     public static ConcurrentLinkedQueue<Integer> getNotDownloaded(Context context,
-                          String reciter, int surah, boolean buffer[]) {
+                          String reciter, int surah, boolean buffer[], QuranData data) {
         Arrays.fill(buffer, false);
         File files[] = listAyahs(context, reciter, surah);
         if (files != null) {
@@ -392,7 +394,7 @@ public class Utils {
             }
         }
         ConcurrentLinkedQueue<Integer> q = new ConcurrentLinkedQueue<>();
-        for (int i = surah == 1 ? 0 : 1; i <= QuranData.AYAH_COUNT[surah - 1]; ++i)
+        for (int i = surah == 1 ? 0 : 1; i <= data.surahs[surah - 1].ayahCount; ++i)
             if (!buffer[i])
                 q.add(i);
         return q;
@@ -407,7 +409,11 @@ public class Utils {
         File file = getPageFile(context, idx);
         if (pageExists(context, idx)) return DOWNLOAD_OK;
         int res = downloadFile(buffer, pageUrl, file);
-        if (res != DOWNLOAD_OK) return res;
+        if (res != DOWNLOAD_OK) {
+            if (file.exists())
+                file.delete();
+            return res;
+        }
         // make sure bitmap is ok
         if (!pageExists(context, idx)) {
             Log.d("downloadPage", "Fail downloading " + pageUrl);
@@ -516,7 +522,7 @@ public class Utils {
                                         final boolean[] buffer2,
                                         final QuranData data) {
         final ConcurrentLinkedQueue<Integer> q =
-                Utils.getNotDownloaded(context, reciter, surah, buffer2);
+                Utils.getNotDownloaded(context, reciter, surah, buffer2, data);
         final File surahDir = getSurahDir(context, reciter, surah);
         if (surahDir == null)
             throw new IllegalStateException("User has not selected download dir");
@@ -524,7 +530,7 @@ public class Utils {
             surahDir.mkdirs();
         Thread[] threads = new Thread[4];
         final Shared progress = new Shared();
-        progress.setData(QuranData.AYAH_COUNT[surah - 1] + (surah == 1 ? 1 : 0) - q.size());
+        progress.setData(data.surahs[surah - 1].ayahCount + (surah == 1 ? 1 : 0) - q.size());
         final DownloadStatusArray error = new DownloadStatusArray(threads.length);
         final Shared interrupt = new Shared();
         interrupt.setData(0);
@@ -535,6 +541,9 @@ public class Utils {
                 @Override
                 public void run() {
                     byte[] buf = new byte[1024];
+                    //Basmalah if not downloaded
+                    downloadAyah(context, reciter, 1, 1, buf,
+                            getSurahDir(context, reciter, 1), data);
                     while (interrupt.getData() == 0 &&
                             cancel.canContinue() && error.isAllOk()) {
                         Integer per = q.poll();
@@ -869,7 +878,7 @@ class DownloadQuota implements Serializable {
         Date now = new Date();
         int days = (int) Math.ceil((now.getTime() - getBeginDate().getTime())
                 / (1000.0 * 60 * 60 * 24));
-        return getUsedQuota() < days * DAILY_DOWNLOAD_QUOTA_BYTES;
+        return getUsedQuota() <= days * DAILY_DOWNLOAD_QUOTA_BYTES;
     }
 
     private DownloadQuota() {

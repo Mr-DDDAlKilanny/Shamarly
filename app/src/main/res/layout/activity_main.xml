@@ -21,7 +21,7 @@
 
             <Button android:id="@+id/bookmarkBtn" style="?metaButtonBarButtonStyle"
                 android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:background="@drawable/abc_btn_rating_star_off_mtrl_alpha" />
+                android:layout_weight="1" android:background="@android:drawable/btn_star_big_off" />
             <Button android:id="@+id/listenBackground" style="?metaButtonBarButtonStyle"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content"

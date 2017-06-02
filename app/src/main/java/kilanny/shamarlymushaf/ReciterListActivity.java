@@ -1,11 +1,16 @@
 package kilanny.shamarlymushaf;
 
+import android.Manifest;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.RecoverySystem;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v4.app.NavUtils;
@@ -40,6 +45,8 @@ import java.util.HashSet;
 public class ReciterListActivity extends ActionBarActivity
         implements ReciterListFragment.Callbacks,
         DirectoryChooserFragment.OnFragmentInteractionListener {
+
+    private static final int WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 1;
 
     private ReciterDetailFragment fragment;
     private AsyncTask downloadAll;
@@ -85,9 +92,6 @@ public class ReciterListActivity extends ActionBarActivity
             finish();
             return;
         }
-        setting = Setting.getInstance(this);
-        if (setting.saveSoundsDirectory == null || !new File(setting.saveSoundsDirectory).exists())
-            chooseDir(true);
         // Show the Up button in the action bar.
         ActionBar bar = getSupportActionBar();
         if (bar != null) bar.setDisplayHomeAsUpEnabled(true);
@@ -104,6 +108,62 @@ public class ReciterListActivity extends ActionBarActivity
             ((ReciterListFragment) getSupportFragmentManager()
                     .findFragmentById(R.id.reciter_list))
                     .setActivateOnItemClick(true);
+        }
+
+        initWithPermissionCheck(true);
+    }
+
+    private void initWithPermissionCheck(boolean shouldShowExplainDlg) {
+        if (checkStoragePermission(shouldShowExplainDlg))
+            init();
+    }
+
+    private boolean checkStoragePermission(boolean shouldShowExplainDlg) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    != PackageManager.PERMISSION_GRANTED) {
+                if (shouldShowExplainDlg &&
+                        ActivityCompat.shouldShowRequestPermissionRationale(this,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                    Utils.showAlert(this,
+                            "صلاحية القرص",
+                            getString(R.string.request_storage_permission_msg),
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    initWithPermissionCheck(false);
+                                }
+                            });
+                } else {
+                    requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                            WRITE_EXTERNAL_STORAGE_REQUEST_CODE);
+                }
+                return false;
+            } else
+                return true;
+        }
+        return true;
+    }
+
+    private void init() {
+        setting = Setting.getInstance(this);
+        if (setting.saveSoundsDirectory == null || !new File(setting.saveSoundsDirectory).exists())
+            chooseDir(true);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == WRITE_EXTERNAL_STORAGE_REQUEST_CODE) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED)
+                init();
+            else {
+                Toast.makeText(getApplicationContext(),
+                        "لقد رفضت منح التطبيق صلاحية الكتابة في الذاكرة لذلك لا يمكنك التحميل. فضلا امنح الصلاحية من: إعدادات الجهاز - التطبيقات - مصحف الشمرلي",
+                        Toast.LENGTH_LONG).show();
+                finish();
+            }
         }
     }
 

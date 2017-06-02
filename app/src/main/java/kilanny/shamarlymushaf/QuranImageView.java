@@ -104,7 +104,7 @@ public class QuranImageView extends TouchImageView {
         }
         if (mCanvas == null) return;
         canvas = mCanvas;
-        if (currentPage != null) {
+        if (currentPage != null && currentPage.ayahs != null) {
             initPrefs();
             int sel = selectedAyahIndex; // prevent errors caused by other threads modifying this field
             if (isMultiSelectMode) {
@@ -222,7 +222,7 @@ public class QuranImageView extends TouchImageView {
     @Override
     protected void finalize() throws Throwable {
         this.mutliSelectList.clear();
-        if (this.currentPage != null) {
+        if (currentPage != null && currentPage.ayahs != null) {
             Page page = currentPage;
             currentPage = null;
             for (Ayah a : page.ayahs) {
@@ -231,7 +231,6 @@ public class QuranImageView extends TouchImageView {
             }
             page.ayahs.clear();
             page.ayahs = null;
-            page = null;
         }
         this.pref = null;
         this.res = null;

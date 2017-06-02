@@ -1,177 +1,377 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Shamerly>
-    <hizb index="1" page="2" />
-    <surah index="1" name="الفاتحة" page="2" />
-    <surah index="2" name="البقرة" page="3" />
-    <hizb index="2" page="12" />
-    <hizb index="3" page="20" />
-    <hizb index="4" page="28" />
-    <hizb index="5" page="36" />
-    <surah index="3" name="آل عمران" page="42" />
-    <hizb index="6" page="44" />
-    <hizb index="7" page="52" />
-    <hizb index="8" page="60" />
-    <surah index="4" name="النساء" page="64" />
-    <hizb index="9" page="68" />
-    <hizb index="10" page="76" />
-    <hizb index="11" page="84" />
-    <surah index="5" name="المائدة" page="87" />
-    <hizb index="12" page="92" />
-    <hizb index="13" page="99" />
-    <surah index="6" name="الأنعام" page="105" />
-    <hizb index="14" page="108" />
-    <hizb index="15" page="116" />
-    <surah index="7" name="الأعراف" page="123" />
-    <hizb index="16" page="123" />
-    <hizb index="17" page="132" />
-    <hizb index="18" page="141" />
-    <surah index="8" name="الأنفال" page="145" />
-    <hizb index="19" page="148" />
-    <surah index="9" name="التوبة" page="153" />
-    <hizb index="20" page="157" />
-    <hizb index="21" page="164 " />
-    <surah index="10" name="يونس" page="169" />
-    <hizb index="22" page="172" />
-    <surah index="11" name="هود" page="181" />
-    <hizb index="23" page="181" />
-    <hizb index="24" page="189" />
-    <surah index="12" name="يوسف" page="193" />
-    <hizb index="25" page="199" />
-    <surah index="13" name="الرعد" page="205" />
-    <hizb index="26" page="207" />
-    <surah index="14" name="إبراهيم" page="210" />
-    <surah index="15" name="الحجر" page="216 " />
-    <hizb index="27" page="216" />
-    <surah index="16" name="النحل" page="221" />
-    <hizb index="28" page="225" />
-    <surah index="17" name="الإسراء" page="233" />
-    <hizb index="29" page="233" />
-    <hizb index="30" page="242" />
-    <surah index="18" name="الكهف" page="243" />
-    <hizb index="31" page="250" />
-    <surah index="19" name="مريم" page="253" />
-    <surah index="20" name="طه" page="260" />
-    <hizb index="32" page="260" />
-    <surah index="21" name="الأنبياء" page="268" />
-    <hizb index="33" page="268" />
-    <surah index="22" name="الحج" page="276" />
-    <hizb index="34" page="276" />
-    <surah index="23" name="المؤمنون" page="284" />
-    <hizb index="35" page="284" />
-    <surah index="24" name="النور" page="291" />
-    <hizb index="36" page="293" />
-    <surah index="25" name="الفرقان" page="300" />
-    <hizb index="37" page="302" />
-    <surah index="26" name="الشعراء" page="306" />
-    <hizb index="38" page="310" />
-    <surah index="27" name="النمل" page="315" />
-    <hizb index="39" page="320" />
-    <surah index="28" name="القصص" page="323" />
-    <hizb index="40" page="328" />
-    <surah index="29" name="العنكبوت" page="332" />
-    <hizb index="41" page="336" />
-    <surah index="30" name="الروم" page="338" />
-    <surah index="31" name="لقمان" page="344" />
-    <hizb index="42" page="345" />
-    <surah index="32" name="السجدة" page="347" />
-    <surah index="33" name="الأحزاب" page="350" />
-    <hizb index="43" page="353" />
-    <surah index="34" name="سبأ" page="358" />
-    <hizb index="44" page="361" />
-    <surah index="35" name="فاطر" page="364" />
-    <surah index="36" name="يس" page="369" />
-    <hizb index="45" page="370" />
-    <surah index="37" name="الصافات" page="374" />
-    <hizb index="46" page="379" />
-    <surah index="38" name="ص" page="380" />
-    <surah index="39" name="الزمر" page="385" />
-    <hizb index="47" page="388" />
-    <surah index="40" name="غافر" page="392" />
-    <hizb index="48" page="396" />
-    <surah index="41" name="فصلت" page="400" />
-    <hizb index="49" page="404" />
-    <surah index="42" name="الشورى" page="405" />
-    <surah index="43" name="الزخرف" page="411" />
-    <hizb index="50" page="412" />
-    <surah index="44" name="الدخان" page="417" />
-    <surah index="45" name="الجاثية" page="419" />
-    <surah index="46" name="الاحقاف" page="423" />
-    <hizb index="51" page="423" />
-    <surah index="47" name="محمد" page="427" />
-    <surah index="48" name="الفتح" page="430" />
-    <hizb index="52" page="432" />
-    <surah index="49" name="الحجرات" page="434" />
-    <surah index="50" name="ق" page="437" />
-    <surah index="51" name="الذاريات" page="439" />
-    <hizb index="53" page="440" />
-    <surah index="52" name="الطور" page="442" />
-    <surah index="53" name="النجم" page="444" />
-    <surah index="54" name="القمر" page="447" />
-    <surah index="55" name="الرحمن" page="449 " />
-    <hizb index="54" page="449" />
-    <surah index="56" name="الواقعة" page="452" />
-    <surah index="57" name="الحديد" page="455 " />
-    <surah index="58" name="المجادلة" page="459" />
-    <hizb index="55" page="459" />
-    <surah index="59" name="الحشر" page="462" />
-    <surah index="60" name="الممتحنة" page="465" />
-    <surah index="61" name="الصف" page="468" />
-    <surah index="62" name="الجمعة" page="469" />
-    <hizb index="56" page="469" />
-    <surah index="63" name="المنافقون" page="471" />
-    <surah index="64" name="التغابن" page="472" />
-    <surah index="65" name="الطلاق" page="474" />
-    <surah index="66" name="التحريم" page="476" />
-    <surah index="67" name="الملك" page="478" />
-    <hizb index="57" page="478" />
-    <surah index="68" name="القلم" page="480" />
-    <surah index="69" name="الحاقة" page="482 " />
-    <surah index="70" name="المعارج" page="484" />
-    <surah index="71" name="نوح" page="486" />
-    <surah index="72" name="الجن" page="488" />
-    <hizb index="58" page="488" />
-    <surah index="73" name="المزمل" page="490" />
-    <surah index="74" name="المدثر" page="491" />
-    <surah index="75" name="القيامة" page="493" />
-    <surah index="76" name="الانسان" page="495" />
-    <surah index="77" name="المرسلات" page="497" />
-    <surah index="78" name="النبأ" page="498" />
-    <hizb index="59" page="498" />
-    <surah index="79" name="النازعات" page="500" />
-    <surah index="80" name="عبس" page="501" />
-    <surah index="81" name="التكوير" page="502" />
-    <surah index="82" name="الانفطار" page="503" />
-    <surah index="83" name="المطففين" page="504" />
-    <surah index="84" name="الانشقاق" page="505" />
-    <surah index="85" name="البروج" page="506" />
-    <surah index="86" name="الطارق" page="507" />
-    <surah index="87" name="الأعلى" page="508" />
-    <hizb index="60" page="508" />
-    <surah index="88" name="الغاشية" page="509" />
-    <surah index="89" name="الفجر" page="510" />
-    <surah index="90" name="البلد" page="511" />
-    <surah index="91" name="الشمس" page="512" />
-    <surah index="92" name="الليل" page="512" />
-    <surah index="93" name="الضحى" page="513" />
-    <surah index="94" name="الشرح" page="514" />
-    <surah index="95" name="التين" page="514" />
-    <surah index="96" name="العلق" page="514" />
-    <surah index="97" name="القدر" page="515" />
-    <surah index="98" name="البينة" page="516" />
-    <surah index="99" name="الزلزلة" page="516" />
-    <surah index="100" name="العاديات" page="517" />
-    <surah index="101" name="القارعة" page="517" />
-    <surah index="102" name="التكاثر" page="518" />
-    <surah index="103" name="العصر" page="518" />
-    <surah index="104" name="الهمزة" page="519" />
-    <surah index="105" name="الفيل" page="519" />
-    <surah index="106" name="قريش" page="520" />
-    <surah index="107" name="الماعون" page="520" />
-    <surah index="108" name="الكوثر" page="520" />
-    <surah index="109" name="الكافرون" page="521" />
-    <surah index="110" name="النصر" page="521" />
-    <surah index="111" name="المسد" page="521" />
-    <surah index="112" name="الإخلاص" page="522" />
-    <surah index="113" name="الفلق" page="522" />
-    <surah index="114" name="الناس" page="522" />
+    <!--بسم الله الرحمن الرحيم -->
+    <rob3 index="1" page="2"/>
+    <surah ayah_count="7" index="1" name="الفاتحة" page="2"/>
+    <surah ayah_count="286" index="2" name="البقرة" page="3"/>
+    <rob3 index="2" page="6"/>
+    <rob3 index="3" page="8"/>
+    <rob3 index="4" page="10"/>
+    <rob3 index="5" page="12"/>
+    <rob3 index="6" page="14"/>
+    <rob3 index="7" page="16"/>
+    <rob3 index="8" page="18"/>
+    <rob3 index="9" page="20"/>
+    <rob3 index="10" page="22"/>
+    <rob3 index="11" page="24"/>
+    <rob3 index="12" page="26"/>
+    <rob3 index="13" page="28"/>
+    <rob3 index="14" page="30"/>
+    <rob3 index="15" page="32"/>
+    <rob3 index="16" page="34"/>
+    <rob3 index="17" page="36"/>
+    <rob3 index="18" page="38"/>
+    <rob3 index="19" page="39"/>
+    <rob3 index="20" page="41"/>
+    <surah ayah_count="200" index="3" name="آل عمران" page="42"/>
+    <rob3 index="21" page="44"/>
+    <rob3 index="22" page="46"/>
+    <rob3 index="23" page="48"/>
+    <rob3 index="24" page="50"/>
+    <rob3 index="25" page="52"/>
+    <rob3 index="26" page="54"/>
+    <rob3 index="27" page="56"/>
+    <rob3 index="28" page="58"/>
+    <rob3 index="29" page="60"/>
+    <rob3 index="30" page="62"/>
+    <rob3 index="31" page="64"/>
+    <surah ayah_count="176" index="4" name="النساء" page="64"/>
+    <rob3 index="32" page="66"/>
+    <rob3 index="33" page="68"/>
+    <rob3 index="34" page="70"/>
+    <rob3 index="35" page="72"/>
+    <rob3 index="36" page="74"/>
+    <rob3 index="37" page="76"/>
+    <rob3 index="38" page="78"/>
+    <rob3 index="39" page="80"/>
+    <rob3 index="40" page="82"/>
+    <rob3 index="41" page="84"/>
+    <rob3 index="42" page="85"/>
+    <rob3 index="43" page="87"/>
+    <surah ayah_count="120" index="5" name="المائدة" page="87"/>
+    <rob3 index="44" page="90"/>
+    <rob3 index="45" page="92"/>
+    <rob3 index="46" page="93"/>
+    <rob3 index="47" page="95"/>
+    <rob3 index="48" page="97"/>
+    <rob3 index="49" page="99"/>
+    <rob3 index="50" page="101"/>
+    <rob3 index="51" page="103"/>
+    <surah ayah_count="165" index="6" name="الأنعام" page="105"/>
+    <rob3 index="52" page="106"/>
+    <rob3 index="53" page="108"/>
+    <rob3 index="54" page="110"/>
+    <rob3 index="55" page="112"/>
+    <rob3 index="56" page="115"/>
+    <rob3 index="57" page="116"/>
+    <rob3 index="58" page="118"/>
+    <rob3 index="59" page="120"/>
+    <rob3 index="60" page="121"/>
+    <rob3 index="61" page="123"/>
+    <surah ayah_count="206" index="7" name="الأعراف" page="123"/>
+    <rob3 index="62" page="126"/>
+    <rob3 index="63" page="128"/>
+    <rob3 index="64" page="130"/>
+    <rob3 index="65" page="132"/>
+    <rob3 index="66" page="135"/>
+    <rob3 index="67" page="137"/>
+    <rob3 index="68" page="139"/>
+    <rob3 index="69" page="141"/>
+    <rob3 index="70" page="143"/>
+    <sajdah index="1" page="144" surah="7" ayah="206" after_word="يَسْجُدُونَ"/>
+    <rob3 index="71" page="145"/>
+    <surah ayah_count="75" index="8" name="الأنفال" page="145"/>
+    <rob3 index="72" page="147"/>
+    <rob3 index="73" page="148"/>
+    <rob3 index="74" page="151"/>
+    <rob3 index="75" page="153"/>
+    <surah ayah_count="129" index="9" name="التوبة" page="153"/>
+    <rob3 index="76" page="155"/>
+    <rob3 index="77" page="157"/>
+    <rob3 index="78" page="158"/>
+    <rob3 index="79" page="160"/>
+    <rob3 index="80" page="162"/>
+    <rob3 index="81" page="164"/>
+    <rob3 index="82" page="166"/>
+    <rob3 index="83" page="168"/>
+    <surah ayah_count="109" index="10" name="يونس" page="169"/>
+    <rob3 index="84" page="170"/>
+    <rob3 index="85" page="172"/>
+    <rob3 index="86" page="175"/>
+    <rob3 index="87" page="177"/>
+    <rob3 index="88" page="179"/>
+    <rob3 index="89" page="181"/>
+    <surah ayah_count="123" index="11" name="هود" page="181"/>
+    <rob3 index="90" page="183"/>
+    <rob3 index="91" page="185"/>
+    <rob3 index="92" page="187"/>
+    <rob3 index="93" page="189"/>
+    <rob3 index="94" page="191"/>
+    <surah ayah_count="111" index="12" name="يوسف" page="193"/>
+    <rob3 index="95" page="194"/>
+    <rob3 index="96" page="196"/>
+    <rob3 index="97" page="199"/>
+    <rob3 index="98" page="201"/>
+    <rob3 index="99" page="203"/>
+    <rob3 index="100" page="205"/>
+    <surah ayah_count="43" index="13" name="الرعد" page="205"/>
+    <sajdah index="2" page="206" surah="13" ayah="15" after_word="وَالْآصًالِ"/>
+    <rob3 index="101" page="207"/>
+    <rob3 index="102" page="209"/>
+    <surah ayah_count="52" index="14" name="إبراهيم" page="210"/>
+    <rob3 index="103" page="211"/>
+    <rob3 index="104" page="213"/>
+    <rob3 index="105" page="216"/>
+    <surah ayah_count="99" index="15" name="الحجر" page="216"/>
+    <rob3 index="106" page="218"/>
+    <rob3 index="107" page="221"/>
+    <surah ayah_count="128" index="16" name="النحل" page="221"/>
+    <rob3 index="108" page="223"/>
+    <rob3 index="109" page="225"/>
+    <sajdah index="3" page="225" surah="16" ayah="50" after_word="مًا يُؤْمَرُونَ"/>
+    <rob3 index="110" page="227"/>
+    <rob3 index="111" page="229"/>
+    <rob3 index="112" page="231"/>
+    <rob3 index="113" page="233"/>
+    <surah ayah_count="111" index="17" name="الإسراء" page="233"/>
+    <rob3 index="114" page="235"/>
+    <rob3 index="115" page="237"/>
+    <rob3 index="116" page="239"/>
+    <rob3 index="117" page="242"/>
+    <sajdah index="4" page="243" surah="17" ayah="109" after_word="خُشُوعًا"/>
+    <surah ayah_count="110" index="18" name="الكهف" page="243"/>
+    <sakt index="1" page="243" surah="18" ayah="1" after_word="عِوَجًا"/>
+    <rob3 index="118" page="244"/>
+    <rob3 index="119" page="247"/>
+    <rob3 index="120" page="248"/>
+    <rob3 index="121" page="250"/>
+    <rob3 index="122" page="252"/>
+    <surah ayah_count="98" index="19" name="مريم" page="253"/>
+    <rob3 index="123" page="255"/>
+    <rob3 index="124" page="257"/>
+    <sajdah index="5" page="257" surah="19" ayah="59" after_word="بُكِيًّا"/>
+    <rob3 index="125" page="260"/>
+    <surah ayah_count="135" index="20" name="طه" page="260"/>
+    <rob3 index="126" page="262"/>
+    <rob3 index="127" page="264"/>
+    <rob3 index="128" page="266"/>
+    <rob3 index="129" page="268"/>
+    <surah ayah_count="112" index="21" name="الأنبياء" page="268"/>
+    <rob3 index="130" page="270"/>
+    <rob3 index="131" page="272"/>
+    <rob3 index="132" page="274"/>
+    <rob3 index="133" page="276"/>
+    <surah ayah_count="78" index="22" name="الحج" page="276"/>
+    <rob3 index="134" page="278"/>
+    <sajdah index="6" page="278" surah="22" ayah="18" after_word="مَا يَشَاءُ"/>
+    <rob3 index="135" page="280"/>
+    <rob3 index="136" page="282"/>
+    <rob3 index="137" page="284"/>
+    <sajdah index="7" page="284" surah="22" ayah="77" after_word="تُفْلِحُونَ" khelaf="عند الشافعي"/>
+    <surah ayah_count="118" index="23" name="المؤمنون" page="284"/>
+    <rob3 index="138" page="287"/>
+    <rob3 index="139" page="289"/>
+    <rob3 index="140" page="291"/>
+    <surah ayah_count="64" index="24" name="النور" page="291"/>
+    <rob3 index="141" page="293"/>
+    <rob3 index="142" page="295"/>
+    <rob3 index="143" page="297"/>
+    <rob3 index="144" page="300"/>
+    <surah ayah_count="77" index="25" name="الفرقان" page="300"/>
+    <rob3 index="145" page="302"/>
+    <rob3 index="146" page="304"/>
+    <sajdah index="8" page="305" surah="25" ayah="60" after_word="نُفُورًا"/>
+    <rob3 index="147" page="306"/>
+    <surah ayah_count="227" index="26" name="الشعراء" page="306"/>
+    <rob3 index="148" page="308"/>
+    <rob3 index="149" page="310"/>
+    <rob3 index="150" page="313"/>
+    <rob3 index="151" page="315"/>
+    <surah ayah_count="93" index="27" name="النمل" page="315"/>
+    <rob3 index="152" page="317"/>
+    <sajdah index="9" page="317" surah="27" ayah="26" after_word="الْعَظِيمِ"/>
+    <rob3 index="153" page="320"/>
+    <rob3 index="154" page="321"/>
+    <surah ayah_count="88" index="28" name="القصص" page="323"/>
+    <rob3 index="155" page="324"/>
+    <rob3 index="156" page="325"/>
+    <rob3 index="157" page="328"/>
+    <rob3 index="158" page="330"/>
+    <rob3 index="159" page="332"/>
+    <surah ayah_count="69" index="29" name="العنكبوت" page="332"/>
+    <rob3 index="160" page="334"/>
+    <rob3 index="161" page="336"/>
+    <rob3 index="162" page="338"/>
+    <surah ayah_count="60" index="30" name="الروم" page="338"/>
+    <rob3 index="163" page="341"/>
+    <rob3 index="164" page="343"/>
+    <surah ayah_count="34" index="31" name="لقمان" page="344"/>
+    <rob3 index="165" page="345"/>
+    <surah ayah_count="30" index="32" name="السجدة" page="347"/>
+    <rob3 index="166" page="348"/>
+    <sajdah index="10" page="348" surah="32" ayah="15" after_word="لًا يَسْتَكْبِرُونَ"/>
+    <rob3 index="167" page="350"/>
+    <surah ayah_count="73" index="33" name="الأحزاب" page="350"/>
+    <rob3 index="168" page="351"/>
+    <rob3 index="169" page="353"/>
+    <rob3 index="170" page="355"/>
+    <rob3 index="171" page="357"/>
+    <surah ayah_count="54" index="34" name="سبأ" page="358"/>
+    <rob3 index="172" page="359"/>
+    <rob3 index="173" page="361"/>
+    <rob3 index="174" page="363"/>
+    <surah ayah_count="45" index="35" name="فاطر" page="364"/>
+    <rob3 index="175" page="366"/>
+    <rob3 index="176" page="368"/>
+    <surah ayah_count="83" index="36" name="يس" page="369"/>
+    <rob3 index="177" page="370"/>
+    <rob3 index="178" page="372"/>
+    <sakt index="2" page="372" surah="36" ayah="52" after_word="مَرْقَدِنَا"/>
+    <rob3 index="179" page="374"/>
+    <surah ayah_count="182" index="37" name="الصافات" page="374"/>
+    <rob3 index="180" page="377"/>
+    <rob3 index="181" page="379"/>
+    <surah ayah_count="88" index="38" name="ص" page="380"/>
+    <rob3 index="182" page="381"/>
+    <sajdah index="11" page="382" surah="38" ayah="24" after_word="وَأَنَابَ" khelaf="عند أبي حنيفة ومالك"/>
+    <rob3 index="183" page="383"/>
+    <surah ayah_count="75" index="39" name="الزمر" page="385"/>
+    <rob3 index="184" page="386"/>
+    <rob3 index="185" page="388"/>
+    <rob3 index="186" page="390"/>
+    <rob3 index="187" page="392"/>
+    <surah ayah_count="85" index="40" name="غافر" page="392"/>
+    <rob3 index="188" page="394"/>
+    <rob3 index="189" page="396"/>
+    <rob3 index="190" page="398"/>
+    <surah ayah_count="54" index="41" name="فصلت" page="400"/>
+    <rob3 index="191" page="401"/>
+    <rob3 index="192" page="402"/>
+    <sajdah index="12" page="403" surah="41" ayah="38" after_word="لَا يَسْئَمُونَ"/>
+    <rob3 index="193" page="404"/>
+    <surah ayah_count="53" index="42" name="الشورى" page="405"/>
+    <rob3 index="194" page="406"/>
+    <rob3 index="195" page="408"/>
+    <rob3 index="196" page="410"/>
+    <surah ayah_count="89" index="43" name="الزخرف" page="411"/>
+    <rob3 index="197" page="412"/>
+    <rob3 index="198" page="415"/>
+    <rob3 index="199" page="417"/>
+    <surah ayah_count="59" index="44" name="الدخان" page="417"/>
+    <surah ayah_count="37" index="45" name="الجاثية" page="419"/>
+    <rob3 index="200" page="420"/>
+    <rob3 index="201" page="423"/>
+    <surah ayah_count="35" index="46" name="الأحقاف" page="423"/>
+    <rob3 index="202" page="425"/>
+    <rob3 index="203" page="427"/>
+    <surah ayah_count="38" index="47" name="محمد" page="427"/>
+    <rob3 index="204" page="430"/>
+    <surah ayah_count="29" index="48" name="الفتح" page="430"/>
+    <rob3 index="205" page="432"/>
+    <rob3 index="206" page="434"/>
+    <surah ayah_count="18" index="49" name="الحجرات" page="434"/>
+    <rob3 index="207" page="436"/>
+    <surah ayah_count="45" index="50" name="ق" page="437"/>
+    <rob3 index="208" page="438"/>
+    <surah ayah_count="60" index="51" name="الذاريات" page="439"/>
+    <rob3 index="209" page="440"/>
+    <surah ayah_count="49" index="52" name="الطور" page="442"/>
+    <rob3 index="210" page="443"/>
+    <surah ayah_count="62" index="53" name="النجم" page="444"/>
+    <rob3 index="211" page="445"/>
+    <rob3 index="212" page="447"/>
+    <sajdah index="13" page="447" surah="53" ayah="62" after_word="وَاعْبُدُوا" khelaf="لغير مالك"/>
+    <surah ayah_count="55" index="54" name="القمر" page="447"/>
+    <rob3 index="213" page="449"/>
+    <surah ayah_count="78" index="55" name="الرحمن" page="449"/>
+    <rob3 index="214" page="452"/>
+    <surah ayah_count="96" index="56" name="الواقعة" page="452"/>
+    <rob3 index="215" page="455"/>
+    <surah ayah_count="29" index="57" name="الحديد" page="455"/>
+    <rob3 index="216" page="457"/>
+    <rob3 index="217" page="459"/>
+    <surah ayah_count="22" index="58" name="المجادلة" page="459"/>
+    <rob3 index="218" page="461"/>
+    <surah ayah_count="24" index="59" name="الحشر" page="462"/>
+    <rob3 index="219" page="464"/>
+    <surah ayah_count="13" index="60" name="الممتحنة" page="465"/>
+    <rob3 index="220" page="466"/>
+    <surah ayah_count="14" index="61" name="الصف" page="468"/>
+    <rob3 index="221" page="469"/>
+    <surah ayah_count="11" index="62" name="الجمعة" page="469"/>
+    <rob3 index="222" page="471"/>
+    <surah ayah_count="11" index="63" name="المنافقون" page="471"/>
+    <surah ayah_count="18" index="64" name="التغابن" page="472"/>
+    <rob3 index="223" page="474"/>
+    <surah ayah_count="12" index="65" name="الطلاق" page="474"/>
+    <rob3 index="224" page="476"/>
+    <surah ayah_count="12" index="66" name="التحريم" page="476"/>
+    <rob3 index="225" page="478"/>
+    <surah ayah_count="30" index="67" name="الملك" page="478"/>
+    <rob3 index="226" page="480"/>
+    <surah ayah_count="52" index="68" name="القلم" page="480"/>
+    <rob3 index="227" page="482"/>
+    <surah ayah_count="52" index="69" name="الحاقة" page="482"/>
+    <surah ayah_count="44" index="70" name="المعارج" page="484"/>
+    <rob3 index="228" page="485"/>
+    <surah ayah_count="28" index="71" name="نوح" page="486"/>
+    <rob3 index="229" page="488"/>
+    <surah ayah_count="28" index="72" name="الجن" page="488"/>
+    <surah ayah_count="20" index="73" name="المزمل" page="490"/>
+    <rob3 index="230" page="491"/>
+    <surah ayah_count="56" index="74" name="المدثر" page="491"/>
+    <rob3 index="231" page="493"/>
+    <surah ayah_count="40" index="75" name="القيامة" page="493"/>
+    <sakt index="3" page="494" surah="75" ayah="27" after_word="مَنْ رَاقٍ"/>
+    <surah ayah_count="31" index="76" name="الإنسان" page="495"/>
+    <rob3 index="232" page="496"/>
+    <surah ayah_count="50" index="77" name="المرسلات" page="497"/>
+    <rob3 index="233" page="498"/>
+    <surah ayah_count="40" index="78" name="النبأ" page="498"/>
+    <surah ayah_count="46" index="79" name="النازعات" page="500"/>
+    <rob3 index="234" page="501"/>
+    <surah ayah_count="42" index="80" name="عبس" page="501"/>
+    <surah ayah_count="29" index="81" name="التكوير" page="502"/>
+    <rob3 index="235" page="503"/>
+    <surah ayah_count="19" index="82" name="الانفطار" page="503"/>
+    <surah ayah_count="36" index="83" name="المطففين" page="504"/>
+    <sakt index="4" page="504" surah="83" ayah="14" after_word="كَلَّا بَلْ"/>
+    <rob3 index="236" page="505"/>
+    <surah ayah_count="25" index="84" name="الانشقاق" page="505"/>
+    <sajdah index="14" page="506" surah="84" ayah="21" after_word="لَا يَسْجُدُونَ"/>
+    <surah ayah_count="22" index="85" name="البروج" page="506"/>
+    <surah ayah_count="17" index="86" name="الطارق" page="507"/>
+    <rob3 index="237" page="508"/>
+    <surah ayah_count="19" index="87" name="الأعلى" page="508"/>
+    <surah ayah_count="26" index="88" name="الغاشية" page="509"/>
+    <surah ayah_count="30" index="89" name="الفجر" page="510"/>
+    <rob3 index="238" page="511"/>
+    <surah ayah_count="20" index="90" name="البلد" page="511"/>
+    <surah ayah_count="15" index="91" name="الشمس" page="512"/>
+    <surah ayah_count="21" index="92" name="الليل" page="512"/>
+    <surah ayah_count="11" index="93" name="الضحى" page="513"/>
+    <rob3 index="239" page="514"/>
+    <surah ayah_count="8" index="94" name="الشرح" page="514"/>
+    <surah ayah_count="8" index="95" name="التين" page="514"/>
+    <surah ayah_count="19" index="96" name="العلق" page="514"/>
+    <sajdah index="15" page="515" surah="96" ayah="19" after_word="وَاقْتَرِبْ"/>
+    <surah ayah_count="5" index="97" name="القدر" page="515"/>
+    <surah ayah_count="8" index="98" name="البينة" page="516"/>
+    <surah ayah_count="8" index="99" name="الزلزلة" page="516"/>
+    <rob3 index="240" page="517"/>
+    <surah ayah_count="11" index="100" name="العاديات" page="517"/>
+    <surah ayah_count="11" index="101" name="القارعة" page="517"/>
+    <surah ayah_count="8" index="102" name="التكاثر" page="518"/>
+    <surah ayah_count="3" index="103" name="العصر" page="518"/>
+    <surah ayah_count="9" index="104" name="الهمزة" page="519"/>
+    <surah ayah_count="5" index="105" name="الفيل" page="519"/>
+    <surah ayah_count="4" index="106" name="قريش" page="520"/>
+    <surah ayah_count="7" index="107" name="الماعون" page="520"/>
+    <surah ayah_count="3" index="108" name="الكوثر" page="520"/>
+    <surah ayah_count="6" index="109" name="الكافرون" page="521"/>
+    <surah ayah_count="3" index="110" name="النصر" page="521"/>
+    <surah ayah_count="5" index="111" name="المسد" page="521"/>
+    <surah ayah_count="4" index="112" name="الإخلاص" page="522"/>
+    <surah ayah_count="5" index="113" name="الفلق" page="522"/>
+    <surah ayah_count="6" index="114" name="الناس" page="522"/>
 </Shamerly>

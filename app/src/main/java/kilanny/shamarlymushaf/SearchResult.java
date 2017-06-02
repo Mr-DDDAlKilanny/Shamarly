@@ -7,7 +7,7 @@ import java.util.ArrayList;
 /**
  * Created by Yasser on 09/29/2015.
  */
-class SearchResult {
+public class SearchResult {
     public int page, surah, ayah;
     public String text;
     public String query;

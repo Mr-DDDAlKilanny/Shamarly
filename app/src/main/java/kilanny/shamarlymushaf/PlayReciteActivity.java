@@ -2,26 +2,32 @@ package kilanny.shamarlymushaf;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.os.Build;
 import android.os.CountDownTimer;
 import android.preference.PreferenceManager;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PlayReciteActivity extends ActionBarActivity {
 
-    public static final String AUTO_STOP_PERIOD_MINUTES_EXTRA = "autoStopPeriodMinutes";
+    public static final String AUTO_STOP_PERIOD_MINUTES_EXTRA
+            = "autoStopPeriodMinutes";
     public static final String REPEAT_STRING_EXTRA = "repeatReciteDescStr";
 
     private MediaPlayer player;
@@ -32,6 +38,7 @@ public class PlayReciteActivity extends ActionBarActivity {
     private boolean isShown;
     private long lastTimerTickMilliLeft;
     private CountDownTimer countDownTimer;
+    private boolean paused = false;
 
     @Override
     protected void onResume() {
@@ -44,6 +51,12 @@ public class PlayReciteActivity extends ActionBarActivity {
     protected void onStop() {
         super.onStop();
         isShown = false;
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        stopPlayback(false);
     }
 
     private void stopPlayback(boolean finish) {
@@ -71,14 +84,27 @@ public class PlayReciteActivity extends ActionBarActivity {
     }
 
     private void updateUi(boolean force, String errorMessage) {
-        TextView sName = (TextView) findViewById(R.id.textViewSurahName);
+        TextView sName = (TextView) findViewById(R.id.textViewSurahAyah);
         TextView rName = (TextView) findViewById(R.id.textViewReciter);
-        TextView aName = (TextView) findViewById(R.id.textViewAyahNumber);
+        TextView aName = (TextView) findViewById(R.id.textViewAyahText);
         TextView eName = (TextView) findViewById(R.id.textViewError);
         if (force || isShown) {
             sName.setText("سورة " + quranData.surahs[currentSurah - 1].name);
             rName.setText("الشيخ/ " + getSelectedSoundName());
-            aName.setText("آية " + ArabicNumbers.convertDigits(currentAyah + ""));
+            ArrayList<Ayah> a = new ArrayList<>();
+            Ayah aa = new Ayah();
+            aa.ayah = currentAyah;
+            aa.sura = currentSurah;
+            a.add(aa);
+            String ayah = Utils.getAllAyahText(this, a, quranData);
+            if (ayah == null) ayah = "";
+            int tmp = ayah.indexOf('{');
+            if (tmp >= 0) {
+                ayah = ayah.substring(tmp);
+                ayah = ayah.substring(0, ayah.indexOf('}') + 1);
+            } else ayah = "";
+            aName.setText(ayah);
+
             if (errorMessage != null) {
                 eName.setText(errorMessage);
                 eName.setVisibility(View.VISIBLE);
@@ -100,9 +126,9 @@ public class PlayReciteActivity extends ActionBarActivity {
             @Override
             public void onCompletion(MediaPlayer mp) {
                 try {
-                    if (++currentAyah > QuranData.AYAH_COUNT[currentSurah - 1]) {
+                    if (++currentAyah > quranData.surahs[currentSurah - 1].ayahCount) {
                         currentAyah = 1;
-                        if (++currentSurah > QuranData.AYAH_COUNT.length) {
+                        if (++currentSurah > quranData.surahs.length) {
                             if (pref.getBoolean("backToBegin", true)) {
                                 currentSurah = 1;
                             } else {
@@ -112,6 +138,10 @@ public class PlayReciteActivity extends ActionBarActivity {
                         }
                     }
                     player.reset();
+                    if (paused) {
+                        enablePauseBtn();
+                        return;
+                    }
                     player.setDataSource(Utils.getAyahPath(PlayReciteActivity.this,
                             getSelectedSound(),
                             currentSurah, currentAyah, quranData, attempt.getData()));
@@ -137,7 +167,7 @@ public class PlayReciteActivity extends ActionBarActivity {
             @Override
             public boolean onError(MediaPlayer mp, int what, int extra) {
                 attempt.increment();
-                if (attempt.getData() == 2) {
+                if (!paused && attempt.getData() == 2) {
                     String path = Utils.getAyahPath(PlayReciteActivity.this, getSelectedSound(),
                             currentSurah, currentAyah, quranData, 2);
                     if (path != null) {
@@ -150,11 +180,13 @@ public class PlayReciteActivity extends ActionBarActivity {
                             e.printStackTrace();
                         }
                     }
-                }
+                } else if (paused)
+                    enablePauseBtn();
                 showProgress(false);
                 stopPlayback(false);
                 updateUi(true, "قد يكون جهازك غير متصل بالشبكة أو أن الخادم لا يستجيب");
-                Toast.makeText(PlayReciteActivity.this, "لا يمكن تشغيل التلاوة. ربما توجد مشكلة في اتصالك بالإنترنت أو أن الخادم لا يستجيب",
+                Toast.makeText(PlayReciteActivity.this,
+                        "لا يمكن تشغيل التلاوة. ربما توجد مشكلة في اتصالك بالإنترنت أو أن الخادم لا يستجيب",
                         Toast.LENGTH_SHORT).show();
                 return true;
             }
@@ -162,11 +194,12 @@ public class PlayReciteActivity extends ActionBarActivity {
         player.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
             @Override
             public void onPrepared(MediaPlayer mp) {
-                if (player != null) { //user closed/cancelled before prepare completes
+                if (player != null && !paused) { //user closed/cancelled before prepare completes
                     updateUi();
                     showProgress(false);
                     player.start();
-                }
+                } else if (paused)
+                    enablePauseBtn();
             }
         });
         try {
@@ -188,10 +221,39 @@ public class PlayReciteActivity extends ActionBarActivity {
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        stopPlayback(true);
+    private Drawable myGetDrawable(int id) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1)
+            return getDrawable(id);
+        else
+            return getResources().getDrawable(id);
+    }
+
+    private void initAutoCloseTimer() {
+        final TextView time = (TextView) findViewById(R.id.textViewTiming);
+        if (lastTimerTickMilliLeft > 0)
+            countDownTimer = new CountDownTimer(lastTimerTickMilliLeft, 1000) {
+
+                private SimpleDateFormat format = new SimpleDateFormat("hh:mm:ss",
+                        Locale.ENGLISH);
+
+                @Override
+                public void onTick(long millisUntilFinished) {
+                    lastTimerTickMilliLeft = millisUntilFinished;
+                    time.setText(format.format(new Date(millisUntilFinished)));
+                }
+
+                @Override
+                public void onFinish() {
+                    stopPlayback(false);
+                }
+            }.start();
+        else time.setText("(بلا)");
+    }
+
+    private void enablePauseBtn() {
+        ImageButton btn = (ImageButton) findViewById(R.id.imageButtonPause);
+        if (btn != null)
+            btn.setEnabled(true);
     }
 
     @Override
@@ -200,11 +262,27 @@ public class PlayReciteActivity extends ActionBarActivity {
         setContentView(R.layout.activity_play_recite);
         pref = PreferenceManager.getDefaultSharedPreferences(this);
         quranData = QuranData.getInstance(this);
-        findViewById(R.id.imageButtonPause).setOnClickListener(new View.OnClickListener() {
+        final ImageButton pauseBtn = (ImageButton) findViewById(R.id.imageButtonPause);
+        pauseBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (countDownTimer != null) {
-                    countDownTimer.cancel();
+                if (!paused) {
+                    paused = true;
+                    if (player != null && player.isPlaying()) {
+                        pauseBtn.setEnabled(false);
+                        Toast.makeText(PlayReciteActivity.this,
+                                "تم إيقاف التلاوة. انتظر هذه الآية حتى تنتهي",
+                                Toast.LENGTH_LONG).show();
+                    } else
+                        stopPlayback(false);
+                    if (countDownTimer != null)
+                        countDownTimer.cancel();
+                    pauseBtn.setImageDrawable(myGetDrawable(android.R.drawable.ic_media_play));
+                } else {
+                    paused = false;
+                    pauseBtn.setImageDrawable(myGetDrawable(android.R.drawable.ic_media_pause));
+                    initAutoCloseTimer();
+                    startPlayback();
                 }
             }
         });
@@ -215,23 +293,9 @@ public class PlayReciteActivity extends ActionBarActivity {
             }
         });
         Intent intent = getIntent();
-        int stop = intent.getIntExtra(AUTO_STOP_PERIOD_MINUTES_EXTRA, 0);
-        final TextView time = (TextView) findViewById(R.id.textViewTiming);
-        if (stop > 0)
-            countDownTimer = new CountDownTimer(stop * 60 * 1000, 1000) {
-
-                @Override
-                public void onTick(long millisUntilFinished) {
-                    lastTimerTickMilliLeft = millisUntilFinished;
-                    time.setText((new SimpleDateFormat("hh:mm:ss")).format(new Date(millisUntilFinished)));
-                }
-
-                @Override
-                public void onFinish() {
-                    stopPlayback(false);
-                }
-            }.start();
-        else time.setText("(بلا)");
+        lastTimerTickMilliLeft = 60 * 1000 *
+                intent.getIntExtra(AUTO_STOP_PERIOD_MINUTES_EXTRA, 0);
+        initAutoCloseTimer();
         String stringExtra = intent.getStringExtra(REPEAT_STRING_EXTRA);
         if (stringExtra != null) {
             Pattern p = Pattern.compile("(\\d+):(\\d+)\\-(\\d+):(\\d+)");
@@ -244,7 +308,10 @@ public class PlayReciteActivity extends ActionBarActivity {
             }
         }
         if (fromSurah == 0 || fromAyah == 0) {
-            throw new IllegalStateException("Starting surah and ayah are required");
+            //throw new IllegalStateException("Starting surah and ayah are required");
+            Toast.makeText(this, "الرجاء اختيار الآية لبدء القراءة", Toast.LENGTH_LONG)
+                    .show();
+            return;
         }
         currentSurah = fromSurah;
         currentAyah = fromAyah;

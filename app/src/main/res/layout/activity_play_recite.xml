@@ -11,23 +11,24 @@
     tools:context="kilanny.shamarlymushaf.PlayReciteActivity">
     <TextView
         android:layout_weight="2"
-        android:id="@+id/textViewSurahName"
-        android:textSize="40sp"
+        android:id="@+id/textViewSurahAyah"
+        android:textSize="30sp"
         android:ellipsize="end"
-        android:singleLine="true"
+        android:maxLines="1"
         android:gravity="center"
         android:textColor="@android:color/holo_blue_dark"
-        android:text="سورة آل عمران"
+        android:text="سورة آل عمران : 5"
         android:layout_width="match_parent"
         android:layout_height="0dp" />
     <TextView
-        android:layout_weight="1"
-        android:id="@+id/textViewAyahNumber"
-        android:textSize="30sp"
+        android:layout_weight="3"
+        android:id="@+id/textViewAyahText"
+        android:textSize="15sp"
         android:ellipsize="end"
-        android:singleLine="true"
-        android:gravity="center"
-        android:text="آية 152"
+        android:gravity="right"
+        android:maxLines="5"
+        android:scrollbars="vertical"
+        android:text="{هُوَ الَّذِيَ أَنزَلَ عَلَيْكَ الْكِتَابَ مِنْهُ آيَاتٌ مُّحْكَمَاتٌ هُنَّ أُمُّ الْكِتَابِ وَأُخَرُ مُتَشَابِهَاتٌ فَأَمَّا الَّذِينَ فِي قُلُوبِهِمْ زَيْغٌ فَيَتَّبِعُونَ مَا تَشَابَهَ مِنْهُ ابْتِغَاء الْفِتْنَةِ وَابْتِغَاء تَأْوِيلِهِ وَمَا يَعْلَمُ تَأْوِيلَهُ إِلاَّ اللَّهُ وَالرَّاسِخُونَ فِي الْعِلْمِ يَقُولُونَ آمَنَّا بِهِ كُلٌّ مِّنْ عِندِ رَبِّنَا وَمَا يَذَّكَّرُ إِلاَّ أُوْلُواْ الأَلْبَابِ }"
         android:layout_width="match_parent"
         android:layout_height="0dp" />
     <TextView
@@ -35,7 +36,7 @@
         android:textSize="20sp"
         android:layout_weight="2"
         android:ellipsize="end"
-        android:singleLine="true"
+        android:maxLines="1"
         android:gravity="center"
         android:textColor="@android:color/holo_green_dark"
         android:text="عبد الباسط عبد الصمد (المجود)"
@@ -71,8 +72,9 @@
         android:layout_height="0dp" />
     <TextView
         android:id="@+id/textViewError"
-        android:textSize="10sp"
+        android:textSize="15sp"
         android:layout_weight="2"
+        android:gravity="center"
         android:visibility="invisible"
         android:textColor="@android:color/holo_red_dark"
         android:text="حدث خطأ أثناء محاولة تشغيل الملف"
@@ -81,22 +83,23 @@
     <LinearLayout
         android:orientation="horizontal"
         android:gravity="center"
+        android:layout_gravity="center"
         android:layout_weight="2"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="0dp">
         <ImageButton
             android:src="@android:drawable/ic_media_pause"
             android:scaleType="fitXY"
-            android:layout_weight="1"
             android:id="@+id/imageButtonPause"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
+            android:layout_marginRight="30dp"
+            android:layout_marginEnd="30dp"
             android:layout_height="match_parent" />
         <ImageButton
             android:src="@android:drawable/ic_menu_close_clear_cancel"
             android:scaleType="fitXY"
-            android:layout_weight="1"
             android:id="@+id/imageButtonStop"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="match_parent" />
     </LinearLayout>
 </LinearLayout>

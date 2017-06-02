@@ -31,6 +31,12 @@ public class DbManager extends SQLiteOpenHelper {
         return instance;
     }
 
+    public static DbManager getInstanceWithTest(Context context) {
+        DbManager inst = getInstance(context);
+        inst.getPage(1, 3); //test
+        return inst;
+    }
+
     public static void dispose() {
         try {
             instance.close();
@@ -165,7 +171,10 @@ class MyDbContext extends ContextWrapper {
 
     @Override
     public File getDatabasePath(String name) {
-        String dbfile = externalFilesDir.getAbsolutePath() + File.separator + name;
+        String dbfile = externalFilesDir.getAbsolutePath();
+        if (!dbfile.endsWith(File.separator))
+            dbfile += File.separator;
+        dbfile += name;
         if (!dbfile.endsWith(".db")) dbfile += ".db";
         return new File(dbfile);
     }
@@ -191,6 +200,7 @@ class MyDbContext extends ContextWrapper {
                     Utils.extractZippedFile(getAssets().open("shamerly.zip"), dbFile);
                 } catch (IOException e) {
                     e.printStackTrace();
+                    throw new IllegalStateException("فشل إنشاء قاعدة البيانات. تأكد من وجود سعة كافية بالجهاز");
                 }
             }
             try {

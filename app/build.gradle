@@ -1,14 +1,14 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 21
-    buildToolsVersion "21.1.2"
+    compileSdkVersion 25
+    buildToolsVersion "25.0.3"
     defaultConfig {
         applicationId "kilanny.shamarlymushaf"
         minSdkVersion 14
-        targetSdkVersion 21
-        versionName '2.92'
-        versionCode 21
+        targetSdkVersion 25
+        versionName '2.93'
+        versionCode 22
     }
     buildTypes {
         release {
@@ -30,8 +30,10 @@ dependencies {
     compile('cn.trinea.android.view.autoscrollviewpager:android-auto-scroll-view-pager:1.1.2') {
         exclude module: 'support-v4'
     }
-    compile 'com.android.support:appcompat-v7:21.0.1'
-    compile 'com.android.support:support-v4:21.0.1'
-    compile 'com.google.android.gms:play-services-analytics:8.1.0'
+    compile 'com.android.support:appcompat-v7:25.3.1'
+    compile 'com.android.support:support-v4:25.3.1'
+    compile 'com.google.android.gms:play-services-analytics:10.2.6'
     compile files('htmlcleaner-2.15.jar')
 }
+
+apply plugin: 'com.google.gms.google-services'
