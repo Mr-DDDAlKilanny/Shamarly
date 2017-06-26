@@ -1,0 +1,13 @@
+var q = new List<KeyValuePair<string, int>>();
+q.Add(new KeyValuePair<string, int>("katheer", 2));
+q.Add(new KeyValuePair<string, int>("saadi", 3));
+q.Add(new KeyValuePair<string, int>("qortobi", 4));
+q.Add(new KeyValuePair<string, int>("baghawy", 5));
+q.Add(new KeyValuePair<string, int>("tanweer", 6));
+q.Add(new KeyValuePair<string, int>("eerab", 7));
+
+var item = q.Dequeue();
+doTabary(item.Key, item.Value).ContinueWith(() =>
+{
+
+});

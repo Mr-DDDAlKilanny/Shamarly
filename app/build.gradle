@@ -26,14 +26,14 @@ repositories {
 
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
-    compile('net.rdrei.android.dirchooser:library:3.0@aar') { transitive = true; }
+    compile('net.rdrei.android.dirchooser:library:3.2@aar') { transitive = true; }
     compile('cn.trinea.android.view.autoscrollviewpager:android-auto-scroll-view-pager:1.1.2') {
         exclude module: 'support-v4'
     }
     compile 'com.android.support:appcompat-v7:25.3.1'
     compile 'com.android.support:support-v4:25.3.1'
-    compile 'com.google.android.gms:play-services-analytics:10.2.6'
-    compile files('htmlcleaner-2.15.jar')
+    compile 'com.google.android.gms:play-services-analytics:9.2.0'
+    compile files('htmlcleaner-2.21.jar')
 }
 
-apply plugin: 'com.google.gms.google-services'
+//apply plugin: 'com.google.gms.google-services'
