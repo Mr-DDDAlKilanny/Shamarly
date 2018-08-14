@@ -54,7 +54,7 @@
                     android:scaleType="fitXY"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent" />
-                <kilanny.shamarlymushaf.QuranImageView
+                <kilanny.shamarlymushaf.views.QuranImageView
                     android:id="@+id/quranPage_left"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
@@ -78,7 +78,7 @@
                     android:scaleType="fitXY"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent" />
-                <kilanny.shamarlymushaf.QuranImageView
+                <kilanny.shamarlymushaf.views.QuranImageView
                     android:id="@+id/quranPage_right"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"

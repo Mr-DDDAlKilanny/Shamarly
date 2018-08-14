@@ -1,14 +1,14 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion "25.0.3"
+    compileSdkVersion 28
+    buildToolsVersion '28.0.2'
     defaultConfig {
         applicationId "kilanny.shamarlymushaf"
         minSdkVersion 14
-        targetSdkVersion 25
-        versionName '2.93'
-        versionCode 22
+        targetSdkVersion 28
+        versionName '2.932'
+        versionCode 24
     }
     buildTypes {
         release {
@@ -22,18 +22,22 @@ android {
 repositories {
     mavenCentral()
     maven { url 'http://guardian.github.com/maven/repo-releases' }
+    google()
 }
 
 dependencies {
-    compile fileTree(include: ['*.jar'], dir: 'libs')
-    compile('net.rdrei.android.dirchooser:library:3.2@aar') { transitive = true; }
-    compile('cn.trinea.android.view.autoscrollviewpager:android-auto-scroll-view-pager:1.1.2') {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation('net.rdrei.android.dirchooser:library:3.2@aar') { transitive = true; }
+    implementation('cn.trinea.android.view.autoscrollviewpager:android-auto-scroll-view-pager:1.1.2') {
         exclude module: 'support-v4'
     }
-    compile 'com.android.support:appcompat-v7:25.3.1'
-    compile 'com.android.support:support-v4:25.3.1'
-    compile 'com.google.android.gms:play-services-analytics:9.2.0'
-    compile files('htmlcleaner-2.21.jar')
+    implementation files('htmlcleaner-2.21.jar')
+    implementation 'com.android.support:appcompat-v7:28.0.0-rc01'
+    implementation 'com.android.support:support-v4:28.0.0-rc01'
+    implementation 'com.google.android.gms:play-services-analytics:8.1.0'
+    implementation 'com.android.support:design:28.0.0-rc01'
+    implementation 'com.android.support.constraint:constraint-layout:1.1.2'
+    annotationProcessor 'com.google.auto.value:auto-value:1.1'
 }
 
 //apply plugin: 'com.google.gms.google-services'

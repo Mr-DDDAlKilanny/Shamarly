@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:layout_behavior="@string/appbar_scrolling_view_behavior"
+    tools:context="kilanny.shamarlymushaf.activities.Welcome2Activity"
+    tools:showIn="@layout/app_bar_welcome2">
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_height="495dp"
+        android:layout_width="344dp">
+        <ImageView
+            android:layout_weight="5"
+            android:alpha="0.5"
+            android:src="@drawable/ic_launcher"
+            android:layout_width="match_parent"
+            android:layout_height="0dp" />
+        <TextView
+            android:text="تطبيق مصحف الشمرلي"
+            android:layout_weight="1"
+            android:layout_width="match_parent"
+            android:layout_height="0dp" />
+    </LinearLayout>
+</android.support.constraint.ConstraintLayout>

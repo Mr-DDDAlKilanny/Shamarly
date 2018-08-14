@@ -1,121 +1,139 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical" android:layout_width="match_parent"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
     android:layout_height="match_parent">
-    <TextView
-        android:textSize="20sp"
-        android:text="تشغيل التلاوة في الخلفية بدون الحاجة إلى إبقاء الشاشة مفتوحة لتوفير البطارية"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+
     <LinearLayout
-        android:layout_marginRight="5sp"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <Spinner
-            android:layout_weight="0.6"
-            android:clickable="false"
-            android:id="@+id/spinnerAutostopBackgroundRecite"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
-        <CheckBox
-            android:layout_weight="0.4"
-            android:id="@+id/checkboxAutoStop"
-            android:text="إيقاف تشغيل التلاوة تلقائيا بعد"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
-    </LinearLayout>
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <LinearLayout
-            android:layout_marginLeft="3sp"
-            android:layout_marginRight="3sp"
-            android:layout_marginBottom="3sp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:scrollbarAlwaysDrawVerticalTrack="true"
+        android:scrollbars="vertical">
+
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_alignParentLeft="true"
-            android:layout_alignParentTop="true"
-            android:layout_marginTop="13dp"
-            android:background="@drawable/my_custom_background"
-            android:orientation="vertical">
-            <View
+            android:text="تشغيل التلاوة بدون الحاجة إلى إبقاء الشاشة مفتوحة"
+            android:textSize="20sp" />
+
+        <Button
+            android:id="@+id/buttonStartReciteInBackground"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="بدء القراءة" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="5sp"
+            android:layout_marginRight="5sp">
+
+            <Spinner
+                android:id="@+id/spinnerAutostopBackgroundRecite"
                 android:layout_width="match_parent"
-                android:layout_height="20sp" />
-            <TextView
-                android:layout_weight="1"
-                android:text="من"
-                android:textSize="20sp"
-                android:layout_width="fill_parent"
-                android:layout_height="fill_parent" />
-            <LinearLayout
-                android:weightSum="2"
-                android:layout_weight="1"
-                android:orientation="horizontal"
-                android:layout_width="fill_parent"
-                android:layout_height="fill_parent">
-                <EditText android:gravity="right"
-                    android:layout_weight="1"
-                    android:enabled="false"
-                    android:layout_width="fill_parent"
-                    android:layout_height="fill_parent"
-                    android:inputType="number"
-                    android:ems="10"
-                    android:id="@+id/fromAyahR"
-                    android:hint="رقم الآية..."/>
-                <Spinner android:id="@+id/fromSurahR"
-                    android:layout_marginTop="30dp"
-                    android:layout_weight="1"
-                    android:clickable="false"
-                    android:layout_width="fill_parent"
-                    android:layout_height="fill_parent" />
-            </LinearLayout>
+                android:layout_height="wrap_content"
+                android:layout_weight="0.6" />
 
             <TextView
-                android:layout_weight="1"
-                android:text="إلى"
-                android:textSize="20sp"
-                android:layout_width="fill_parent"
-                android:layout_height="fill_parent" />
-            <LinearLayout
-                android:weightSum="2"
-                android:layout_weight="1"
-                android:orientation="horizontal"
-                android:layout_width="fill_parent"
-                android:layout_height="fill_parent">
-                <EditText android:gravity="right"
-                    android:layout_weight="1"
-                    android:enabled="false"
-                    android:layout_width="fill_parent"
-                    android:layout_height="fill_parent"
-                    android:inputType="number"
-                    android:ems="10"
-                    android:id="@+id/toAyahR"
-                    android:hint="رقم الآية..."/>
-                <Spinner android:id="@+id/toSurahR"
-                    android:layout_marginTop="30dp"
-                    android:clickable="false"
-                    android:layout_weight="1"
-                    android:layout_width="fill_parent"
-                    android:layout_height="fill_parent" />
-            </LinearLayout>
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="0.4"
+                android:text="إيقاف تشغيل التلاوة تلقائيا بعد" />
         </LinearLayout>
 
         <CheckBox
+            android:id="@+id/checkBoxRepeat"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignParentTop="true"
+            android:text="تكرار التلاوة"
+            android:layout_gravity="right"
+            android:paddingBottom="25dp" />
+        <LinearLayout
+            android:id="@+id/repeatReciteLayout"
+            android:visibility="gone"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:layout_alignParentLeft="true"
             android:layout_alignParentStart="true"
-            android:background="@color/bright_blue"
-            android:paddingLeft="20dp"
-            android:paddingRight="20dp"
-            android:id="@+id/checkBoxRepeat"
-            android:text="تكرار التلاوة"
-            android:textAppearance="?android:attr/textAppearanceLarge"/>
-    </RelativeLayout>
-    <Button
-        android:id="@+id/buttonStartReciteInBackground"
-        android:text="بدء القراءة"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
-</LinearLayout>
+            android:layout_alignParentTop="true"
+            android:layout_marginBottom="3sp"
+            android:layout_marginLeft="3sp"
+            android:layout_marginRight="3sp"
+            android:layout_marginTop="13dp"
+            android:background="@drawable/my_custom_background"
+            android:orientation="vertical">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="20sp" />
+
+            <TextView
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent"
+                android:layout_weight="1"
+                android:text="من"
+                android:textSize="20sp" />
+
+            <LinearLayout
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:weightSum="2">
+
+                <EditText
+                    android:id="@+id/fromAyahR"
+                    android:layout_width="fill_parent"
+                    android:layout_height="fill_parent"
+                    android:layout_weight="1"
+                    android:ems="10"
+                    android:enabled="false"
+                    android:gravity="end"
+                    android:hint="رقم الآية..."
+                    android:inputType="number" />
+
+                <Spinner
+                    android:id="@+id/fromSurahR"
+                    android:layout_width="fill_parent"
+                    android:layout_height="fill_parent"
+                    android:layout_marginTop="30dp"
+                    android:layout_weight="1"
+                    android:clickable="false" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent"
+                android:layout_weight="1"
+                android:text="إلى"
+                android:textSize="20sp" />
+
+            <LinearLayout
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:weightSum="2">
+
+                <EditText
+                    android:id="@+id/toAyahR"
+                    android:layout_width="fill_parent"
+                    android:layout_height="fill_parent"
+                    android:layout_weight="1"
+                    android:ems="10"
+                    android:enabled="false"
+                    android:gravity="end"
+                    android:hint="رقم الآية..."
+                    android:inputType="number" />
+
+                <Spinner
+                    android:id="@+id/toSurahR"
+                    android:layout_width="fill_parent"
+                    android:layout_height="fill_parent"
+                    android:layout_marginTop="30dp"
+                    android:layout_weight="1"
+                    android:clickable="false" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

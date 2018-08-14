@@ -11,4 +11,10 @@
     <string name="donwloadTafaseerDbUrl2">https://raw.githubusercontent.com/Mr-DDDAlKilanny/tafseer-sqlite-db/master/tafaseer.zip</string>
     <string name="request_storage_permission_msg">يتطلب التحميل الوصول إلى الذاكرة. اضغط موافق ليظهر لك تأكيد الحصول على إذن الوصول للذاكرة.
         إذا لم يظهر التأكيد يمكنك تفعيل الإذن من إعدادات الجهاز ثم اختر التطبيقات ثم اختر مصحف الشمرلي ثم فعل الأذونات</string>
+    <string name="title_activity_welcome2">Welcome2Activity</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <string name="action_settings">Settings</string>
 </resources>

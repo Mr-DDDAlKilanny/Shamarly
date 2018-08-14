@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">archive.org</domain>
+        <domain includeSubdomains="true">raw.githubusercontent.com</domain>
+        <domain includeSubdomains="true">www.everyayah.com</domain>
+        <domain includeSubdomains="true">www.yaquran.com</domain>
+        <domain includeSubdomains="true">audio.recitequran.com</domain>
+    </domain-config>
+</network-security-config>
