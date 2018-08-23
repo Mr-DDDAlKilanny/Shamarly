@@ -432,6 +432,11 @@ public class Utils {
     public static boolean pageExists(Context context, int page) {
         File file = getPageFile(context, page);
         if (!file.exists()) return false;
+        if (file.length() != QuranData.PAGE_FILE_SIZE[page - 1]) {
+            Log.w("pageExists", "page " + page + " size is not equal to the recorded size");
+            file.delete();
+            return false;
+        }
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inDither = true;
         options.inSampleSize = 8;

@@ -7,8 +7,8 @@ android {
         applicationId "kilanny.shamarlymushaf"
         minSdkVersion 14
         targetSdkVersion 28
-        versionName '2.94'
-        versionCode 25
+        versionName '2.941'
+        versionCode 26
     }
     buildTypes {
         release {
