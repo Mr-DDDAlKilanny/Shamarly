@@ -12,8 +12,6 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
-import com.google.android.gms.common.GoogleApiAvailability;
-
 import kilanny.shamarlymushaf.util.AnalyticsTrackers;
 import kilanny.shamarlymushaf.BuildConfig;
 import kilanny.shamarlymushaf.R;
@@ -100,44 +98,20 @@ public class WelcomeActivity extends AppCompatActivity {
         findViewById(R.id.sendComments).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                AlertDialog.Builder builder = new AlertDialog.Builder(WelcomeActivity.this);
-                builder.setTitle("إرسال تعليقات");
-                // Set up the input
-                final EditText input = new EditText(WelcomeActivity.this);
-                input.setHint("يمكنك كتابة بريدك الإلكتروني لنرد عليك");
-                // Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
-                input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-                builder.setView(input);
-                // Set up the buttons
-                builder.setPositiveButton("إرسال", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        String m_Text = input.getText().toString().trim();
-                        if (m_Text.length() < 5) {
-                            Utils.showAlert(WelcomeActivity.this, "خطأ", "أدخل تفاصيل كافية لإرسالها", null);
-                            return;
-                        }
-                        AnalyticsTrackers.sendComment(WelcomeActivity.this, m_Text);
-                        Toast.makeText(WelcomeActivity.this,
-                                "شكرا. سيتم إرسال تعليقاتك في أقرب فرصة ممكنة إن شاء الله",
-                                Toast.LENGTH_LONG).show();
-                        dialog.dismiss();
-                    }
-                });
-                builder.show();
+                AnalyticsTrackers.sendComment(WelcomeActivity.this, null);
             }
         });
 
-        try {
-            GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
-            Dialog errorDialog = googleApiAvailability.getErrorDialog(this,
-                    googleApiAvailability.isGooglePlayServicesAvailable(getApplicationContext()),
-                    0);
-            if (errorDialog != null) {
-                errorDialog.setCancelable(true);
-                errorDialog.show();
-            }
-        } catch (Exception e) {
-        }
+//        try {
+//            GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
+//            Dialog errorDialog = googleApiAvailability.getErrorDialog(this,
+//                    googleApiAvailability.isGooglePlayServicesAvailable(getApplicationContext()),
+//                    0);
+//            if (errorDialog != null) {
+//                errorDialog.setCancelable(true);
+//                errorDialog.show();
+//            }
+//        } catch (Exception e) {
+//        }
     }
 }

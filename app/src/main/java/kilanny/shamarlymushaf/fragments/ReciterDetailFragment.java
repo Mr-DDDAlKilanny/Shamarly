@@ -166,6 +166,12 @@ public class ReciterDetailFragment extends Fragment {
                                         "يتم إيقاف التحميل...", Toast.LENGTH_SHORT).show();
                                 return;
                             }
+                            if (Utils.getSurahDir(getActivity(), mItem, position + 1) == null) {
+                                Toast.makeText(getActivity(),
+                                        "فضلا اختر حافظة تحميل التلاوات أولا",
+                                        Toast.LENGTH_LONG).show();
+                                return;
+                            }
                             setCurrentDownloadSurah(position + 1);
                             prevTask = Utils.downloadSurah(getActivity(), mItem, position + 1,
                                     new RecoverySystem.ProgressListener() {

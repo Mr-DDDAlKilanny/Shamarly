@@ -43,6 +43,7 @@ import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.FragmentActivity;
+import android.support.v4.content.FileProvider;
 import android.support.v4.view.ViewPager;
 import android.util.TypedValue;
 import android.view.Display;
@@ -722,7 +723,8 @@ public class MainActivity extends FragmentActivity {
                 android.R.id.text1, quranData.surahs2));
         final EditText from = (EditText) dialog.findViewById(R.id.fromAyahR);
         final EditText to = (EditText) dialog.findViewById(R.id.toAyahR);
-        if (image.currentPage != null && image.currentPage.ayahs.size() >0) {
+        if (image.currentPage != null && image.currentPage.ayahs != null
+                && image.currentPage.ayahs.size() > 0) {
             spinner1.setSelection(image.currentPage.ayahs.get(0).sura);
             spinner2.setSelection(image.currentPage.ayahs.get(image.currentPage.ayahs.size() - 1)
                     .sura);
@@ -777,10 +779,13 @@ public class MainActivity extends FragmentActivity {
                         showError("البداية يجب أن لا تكون أعلى من النهاية. فعل خيار البدء من الفاتحة للاستمرار");
                         return;
                     }
-                } else {
+                } else if (image.currentPage != null && image.currentPage.ayahs != null) {
                     Ayah a = image.currentPage.ayahs.get(result.selectionIndex >= 0 ?
                             result.selectionIndex : 0);
                     sf = a.sura; f = a.ayah;
+                } else {
+                    sf = 1;
+                    f = 1;
                 }
                 Intent intent = new Intent(MainActivity.this, PlayReciteActivity.class);
                 intent.putExtra(PlayReciteActivity.AUTO_STOP_PERIOD_MINUTES_EXTRA, autoStop);
@@ -1358,6 +1363,8 @@ public class MainActivity extends FragmentActivity {
     private void displayTafseer(int tafseer, final TafseerDbManager db2,
                                 final ListItem[] allTafaseer, int currnet,
                                 final ArrayList<Ayah> all) {
+        if (all == null)
+            return;
         final boolean hasDownloadedTafaseer = allTafaseer != null && allTafaseer.length > 1;
         currentSelectedTafseer = hasDownloadedTafaseer ? Math.max(0, tafseer) : 0;
         ListItem[] items_tmp;
@@ -1568,7 +1575,11 @@ public class MainActivity extends FragmentActivity {
                     shareImageView.saveSelectedAyatAsImage(path, quranData);
                     Intent share = new Intent(Intent.ACTION_SEND);
                     share.setType("image/png");
-                    share.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(path));
+                    share.putExtra(Intent.EXTRA_STREAM,
+                            FileProvider.getUriForFile(MainActivity.this,
+                            getApplicationContext().getPackageName() + ".kilanny.shamarlymushaf.provider",
+                            path));
+                    share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                     startActivity(Intent.createChooser(share, "مشاركة"));
                 } else
                     showError("فضلا حدد آية أو أكثر");

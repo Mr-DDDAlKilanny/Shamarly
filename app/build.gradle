@@ -7,8 +7,8 @@ android {
         applicationId "kilanny.shamarlymushaf"
         minSdkVersion 14
         targetSdkVersion 28
-        versionName '2.932'
-        versionCode 24
+        versionName '2.94'
+        versionCode 25
     }
     buildTypes {
         release {
@@ -34,10 +34,11 @@ dependencies {
     implementation files('htmlcleaner-2.21.jar')
     implementation 'com.android.support:appcompat-v7:28.0.0-rc01'
     implementation 'com.android.support:support-v4:28.0.0-rc01'
-    implementation 'com.google.android.gms:play-services-analytics:8.1.0'
+    //implementation 'com.google.android.gms:play-services-analytics:10.2.4'
     implementation 'com.android.support:design:28.0.0-rc01'
     implementation 'com.android.support.constraint:constraint-layout:1.1.2'
     annotationProcessor 'com.google.auto.value:auto-value:1.1'
 }
 
 //apply plugin: 'com.google.gms.google-services'
+

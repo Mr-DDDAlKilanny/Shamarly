@@ -148,7 +148,7 @@ public class QuranImageView extends TouchImageView {
     }
 
     public int getAyahAtPos(float x, float y) {
-        if (currentPage != null) {
+        if (currentPage != null && currentPage.ayahs != null) {
             for (int i = 0; i < currentPage.ayahs.size(); ++i)
                 for (RectF rect : currentPage.ayahs.get(i).rects)
                     if (getScaledRectFromImageRect(rect).contains(x, y))

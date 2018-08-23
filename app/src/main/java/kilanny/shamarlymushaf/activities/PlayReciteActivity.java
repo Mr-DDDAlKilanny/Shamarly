@@ -3,6 +3,7 @@ package kilanny.shamarlymushaf.activities;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -10,6 +11,7 @@ import android.os.Build;
 import android.os.CountDownTimer;
 import android.preference.PreferenceManager;
 import android.os.Bundle;
+import android.support.v4.content.res.ResourcesCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
@@ -253,6 +255,7 @@ public class PlayReciteActivity extends AppCompatActivity {
     }
 
     private Drawable myGetDrawable(int id) {
+        //ResourcesCompat.getDrawable(getResources(), id, null);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1)
             return getDrawable(id);
         else
@@ -311,6 +314,8 @@ public class PlayReciteActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_play_recite);
+        Typeface typeface = Typeface.createFromAsset(getAssets(), "DroidNaskh-Regular.ttf");
+        ((TextView) findViewById(R.id.textViewAyahText)).setTypeface(typeface);
         pref = PreferenceManager.getDefaultSharedPreferences(this);
         quranData = QuranData.getInstance(this);
         pauseBtn = findViewById(R.id.imageButtonPause);
