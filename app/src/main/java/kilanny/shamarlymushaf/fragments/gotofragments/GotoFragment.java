@@ -4,6 +4,8 @@ import android.support.v4.app.Fragment;
 import android.content.Context;
 import android.content.Intent;
 
+import java.util.Locale;
+
 import kilanny.shamarlymushaf.data.DbManager;
 import kilanny.shamarlymushaf.activities.MainActivity;
 import kilanny.shamarlymushaf.data.QuranData;
@@ -25,12 +27,17 @@ public abstract class GotoFragment extends Fragment {
         setting = Setting.getInstance(getContext());
     }
 
-    protected void showMainActivity(int page) {
+    protected Intent getShowMainActivityIntent(int page) {
         Context context = getActivity();
         Intent intent = new Intent(context, MainActivity.class);
         intent.putExtra(MainActivity.SHOW_PAGE_MESSAGE,
                 page / (setting.lastWasDualPage ? 2 : 1));
-        context.startActivity(intent);
+        return intent;
+    }
+
+    protected void showMainActivity(int page) {
+        Context context = getActivity();
+        context.startActivity(getShowMainActivityIntent(page));
     }
 
     protected void showMainActivity(int page, int sura, int ayah) {
@@ -38,7 +45,8 @@ public abstract class GotoFragment extends Fragment {
         Intent intent = new Intent(context, MainActivity.class);
         intent.putExtra(MainActivity.SHOW_PAGE_MESSAGE,
                 page / (setting.lastWasDualPage ? 2 : 1));
-        intent.putExtra(MainActivity.SHOW_AYAH_MESSAGE, String.format("%d,%d", sura, ayah));
+        intent.putExtra(MainActivity.SHOW_AYAH_MESSAGE, String.format(Locale.ENGLISH, "%d,%d",
+                sura, ayah));
         context.startActivity(intent);
     }
 

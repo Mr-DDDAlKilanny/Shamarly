@@ -26,7 +26,11 @@ public class GotoNumberFragment extends GotoFragment {
             public void onClick(View v) {
                 EditText txt = (EditText) root.findViewById(R.id.editTextPageNum);
                 if (!txt.getText().toString().trim().isEmpty()) {
-                    int num = Integer.parseInt(txt.getText().toString());
+                    int num = -1;
+                    try {
+                        num = Integer.parseInt(txt.getText().toString());
+                    } catch (Exception ignored) {
+                    }
                     if (num > 0 && num <= FullScreenImageAdapter.MAX_PAGE) {
                         showMainActivity(num);
                     } else {
@@ -45,8 +49,12 @@ public class GotoNumberFragment extends GotoFragment {
                 String s = sura.getText().toString().trim();
                 String a = ayah.getText().toString().trim();
                 if (!s.isEmpty() && !a.isEmpty()) {
-                    int ss = Integer.parseInt(s);
-                    int aa = Integer.parseInt(a);
+                    int ss = -1, aa = -1;
+                    try {
+                        ss = Integer.parseInt(s);
+                        aa = Integer.parseInt(a);
+                    } catch (Exception ignored) {
+                    }
                     if (ss < 1 || ss > quranData.surahs.length)
                         Utils.showAlert(getActivity(), "خطأ", "رقم السورة غير صحيح", null);
                     else if (aa < 1 || aa > quranData.surahs[ss - 1].ayahCount)

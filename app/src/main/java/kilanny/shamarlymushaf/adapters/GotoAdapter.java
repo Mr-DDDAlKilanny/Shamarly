@@ -7,6 +7,7 @@ import android.support.v4.app.FragmentPagerAdapter;
 import kilanny.shamarlymushaf.fragments.gotofragments.GotoBookmarkFragment;
 import kilanny.shamarlymushaf.fragments.gotofragments.GotoHizbFragment;
 import kilanny.shamarlymushaf.fragments.gotofragments.GotoJuzFragment;
+import kilanny.shamarlymushaf.fragments.gotofragments.GotoKhatmahFragement;
 import kilanny.shamarlymushaf.fragments.gotofragments.GotoNumberFragment;
 import kilanny.shamarlymushaf.fragments.gotofragments.GotoSearchFragment;
 import kilanny.shamarlymushaf.fragments.gotofragments.GotoSurahFragment;
@@ -16,9 +17,9 @@ import kilanny.shamarlymushaf.fragments.gotofragments.GotoSurahFragment;
  */
 public class GotoAdapter extends FragmentPagerAdapter {
 
-    public static final int LENGTH = 6;
+    public static final int LENGTH = 7;
     private final String[] TITLES = { "المعلمة", "السورة", "الرقم",
-            "البحث", "الجزء", "الحزب" };
+            "البحث", "الجزء", "الحزب", "الختمة" };
 
     public GotoAdapter(FragmentManager fm) {
         super(fm);
@@ -55,6 +56,8 @@ public class GotoAdapter extends FragmentPagerAdapter {
                 return new GotoJuzFragment();
             case 5:
                 return new GotoHizbFragment();
+            case 6:
+                return new GotoKhatmahFragement();
         }
         return null;
     }

@@ -7,6 +7,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.ObjectStreamClass;
 import java.io.Serializable;
 import java.util.ArrayList;
 
@@ -14,10 +15,13 @@ public class Setting implements Serializable {
     private static Setting instnace;
     private static final String settingFilename = "myfile";
 
+    static final long serialVersionUID = 4775843869953188005L;
+
     public int page = 1;
     public boolean lastWasDualPage = false;
     public String saveSoundsDirectory;
     public ArrayList<ListItem> bookmarks = new ArrayList<>();
+    public ArrayList<Khatmah> khatmat = new ArrayList<>();
 
     private Setting() {
     }
@@ -76,6 +80,19 @@ public class Setting implements Serializable {
         if (setting == null) {
             setting = new Setting();
         }
+        if (setting.khatmat == null)
+            setting.khatmat = new ArrayList<>();
         return instnace = setting;
+    }
+
+    public boolean khatmahNameExists(String name) {
+        return getKhatmahByName(name) != null;
+    }
+
+    public Khatmah getKhatmahByName(String name) {
+        for (Khatmah khatmah : khatmat)
+            if (khatmah.name.equals(name))
+                return khatmah;
+        return null;
     }
 }

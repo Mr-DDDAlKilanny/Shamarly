@@ -33,7 +33,6 @@ public class QuranImageFragment extends Fragment {
     int fragPos;
     MainActivity _activity;
     FullScreenImageAdapter.OnInstantiateQuranImageViewListener listener;
-    private boolean finalized = false;
     private QuranImageView imgDisplay, imgDisplay2;
     private ImageView imgDisplayBorders, imgDisplayBorders2;
     private boolean isDualPage;
@@ -51,48 +50,44 @@ public class QuranImageFragment extends Fragment {
         return imageFragment;
     }
 
-    @Override
-    public void finalize() throws Throwable {
-        super.finalize();
-        if (!finalized) {
-            finalized = true;
-            if (imgDisplay != null) {
-                Bitmap old = imgDisplay.myBitmap;
-                imgDisplay.setImageBitmap(null);
-                if (old != null) old.recycle();
-            }
-            if (imgDisplay2 != null) {
-                Bitmap old = imgDisplay2.myBitmap;
-                imgDisplay2.setImageBitmap(null);
-                if (old != null) old.recycle();
-            }
-            imgDisplay = null;
-            imgDisplay2 = null;
-            if (imgDisplayBorders != null) {
-                Bitmap old = ((BitmapDrawable) imgDisplayBorders.getDrawable()).getBitmap();
+    public void recycle() {
+        if (imgDisplay != null) {
+            Bitmap old = imgDisplay.myBitmap;
+            imgDisplay.setImageBitmap(null);
+            if (old != null) old.recycle();
+        }
+        if (imgDisplay2 != null) {
+            Bitmap old = imgDisplay2.myBitmap;
+            imgDisplay2.setImageBitmap(null);
+            if (old != null) old.recycle();
+        }
+        imgDisplay = null;
+        imgDisplay2 = null;
+        if (imgDisplayBorders != null) {
+            BitmapDrawable drawable = ((BitmapDrawable) imgDisplayBorders.getDrawable());
+            if (drawable != null) {
+                Bitmap old = drawable.getBitmap();
                 imgDisplayBorders.setImageBitmap(null);
                 if (old != null) old.recycle();
             }
-            if (imgDisplayBorders2 != null) {
-                Bitmap old = ((BitmapDrawable) imgDisplayBorders2.getDrawable()).getBitmap();
+        }
+        if (imgDisplayBorders2 != null) {
+            BitmapDrawable drawable = ((BitmapDrawable) imgDisplayBorders2.getDrawable());
+            if (drawable != null) {
+                Bitmap old = drawable.getBitmap();
                 imgDisplayBorders2.setImageBitmap(null);
                 if (old != null) old.recycle();
             }
-            imgDisplayBorders = null;
-            imgDisplayBorders2 = null;
-            this._activity = null;
-            this.listener = null;
         }
+        imgDisplayBorders = null;
+        imgDisplayBorders2 = null;
+        this._activity = null;
+        this.listener = null;
     }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (finalized) { // explicit GC collect causes errors !!
-            AnalyticsTrackers.sendFatalError(getActivity(), "QuranImageFragment.onCreate",
-                    "finalized = true");
-            return;
-        }
         fragPos = getArguments() != null ? getArguments().getInt("pos") : -1;
     }
 
@@ -142,13 +137,6 @@ public class QuranImageFragment extends Fragment {
         final View viewLayout = inflater.inflate(isDualPage ?
                 R.layout.layout_fullscreen_image_dual : R.layout.layout_fullscreen_image,
                 container, false);
-        if (finalized || _activity == null) { // explicit GC collect causes errors !!
-            //occurs mostly when activity resume() after stop()
-            //or when out-of-memory error occurs
-            AnalyticsTrackers.sendFatalError(getActivity(), "QuranImageFragment.onCreateView",
-                    "finalized = true");
-            return viewLayout;
-        }
         if (!isDualPage) {
             imgDisplay = (QuranImageView) viewLayout.findViewById(R.id.quranPage);
             imgDisplayBorders = (ImageView) viewLayout.findViewById(R.id.quranPageBorder);
@@ -158,6 +146,8 @@ public class QuranImageFragment extends Fragment {
             imgDisplayBorders = (ImageView) viewLayout.findViewById(R.id.quranPageBorder_right);
             imgDisplayBorders2 = (ImageView) viewLayout.findViewById(R.id.quranPageBorder_left);
         }
+        if (_activity == null)
+            return viewLayout;
         imgDisplay.pref = _activity.pref;
         if (isDualPage) imgDisplay2.pref = _activity.pref;
         if (fragPos == -1) {
@@ -197,15 +187,20 @@ public class QuranImageFragment extends Fragment {
                             final Bitmap bitmap = _activity.readPage(page.page);
                             Bitmap tmp = null;
                             SharedPreferences pref = null;
-                            if (_activity != null)
+                            if (_activity != null) {
                                 pref = PreferenceManager.getDefaultSharedPreferences(_activity);
-                            if (!finalized && pref != null && MainActivity.isShowPageBorders(pref)) {
-                                tmp = _activity.readBorders(page.page);
+                                if (pref != null && MainActivity.isShowPageBorders(pref)) {
+                                    tmp = _activity.readBorders(page.page);
+                                }
+                            } else {
+                                if (bitmap != null)
+                                    bitmap.recycle();
+                                return;
                             }
                             final Bitmap bitmapBorders = tmp;
                             if (bitmap == null)
                                 throw new IllegalAccessException(memoryFullError);
-                            if (!finalized) {
+                            if (_activity != null) {
                                 _activity.runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
@@ -217,16 +212,16 @@ public class QuranImageFragment extends Fragment {
                                         }
                                     }
                                 });
-                                if (isDualPage) {
+                                if (isDualPage && _activity != null) {
                                     final Bitmap bitmap2 = _activity.readPage(page2.page);
                                     Bitmap tmp2 = null;
-                                    if (!finalized && pref != null && MainActivity.isShowPageBorders(pref)) {
+                                    if (_activity != null && pref != null && MainActivity.isShowPageBorders(pref)) {
                                         tmp2 = _activity.readBorders(page2.page);
                                     }
                                     final Bitmap bitmapBorders2 = tmp2;
                                     if (bitmap2 == null)
                                         throw new IllegalAccessException(memoryFullError);
-                                    if (!finalized) _activity.runOnUiThread(new Runnable() {
+                                    if (_activity != null) _activity.runOnUiThread(new Runnable() {
                                         @Override
                                         public void run() {
                                             showProgress(viewLayout, bitmap2, bitmapBorders2,
@@ -237,34 +232,41 @@ public class QuranImageFragment extends Fragment {
                                         }
                                     });
                                     else {
+                                        recycle();
                                         bitmap2.recycle();
                                         if (bitmapBorders2 != null)
                                             bitmapBorders2.recycle();
+                                        return;
                                     }
+                                } else if (_activity == null) {
+                                    recycle();
+                                    return;
                                 }
                             } else {
                                 bitmap.recycle();
                                 if (bitmapBorders != null)
                                     bitmapBorders.recycle();
+                                return;
                             }
                         } catch (MyOutOfMemoryException | OutOfMemoryError err) {
                             err.printStackTrace();
-                            if (!finalized) {
+                            if (_activity != null) {
                                 _activity.runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
                                         try {
                                             Toast.makeText(_activity, memoryFullError, Toast.LENGTH_LONG).show();
                                             _activity.finish();
-                                        } catch (Exception ex) {
+                                        } catch (Exception ignored) {
                                         }
                                     }
                                 });
-                                AnalyticsTrackers.sendException(_activity, err);
+                                AnalyticsTrackers.sendException(_activity, "QuranPageRead", err);
                             }
+                            recycle();
                         } catch (final Exception ex) {
                             ex.printStackTrace();
-                            if (!finalized) {
+                            if (_activity != null) {
                                 _activity.runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
@@ -274,8 +276,9 @@ public class QuranImageFragment extends Fragment {
                                         _activity.finish();
                                     }
                                 });
-                                AnalyticsTrackers.sendException(_activity, ex);
+                                //AnalyticsTrackers.sendException(_activity, ex);
                             }
+                            recycle();
                         }
                     }
                 };

@@ -84,6 +84,8 @@ public class ReciterDetailFragment extends Fragment {
             this.currentDownloadSurah = currentDownloadSurah;
             adapter.notifyDataSetChanged();
         }
+        if (getContext() != null)
+            AnalyticsTrackers.send(getContext().getApplicationContext());
     }
 
     @Override
@@ -164,6 +166,7 @@ public class ReciterDetailFragment extends Fragment {
                                     prevTask.cancel(true);
                                 Toast.makeText(getActivity(),
                                         "يتم إيقاف التحميل...", Toast.LENGTH_SHORT).show();
+                                AnalyticsTrackers.send(getContext().getApplicationContext());
                                 return;
                             }
                             if (Utils.getSurahDir(getActivity(), mItem, position + 1) == null) {

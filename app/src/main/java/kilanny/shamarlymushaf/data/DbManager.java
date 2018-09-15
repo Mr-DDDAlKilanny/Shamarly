@@ -128,7 +128,8 @@ public class DbManager extends SQLiteOpenHelper {
     public ArrayList<SearchResult> search(String word, QuranData quranData) {
         ArrayList<SearchResult> results = new ArrayList<>();
         SQLiteDatabase db = this.getWritableDatabase();
-        Cursor cursor =  db.rawQuery("select * from mushaf where ayahtext like '%" + word + "%'", null);
+        Cursor cursor =  db.rawQuery("select * from mushaf where ayahtext like ?",
+                new String[] { "%" + word + "%" });
         cursor.moveToFirst();
         while (cursor.isAfterLast() == false) {
             SearchResult res = new SearchResult(quranData);
@@ -146,8 +147,8 @@ public class DbManager extends SQLiteOpenHelper {
 
     public int getPage(int sura, int ayah) {
         SQLiteDatabase db = this.getWritableDatabase();
-        Cursor cursor = db.rawQuery(String.format(Locale.US,
-                "select page from mushaf where sura = %d and ayah = %d", sura, ayah), null);
+        Cursor cursor = db.rawQuery("select page from mushaf where sura = ? and ayah = ?",
+                new String[] { String.format(Locale.ENGLISH, "%d", sura), String.format(Locale.ENGLISH, "%d", ayah) });
         cursor.moveToFirst();
         if (cursor.isAfterLast() == false) {
             return cursor.getInt(cursor.getColumnIndex("page"));
@@ -156,11 +157,11 @@ public class DbManager extends SQLiteOpenHelper {
         return -1;
     }
 
-    private int numberOfRows(){
-        SQLiteDatabase db = this.getWritableDatabase();
-        int numRows = (int) DatabaseUtils.queryNumEntries(db, "contact");
-        return numRows;
-    }
+//    private int numberOfRows(){
+//        SQLiteDatabase db = this.getWritableDatabase();
+//        int numRows = (int) DatabaseUtils.queryNumEntries(db, "contact");
+//        return numRows;
+//    }
 }
 
 class MyDbContext extends ContextWrapper {

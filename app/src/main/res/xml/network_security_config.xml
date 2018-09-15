@@ -6,5 +6,6 @@
         <domain includeSubdomains="true">www.everyayah.com</domain>
         <domain includeSubdomains="true">www.yaquran.com</domain>
         <domain includeSubdomains="true">audio.recitequran.com</domain>
+        <domain includeSubdomains="true">shmrl.ihostfull.com</domain>
     </domain-config>
 </network-security-config>

@@ -223,29 +223,4 @@ public class QuranImageView extends TouchImageView {
             draw.recycle();
         } else throw new IllegalStateException("myBitmap is null");
     }
-    
-    @Override
-    protected void finalize() throws Throwable {
-        this.mutliSelectList.clear();
-        if (currentPage != null && currentPage.ayahs != null) {
-            Page page = currentPage;
-            currentPage = null;
-            for (Ayah a : page.ayahs) {
-                a.rects.clear();
-                a.rects = null;
-            }
-            page.ayahs.clear();
-            page.ayahs = null;
-        }
-        this.pref = null;
-        this.res = null;
-        this.rectPaint = null;
-        this.fontPaint = null;
-        if (this.myBitmap != null) {
-            //this.myBitmap.recycle();
-            setImageBitmap(this.myBitmap = null);
-        }
-        super.finalize();
-        System.out.println("Finalized Image");
-    }
 }

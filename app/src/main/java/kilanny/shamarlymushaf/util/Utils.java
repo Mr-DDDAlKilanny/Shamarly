@@ -10,8 +10,10 @@ import android.graphics.BitmapFactory;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Environment;
 import android.os.RecoverySystem;
+import android.support.annotation.NonNull;
 import android.util.Log;
 import android.view.View;
 import android.widget.ListView;
@@ -25,6 +27,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -44,9 +47,13 @@ import java.net.URLConnection;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -82,6 +89,11 @@ public class Utils {
             CONNECTION_STATUS_UNKNOWN_STATUS = 3;
     public static final String NON_DOWNLOADED_QUEUE_FILE_PATH = "nonDownloaded";
 
+    private static final int SECOND_MILLIS = 1000;
+    private static final int MINUTE_MILLIS = 60 * SECOND_MILLIS;
+    private static final int HOUR_MILLIS = 60 * MINUTE_MILLIS;
+    private static final int DAY_MILLIS = 24 * HOUR_MILLIS;
+
     public static class DownloadStatusArray {
 
         public final Shared[] status;
@@ -99,6 +111,13 @@ public class Utils {
                 if (s.getData() != DOWNLOAD_OK)
                     return false;
             return true;
+        }
+
+        public boolean isAnyOk() {
+            for (Shared s : status)
+                if (s.getData() == DOWNLOAD_OK)
+                    return true;
+            return false;
         }
 
         public int getFirstError() {
@@ -214,6 +233,13 @@ public class Utils {
             // instead of the file
             if (connection.getResponseCode() != HttpURLConnection.HTTP_OK)
                 return DOWNLOAD_SERVER_INVALID_RESPONSE;
+            long zipLength;
+            final long ZIP_LENGTH = 36082873L;
+            if (Build.VERSION.SDK_INT >= 24)
+                zipLength = connection.getContentLengthLong();
+            else
+                zipLength = connection.getContentLength();
+            if (zipLength != ZIP_LENGTH) return DOWNLOAD_SERVER_INVALID_RESPONSE;
             // download the file
             ZipInputStream zipIs = new ZipInputStream(connection.getInputStream());
             ZipEntry entry = zipIs.getNextEntry();
@@ -236,6 +262,8 @@ public class Utils {
             zipIs.close();
             output.close();
             error = false;
+            if (total != fileLength)
+                return DOWNLOAD_SERVER_INVALID_RESPONSE;
             return cancel != null && !cancel.canContinue() ? DOWNLOAD_USER_CANCEL : DOWNLOAD_OK;
         } catch (MalformedURLException e) {
             e.printStackTrace();
@@ -289,6 +317,8 @@ public class Utils {
                     context.getResources().getString(id), buffer);
             if (res == DOWNLOAD_OK || res == DOWNLOAD_USER_CANCEL)
                 break;
+            else if (dbFile.exists())
+                dbFile.delete();
         }
         return res;
     }
@@ -323,20 +353,25 @@ public class Utils {
             // instead of the file
             if (connection.getResponseCode() != HttpURLConnection.HTTP_OK)
                 return DOWNLOAD_SERVER_INVALID_RESPONSE;
-            //int fileLength = connection.getContentLength();
+            long fileLength;
+            if (Build.VERSION.SDK_INT >= 24)
+                fileLength = connection.getContentLengthLong();
+            else
+                fileLength = connection.getContentLength();
             // download the file
             InputStream input = connection.getInputStream();
             conn = false;
             FileOutputStream output = new FileOutputStream(saveTo);
             int count;
-            //long total = 0;
+            long total = 0;
             while ((count = input.read(buffer)) != -1) {
                 output.write(buffer, 0, count);
-                //total += count;
+                total += count;
             }
             input.close();
             output.close();
-            return DOWNLOAD_OK;
+            return fileLength <= 0 || total == fileLength ?
+                    DOWNLOAD_OK : DOWNLOAD_SERVER_INVALID_RESPONSE;
         } catch (MalformedURLException e) {
             e.printStackTrace();
             return DOWNLOAD_MALFORMED_URL;
@@ -366,9 +401,14 @@ public class Utils {
         try {
             res = downloadFile(buffer, getAyahUrl(reciter, surah, ayah, data, 1), file);
             if (res == DOWNLOAD_OK) return res;
+            else if (file.exists()) // download failed
+                file.delete();
             String next = getAyahUrl(reciter, surah, ayah, data, 2);
             if (next == null) return res;
-            return res = downloadFile(buffer, next, file);
+            res = downloadFile(buffer, next, file);
+            if (res != DOWNLOAD_OK && file.exists()) // download failed
+                file.delete();
+            return res;
         } finally {
             if (res == DOWNLOAD_OK) {
                 q.incrementBytes(file.length());
@@ -557,7 +597,7 @@ public class Utils {
                     downloadAyah(context, reciter, 1, 1, buf,
                             getSurahDir(context, reciter, 1), data);
                     while (interrupt.getData() == 0 &&
-                            cancel.canContinue() && error.isAllOk()) {
+                            cancel.canContinue() && error.isAnyOk()) {
                         Integer per = q.poll();
                         if (per == null) break;
                         int code = downloadAyah(context, reciter, surah, per,
@@ -643,13 +683,20 @@ public class Utils {
     public static void showConfirm(Context context, String title, String msg,
                              DialogInterface.OnClickListener ok,
                              DialogInterface.OnClickListener cancel) {
+        showConfirm(context, title, msg, "نعم", "لا", ok, cancel);
+    }
+
+    public static void showConfirm(Context context, String title, String msg,
+                                   String okText, String cancelText,
+                                   DialogInterface.OnClickListener ok,
+                                   DialogInterface.OnClickListener cancel) {
         new AlertDialog.Builder(context)
                 .setIcon(android.R.drawable.ic_dialog_alert)
                 .setTitle(title)
                 .setMessage(msg)
                 .setCancelable(false)
-                .setPositiveButton("نعم", ok)
-                .setNegativeButton("لا", cancel)
+                .setPositiveButton(okText, ok)
+                .setNegativeButton(cancelText, cancel)
                 .show();
     }
 
@@ -840,21 +887,145 @@ public class Utils {
             Object[] new_nodes = node.evaluateXPath("//*[@class='recent-change']");
             Object[] version_nodes = node.evaluateXPath("//*[@itemprop='softwareVersion']");
 
-            String version = "", whatsNew = "";
+            String version = "";
+            StringBuilder whatsNew = new StringBuilder();
             for (Object new_node : new_nodes) {
                 TagNode info_node = (TagNode) new_node;
-                whatsNew += info_node.getAllChildren().get(0).toString().trim()
-                        + "\n";
+                whatsNew.append(info_node.getAllChildren().get(0).toString().trim()).append("\n");
             }
             if (version_nodes.length > 0) {
                 TagNode ver = (TagNode) version_nodes[0];
                 version = ver.getAllChildren().get(0).toString().trim();
             }
-            return new String[]{version, whatsNew};
-        } catch (IOException | XPatherException e) {
+            return new String[]{version, whatsNew.toString()};
+        } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
+    }
+
+    @NonNull
+    public static String getTimeAgoString(Date date) {
+        if (date == null)
+            return "";
+        long time = date.getTime();
+        if (time < 1000000000000L) {
+            time *= 1000;
+        }
+        Calendar calendar = Calendar.getInstance();
+        Date currentDate = calendar.getTime();
+        long now = currentDate.getTime();
+        if (time > now || time <= 0) {
+            return "in the future !!?";
+        }
+
+        final long diff = now - time;
+        if (diff < MINUTE_MILLIS) {
+            return "منذ لحظات";
+        } else if (diff < 2 * MINUTE_MILLIS) {
+            return "منذ دقيقة";
+        } else if (diff < 60 * MINUTE_MILLIS) {
+            return "منذ " + diff / MINUTE_MILLIS + " دقيقة";
+        } else if (diff < 2 * HOUR_MILLIS) {
+            return "منذ ساعة";
+        } else if (diff < 24 * HOUR_MILLIS) {
+            return "منذ " + diff / HOUR_MILLIS + " ساعات";
+        } else if (diff < 48 * HOUR_MILLIS) {
+            return "أمس";
+        } else {
+            return "منذ " + diff / DAY_MILLIS + " يوم";
+        }
+    }
+
+    public static String newUid() {
+        return UUID.randomUUID().toString();
+    }
+
+    public static long hash(String s) {
+        long hash = 7;
+        for (int i = 0; i < s.length(); i++) {
+            hash = hash * 31 + s.charAt(i);
+        }
+        return hash;
+    }
+
+    public static String postGzipped(String url, String postData, Map<String, String> headers) {
+        StringBuilder data = new StringBuilder();
+
+        HttpURLConnection httpURLConnection = null;
+        try {
+
+            httpURLConnection = (HttpURLConnection) new URL(url).openConnection();
+            httpURLConnection.setRequestMethod("POST");
+            for (Map.Entry<String, String> entry : headers.entrySet()) {
+                httpURLConnection.setRequestProperty(entry.getKey(), entry.getValue());
+            }
+            httpURLConnection.setRequestProperty("Content-encoding", "gzip");
+
+            httpURLConnection.setDoOutput(true);
+
+            GZIPOutputStream dos1 = new GZIPOutputStream(httpURLConnection.getOutputStream());
+            dos1.write(postData.getBytes("UTF-8"));
+            dos1.flush();
+            dos1.close();
+
+            InputStream in = httpURLConnection.getInputStream();
+            InputStreamReader inputStreamReader = new InputStreamReader(in);
+
+            int inputStreamData = inputStreamReader.read();
+            while (inputStreamData != -1) {
+                char current = (char) inputStreamData;
+                inputStreamData = inputStreamReader.read();
+                data.append(current);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (httpURLConnection != null) {
+                httpURLConnection.disconnect();
+            }
+        }
+
+        return data.toString();
+    }
+
+    public static String post(String url, String postData, Map<String, String> headers) {
+        StringBuilder data = new StringBuilder();
+
+        HttpURLConnection httpURLConnection = null;
+        try {
+
+            httpURLConnection = (HttpURLConnection) new URL(url).openConnection();
+            httpURLConnection.setRequestMethod("POST");
+            for (Map.Entry<String, String> entry : headers.entrySet()) {
+                httpURLConnection.setRequestProperty(entry.getKey(), entry.getValue());
+            }
+
+            httpURLConnection.setDoOutput(true);
+
+            DataOutputStream wr = new DataOutputStream(httpURLConnection.getOutputStream());
+            wr.writeBytes(postData);
+            wr.flush();
+            wr.close();
+
+            InputStream in = httpURLConnection.getInputStream();
+            InputStreamReader inputStreamReader = new InputStreamReader(in);
+
+            int inputStreamData = inputStreamReader.read();
+            while (inputStreamData != -1) {
+                char current = (char) inputStreamData;
+                inputStreamData = inputStreamReader.read();
+                data.append(current);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (httpURLConnection != null) {
+                httpURLConnection.disconnect();
+            }
+        }
+
+        return data.toString();
     }
 }
 

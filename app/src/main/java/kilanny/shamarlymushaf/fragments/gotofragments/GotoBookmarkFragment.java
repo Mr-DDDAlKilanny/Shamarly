@@ -43,7 +43,8 @@ public class GotoBookmarkFragment extends GotoFragment {
         }
         for (int i = 0; i < setting.bookmarks.size(); ++i) {
             String name = setting.bookmarks.get(i).name;
-            book[i + inc] = quranData.findSurahAtPage(Integer.parseInt(name)).name + ": " + name;
+            book[i + inc] = "سورة " + quranData.findSurahAtPage(Integer.parseInt(name)).name
+                    + "، صفحة " + name;
         }
         l4.setAdapter(new ArrayAdapter<>(getActivity(),
                 android.R.layout.simple_list_item_1, android.R.id.text1,

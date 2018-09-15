@@ -89,9 +89,9 @@
         android:layout_height="0dp">
         <ImageButton
             android:enabled="false"
-            android:src="@android:drawable/ic_media_ff"
+            android:src="@android:drawable/ic_media_rew"
             android:scaleType="fitXY"
-            android:id="@+id/imageButtonNextAyah"
+            android:id="@+id/imageButtonPrevAyah"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
         <ImageButton
@@ -102,9 +102,9 @@
             android:layout_height="wrap_content" />
         <ImageButton
             android:enabled="false"
-            android:src="@android:drawable/ic_media_rew"
+            android:src="@android:drawable/ic_media_ff"
             android:scaleType="fitXY"
-            android:id="@+id/imageButtonPrevAyah"
+            android:id="@+id/imageButtonNextAyah"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
         <ImageButton

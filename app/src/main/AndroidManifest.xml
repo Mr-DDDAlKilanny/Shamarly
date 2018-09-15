@@ -80,45 +80,6 @@
             </intent-filter>
         </activity>
 
-        <!--
-        Optionally, register AnalyticsReceiver and AnalyticsService to support background
-        dispatching on non-Google Play devices
-        -->
-        <!-- <receiver -->
-        <!-- android:name="com.google.android.gms.analytics.AnalyticsReceiver" -->
-        <!-- android:enabled="true"> -->
-        <!-- <intent-filter> -->
-        <!-- <action android:name="com.google.android.gms.analytics.ANALYTICS_DISPATCH" /> -->
-        <!-- </intent-filter> -->
-        <!-- </receiver> -->
-
-
-        <!-- <service -->
-        <!-- android:name="com.google.android.gms.analytics.AnalyticsService" -->
-        <!-- android:enabled="true" -->
-        <!-- android:exported="false" /> -->
-
-
-        <!-- &lt;!&ndash; -->
-        <!-- Optionally, register CampaignTrackingReceiver and CampaignTrackingService to enable -->
-        <!-- installation campaign reporting -->
-        <!-- &ndash;&gt; -->
-        <!-- <receiver -->
-        <!-- android:name="com.google.android.gms.analytics.CampaignTrackingReceiver" -->
-        <!-- android:exported="true"> -->
-        <!-- <intent-filter> -->
-        <!-- <action android:name="com.android.vending.INSTALL_REFERRER" /> -->
-        <!-- </intent-filter> -->
-        <!-- </receiver> -->
-
-
-        <!-- <service android:name="com.google.android.gms.analytics.CampaignTrackingService" /> -->
-
-
-        <!-- <meta-data -->
-        <!-- android:name="com.google.android.gms.version" -->
-        <!-- android:value="@integer/google_play_services_version" /> -->
-
         <activity
             android:name=".activities.GotoActivity"
             android:label="@string/title_activity_goto" />
@@ -126,20 +87,6 @@
             android:name=".activities.PlayReciteActivity"
             android:configChanges="orientation"
             android:screenOrientation="portrait" />
-
-        <service
-            android:name=".services.PlayReciteService"
-            android:enabled="true"
-            android:exported="false" />
-
-        <receiver
-            android:name=".services.PlayReciteService$StopButtonListener"
-            android:exported="false" />
-
-        <activity
-            android:name=".activities.Welcome2Activity"
-            android:label="@string/title_activity_welcome2"
-            android:theme="@style/AppTheme.NoActionBar" />
 
         <provider
             android:name=".util.GenericFileProvider"
@@ -150,8 +97,7 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
-
-        <activity android:name=".activities.ReportIssueActivity"></activity>
+        <activity android:name=".activities.ReportIssueActivity" />
     </application>
 
 </manifest>

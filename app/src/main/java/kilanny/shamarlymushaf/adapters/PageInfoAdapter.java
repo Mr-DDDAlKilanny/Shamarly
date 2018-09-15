@@ -3,6 +3,8 @@ package kilanny.shamarlymushaf.adapters;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Typeface;
+import android.support.annotation.NonNull;
+import android.support.v4.content.res.ResourcesCompat;
 import android.support.v4.view.PagerAdapter;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -23,14 +25,15 @@ public class PageInfoAdapter extends PagerAdapter {
     private String juzNumber;
     private String surahName;
     private String hizbNumber;
+    private String khatmahName;
 
     @Override
     public int getCount() {
-        return 4;
+        return 4 + (khatmahName != null ? 1 : 0);
     }
 
     @Override
-    public boolean isViewFromObject(View view, Object object)  {
+    public boolean isViewFromObject(@NonNull View view, @NonNull Object object)  {
         return view == object;
     }
 
@@ -66,8 +69,9 @@ public class PageInfoAdapter extends PagerAdapter {
         this.surahName = surahName;
     }
 
+    @NonNull
     @Override
-    public Object instantiateItem(ViewGroup container, int position) {
+    public Object instantiateItem(@NonNull ViewGroup container, int position) {
         Context context = container.getContext();
         TextView viewLayout = new TextView(context);
         viewLayout.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
@@ -75,11 +79,15 @@ public class PageInfoAdapter extends PagerAdapter {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         viewLayout.setGravity(Gravity.CENTER);
         Resources res = context.getResources();
-        viewLayout.setTextColor(res.getColor(R.color.abc_primary_text_disable_only_material_dark));
+        viewLayout.setTextColor(ResourcesCompat.getColor(res, android.R.color.primary_text_dark,
+                null));
         if (typeface == null)
             typeface = Typeface.createFromAsset(context.getAssets(), "DroidNaskh-Bold.ttf");
         viewLayout.setTypeface(typeface);
         switch (position) {
+            case 4:
+                viewLayout.setText(getKhatmahName());
+                break;
             case 3:
                 viewLayout.setText(getPageNumber());
                 break;
@@ -100,8 +108,16 @@ public class PageInfoAdapter extends PagerAdapter {
     }
 
     @Override
-    public void destroyItem(ViewGroup container, int position, Object object) {
+    public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
         TextView layout = (TextView) object;
         container.removeView(layout);
+    }
+
+    public String getKhatmahName() {
+        return "ختمة: " + khatmahName;
+    }
+
+    public void setKhatmahName(String khatmahName) {
+        this.khatmahName = khatmahName;
     }
 }

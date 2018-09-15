@@ -22,6 +22,7 @@ import android.widget.Toast;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -31,6 +32,7 @@ import kilanny.shamarlymushaf.data.Ayah;
 import kilanny.shamarlymushaf.data.QuranData;
 import kilanny.shamarlymushaf.R;
 import kilanny.shamarlymushaf.data.Shared;
+import kilanny.shamarlymushaf.util.AnalyticsTrackers;
 import kilanny.shamarlymushaf.util.Utils;
 
 public class PlayReciteActivity extends AppCompatActivity {
@@ -51,6 +53,9 @@ public class PlayReciteActivity extends AppCompatActivity {
     private CountDownTimer countDownTimer;
     private boolean paused = false;
 
+    private HashSet<String> listenRecite;
+    private boolean lastRecitedAyahWasFile = false;
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -62,6 +67,7 @@ public class PlayReciteActivity extends AppCompatActivity {
     protected void onStop() {
         super.onStop();
         isShown = false;
+        AnalyticsTrackers.send(getApplicationContext());
     }
 
     @Override
@@ -80,11 +86,21 @@ public class PlayReciteActivity extends AppCompatActivity {
                 .show();
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        stopPlayback(false);
+    }
+
     private void stopPlayback(boolean finish) {
         if (player != null) {
             if (player.isPlaying()) player.stop();
             player.release();
             player = null;
+
+            if (listenRecite != null)
+                AnalyticsTrackers.sendForegroundListenReciteStats(getApplicationContext(),
+                        listenRecite);
         }
         if (finish && !isFinishing()) finish();
     }
@@ -140,7 +156,24 @@ public class PlayReciteActivity extends AppCompatActivity {
         bar.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
     }
 
+    private void prepare() {
+        try {
+            player.prepareAsync();
+        } catch (IllegalStateException ignored) {
+            showProgress(false);
+            stopPlayback(false);
+            updateUi(true, "قد يكون جهازك غير متصل بالشبكة أو أن الخادم لا يستجيب");
+            Toast.makeText(PlayReciteActivity.this,
+                    "لا يمكن تشغيل التلاوة. ربما توجد مشكلة في اتصالك بالإنترنت أو أن الخادم لا يستجيب",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void startPlayback() {
+        if (player != null) {
+            if (player.isPlaying()) player.stop();
+            player.release();
+        }
         player = new MediaPlayer();
         player.setAudioStreamType(AudioManager.STREAM_MUSIC);
         final Shared attempt = new Shared();
@@ -149,6 +182,10 @@ public class PlayReciteActivity extends AppCompatActivity {
             @Override
             public void onCompletion(MediaPlayer mp) {
                 try {
+                    if (listenRecite == null)
+                        listenRecite = new HashSet<>();
+                    listenRecite.add(String.format(Locale.US, "{\"r\":\"%s\",\"f\":\"%s\",\"s\":%d,\"a\":%d}",
+                            getSelectedSound(), lastRecitedAyahWasFile + "", currentSurah, currentAyah));
                     ++currentAyah;
                     if (toSurah > 0 && toAyah > 0) { // repeat choice
                         if (currentSurah == toSurah && currentAyah > toAyah) {
@@ -175,16 +212,18 @@ public class PlayReciteActivity extends AppCompatActivity {
                         pauseBtn.setEnabled(true);
                         return;
                     }
-                    player.setDataSource(Utils.getAyahPath(PlayReciteActivity.this,
+                    final String path = Utils.getAyahPath(PlayReciteActivity.this,
                             getSelectedSound(),
-                            currentSurah, currentAyah, quranData, attempt.getData()));
+                            currentSurah, currentAyah, quranData, attempt.getData());
+                    player.setDataSource(path);
                     Runnable tmpRunnable = new Runnable() {
                         @Override
                         public void run() {
                             if (player == null) //stopPlayback() was called
                                 return;
                             showProgress(true);
-                            player.prepareAsync();
+                            prepare();
+                            lastRecitedAyahWasFile = path.startsWith("/");
                         }
                     };
                     if (currentAyah == 1 && currentSurah > 1 && currentSurah != 9)
@@ -208,8 +247,9 @@ public class PlayReciteActivity extends AppCompatActivity {
                             player.reset();
                             player.setDataSource(path);
                             player.prepareAsync();
+                            lastRecitedAyahWasFile = path.startsWith("/");
                             return true;
-                        } catch (IOException e) {
+                        } catch (IOException | IllegalStateException e) {
                             e.printStackTrace();
                         }
                     }
@@ -236,14 +276,16 @@ public class PlayReciteActivity extends AppCompatActivity {
             }
         });
         try {
-            player.setDataSource(Utils.getAyahPath(this, getSelectedSound(),
-                    currentSurah, currentAyah, quranData, 1));
+            final String path = Utils.getAyahPath(this, getSelectedSound(),
+                    currentSurah, currentAyah, quranData, 1);
+            player.setDataSource(path);
             Runnable tmpRunnable = new Runnable() {
                 @Override
                 public void run() {
                     if (player == null) //stopPlayback() was called
                         return;
-                    player.prepareAsync();
+                    lastRecitedAyahWasFile = path.startsWith("/");
+                    prepare();
                 }
             };
             if (currentAyah == 1 && currentSurah > 1 && currentSurah != 9)
@@ -359,7 +401,7 @@ public class PlayReciteActivity extends AppCompatActivity {
         initAutoCloseTimer();
         String stringExtra = intent.getStringExtra(REPEAT_STRING_EXTRA);
         if (stringExtra != null) {
-            Pattern p = Pattern.compile("(\\d+):(\\d+)\\-(\\d+):(\\d+)");
+            Pattern p = Pattern.compile("(\\d+):(\\d+)-(\\d+):(\\d+)");
             Matcher matcher = p.matcher(stringExtra);
             if (matcher.matches()) {
                 fromSurah = Integer.parseInt(matcher.group(1));

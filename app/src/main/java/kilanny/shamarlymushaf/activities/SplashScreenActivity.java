@@ -70,7 +70,7 @@ public class SplashScreenActivity extends Activity {
                                 }
                             }, numThreads);
                 } catch (Throwable throwable) {
-                    AnalyticsTrackers.sendException(SplashScreenActivity.this, throwable);
+                    AnalyticsTrackers.sendException(SplashScreenActivity.this, "getNonExistPages", throwable);
                     return throwable;
                 }
                 return null;

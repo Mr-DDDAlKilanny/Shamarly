@@ -6,6 +6,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import kilanny.shamarlymushaf.activities.MainActivity;
@@ -29,17 +30,12 @@ public class FullScreenImageAdapter extends FragmentStatePagerAdapter {
         this.actualDownloaded = count;
     }
 
-    @Override
-    public void finalize() throws Throwable {
-        super.finalize();
+    public void recycle() {
         if (fragments == null) return;
+        ArrayList<QuranImageFragment> fragments = new ArrayList<>(this.fragments);
+        this.fragments.clear();
         for (QuranImageFragment f : fragments)
-            try {
-                f.finalize();
-            } catch (Throwable throwable) {
-                throwable.printStackTrace();
-            }
-        fragments.clear();
+            f.recycle();
     }
 
     @Override
@@ -65,7 +61,7 @@ public class FullScreenImageAdapter extends FragmentStatePagerAdapter {
         try {
             QuranImageFragment fragment = (QuranImageFragment) object;
             fragments.remove(fragment);
-            fragment.finalize();
+            fragment.recycle();
         } catch (Throwable throwable) {
             throwable.printStackTrace();
         }
