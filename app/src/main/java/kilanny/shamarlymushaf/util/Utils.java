@@ -989,14 +989,14 @@ public class Utils {
         return data.toString();
     }
 
-    public static String post(String url, String postData, Map<String, String> headers) {
+    public static String sendHttpRequest(String url, String method, String body, Map<String, String> headers) {
         StringBuilder data = new StringBuilder();
 
         HttpURLConnection httpURLConnection = null;
         try {
 
             httpURLConnection = (HttpURLConnection) new URL(url).openConnection();
-            httpURLConnection.setRequestMethod("POST");
+            httpURLConnection.setRequestMethod(method);
             for (Map.Entry<String, String> entry : headers.entrySet()) {
                 httpURLConnection.setRequestProperty(entry.getKey(), entry.getValue());
             }
@@ -1004,7 +1004,7 @@ public class Utils {
             httpURLConnection.setDoOutput(true);
 
             DataOutputStream wr = new DataOutputStream(httpURLConnection.getOutputStream());
-            wr.writeBytes(postData);
+            wr.writeBytes(body);
             wr.flush();
             wr.close();
 

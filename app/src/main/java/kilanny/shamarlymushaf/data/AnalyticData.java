@@ -56,10 +56,12 @@ public class AnalyticData {
             synchronized (ox) {
                 if (sz < count)
                     throw new IllegalArgumentException();
-                Stat[] items = getDb(context).statDao().getFirstItems(count);
+                StatsDb db = getDb(context);
+                Stat[] items = db.statDao().getFirstItems(count);
                 AnalyticData[] data = new AnalyticData[items.length];
                 for (int i = 0; i < data.length; ++i)
                     data[i] = items[i].toAnalyticData();
+                db.statDao().deleteMany(items);
                 return data;
             }
         }

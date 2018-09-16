@@ -614,6 +614,8 @@ public class MainActivity extends FragmentActivity {
     private WeakReference<QuranImageView> last, last2;
 
     private void onPageSelected(int position) {
+        if (adapter == null) // recycled
+            return;
         idleUseCounter.setData(0);
         if (!autoSwipPage)
             stopPlayback();
@@ -2440,18 +2442,5 @@ Page number (561, 1528, 75, 38)
                     execute.cancel(true);
             }
         });
-    }
-
-    @Override
-    public void onTrimMemory(int level) {
-        super.onTrimMemory(level);
-        switch (level) {
-            case TRIM_MEMORY_UI_HIDDEN:
-                if (adapter != null) {
-                    adapter.recycle();
-                    adapter = null;
-                }
-                break;
-        }
     }
 }

@@ -1,21 +1,9 @@
 package kilanny.shamarlymushaf.util;
 
-import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.content.Context;
-import android.net.http.SslError;
 import android.os.Build;
-import android.os.Handler;
-import android.support.annotation.Nullable;
 import android.util.Log;
-import android.webkit.CookieManager;
-import android.webkit.SslErrorHandler;
-import android.webkit.WebResourceError;
-import android.webkit.WebResourceRequest;
-import android.webkit.WebResourceResponse;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -29,8 +17,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import kilanny.shamarlymushaf.BuildConfig;
 import kilanny.shamarlymushaf.data.AnalyticData;
@@ -38,82 +26,7 @@ import kilanny.shamarlymushaf.data.UserInfo;
 
 public final class AnalyticsTrackers {
 
-    private static AtomicReference<Date> isUpdatingCookie = new AtomicReference<>();
     private static AtomicBoolean sending = new AtomicBoolean(false);
-
-    public static void updateWebCookie(final Context context) {
-        Date now = new Date();
-        if (isUpdatingCookie.get() != null
-                && now.getTime() - isUpdatingCookie.get().getTime() < 2 * 60 * 1000) return;
-        isUpdatingCookie.set(now);
-        Log.d("updateWebCookie", "Starting");
-        if (Utils.isConnected(context) != Utils.CONNECTION_STATUS_CONNECTED) {
-            Log.w("updateWebCookie", "No internet connection; skipping operation");
-            isUpdatingCookie.set(null);
-            return;
-        }
-        new Handler(context.getMainLooper()).post(new Runnable() {
-            @SuppressLint("SetJavaScriptEnabled")
-            @Override
-            public void run() {
-                Log.d("updateWebCookie", "Starting in UI");
-                final WebView webView = new WebView(context);
-                WebViewClient webViewClient = new WebViewClient() {
-
-                    private void onDone() {
-                        isUpdatingCookie.set(null);
-                        webView.destroy();
-                    }
-
-                    @Override
-                    public void onPageFinished(WebView view, String url) {
-                        super.onPageFinished(view, url);
-                        try {
-                            String[] cookies = CookieManager.getInstance().getCookie(url).split(";");
-                            String c = "";
-                            for (String s : cookies)
-                                if (s.startsWith("__test="))
-                                    c = s;
-                            Log.i("updateWebCookie", String.format("Found cookie: %s", c));
-                            AnalyticsTrackersData trackersData = AnalyticsTrackersData
-                                    .getInstance(context);
-                            trackersData.setCookie(c, context);
-                            send(context);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                        onDone();
-                    }
-
-                    @Override
-                    public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                        Log.e("updateWebCookie", error.toString());
-                        super.onReceivedError(view, request, error);
-                        onDone();
-                    }
-
-                    @Override
-                    public void onReceivedHttpError(WebView view, WebResourceRequest request,
-                                                    WebResourceResponse errorResponse) {
-                        Log.e("updateWebCookie", errorResponse.toString());
-                        super.onReceivedHttpError(view, request, errorResponse);
-                        onDone();
-                    }
-
-                    @Override
-                    public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
-                        Log.e("updateWebCookie", error.toString());
-                        super.onReceivedSslError(view, handler, error);
-                        onDone();
-                    }
-                };
-                webView.setWebViewClient(webViewClient);
-                WebSettings webSettings = webView.getSettings();
-                webSettings.setJavaScriptEnabled(true);
-                webView.loadUrl("http://shmrl.ihostfull.com");
-            }
-        });
-    }
 
     public static String getDeviceInfo(Context context) {
         long vmHead = -1, recomendHeap = -1, totalMem = -1,
@@ -272,21 +185,30 @@ public final class AnalyticsTrackers {
         AnalyticData.Queue.enqueueMany(context, event);
     }
 
-    @Nullable
-    private static AnalyticData[] getSendData(Context context) {
-        AnalyticsTrackersData trackersData = AnalyticsTrackersData.getInstance(context);
-        String userId = UserInfo.getInstance(context).appInstanceId;
-        long lastSend = trackersData.getLastSend() != null ? trackersData.getLastSend().getTime()
-                : 0;
-        long group = Utils.hash(userId) % 10;
-        group += 14; // min 2 weeks + (0-9) days
-        lastSend += (group * 24 * 60 * 60 * 1000);
-        if (new Date().getTime() < lastSend)
-            return null;
-        final int perSubmitItemCount = 50;
-        if (AnalyticData.Queue.size(context) < perSubmitItemCount)
-            return null;
-        return AnalyticData.Queue.dequeueMany(context, perSubmitItemCount);
+    private static boolean sendUserInfo(Context context) {
+        UserInfo userInfo = UserInfo.getInstance(context);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS", Locale.US);
+        String gender = userInfo.gender == null ? "" : userInfo.gender ? "1" : "2";
+        TimeZone timeZone = TimeZone.getDefault();
+        String json = formatJson("{\"info\":{\n" +
+                        "\t\"app_code\": \"%s\", \"app_ver\": \"%s\", \"os_ver\": \"%s\", \n" +
+                        "\t\"sdk_ver\":\"%s\", \"dev_name\": \"%s\", \"dev_model\": \"%s\", \"dev_prod\": \"%s\", \"age\": \"%s\", \n" +
+                        "\t\"gender\": \"%s\", \"location\": \"%s\", \"lastUpdate\":\"%s\",\"tz\":\"%s\"\n" +
+                        "}}",
+                userInfo.appVersionCode, userInfo.appVersionName, userInfo.deviceOsVersion,
+                userInfo.deviceSdkVersion, userInfo.deviceName, userInfo.deviceModel, userInfo.deviceProduct, userInfo.ageCategory + "",
+                gender, userInfo.locationCategory, sdf.format(new Date()),
+                timeZone.getDisplayName(false, TimeZone.SHORT) + "_" + timeZone.getID()
+        );
+        json = json.replace("\t", "")
+                .replace(", \n", ",")
+                .replace("\n", "")
+                .replace("\": \"", "\":\"");
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json; charset=UTF-8");
+        String url = String.format("https://shamarlymushaf.firebaseio.com/analytics/%s.json", userInfo.appInstanceId);
+        String put = Utils.sendHttpRequest(url, "PUT", json, headers);
+        return put.contains(userInfo.appInstanceId);
     }
 
     public static void send(final Context context) {
@@ -302,56 +224,42 @@ public final class AnalyticsTrackers {
                     sending.set(false);
                     return;
                 }
+                int sz = AnalyticData.Queue.size(context);
+                if (sz == 0) {
+                    sending.set(false);
+                    return;
+                }
                 AnalyticsTrackersData trackersData = AnalyticsTrackersData.getInstance(context);
+                if (trackersData.getLastSend() == null)
+                    if (sendUserInfo(context))
+                        trackersData.setLastSend(new Date(), context);
                 UserInfo userInfo = UserInfo.getInstance(context);
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);
-                String gender = userInfo.gender == null ? "" : userInfo.gender ? "1" : "2";
-                boolean hasSent = false;
-                for (int i = 0; i < 5; ++i) {
-                    AnalyticData[] sendData = getSendData(context);
-                    if (sendData == null) break;
-                    String cookie = trackersData.getCookie();
-                    Log.d("AnalTrack/send", String.format("Found cookie: %s", cookie));
-                    if (cookie == null || cookie.length() == 0) {
-                        AnalyticData.Queue.enqueueMany(context, sendData);
-                        updateWebCookie(context);
-                        break;
-                    }
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmssSSS", Locale.US);
+                for (int i = 0; i < 10 && sz > 0; ++i, --sz) {
+                    AnalyticData sendData = AnalyticData.Queue.dequeueMany(context, 1)[0];
                     Map<String, String> headers = new HashMap<>();
                     headers.put("Content-Type", "application/json; charset=UTF-8");
-                    headers.put("Cookie", cookie);
                     try {
-                        StringBuilder allData = new StringBuilder();
-                        for (AnalyticData data : sendData) {
-                            String json = formatJson("{\n" +
-                                            "\t\"evtName\": \"%s\", \"app_id\": \"%s\", \"app_code\": \"%s\", \"app_ver\": \"%s\", \"os_ver\": \"%s\", \n" +
-                                            "\t\"sdk_ver\":\"%s\", \"dev_name\": \"%s\", \"dev_model\": \"%s\", \"dev_prod\": \"%s\", \"age\": \"%s\", \n" +
-                                            "\t\"gender\": \"%s\", \"location\": \"%s\", \"payload\": #####, \"evtDateTime\": \"%s\"\n" +
-                                            "}", data.eventName, userInfo.appInstanceId, userInfo.appVersionCode, userInfo.appVersionName, userInfo.deviceOsVersion,
-                                    userInfo.deviceSdkVersion, userInfo.deviceName, userInfo.deviceModel, userInfo.deviceProduct, userInfo.ageCategory + "",
-                                    gender, userInfo.locationCategory, sdf.format(data.date)
-                            );
-                            json = json.replace("\t", "")
-                                    .replace(", \n", ",")
-                                    .replace("\n", "")
-                                    .replace("\": \"", "\":\"");
-                            json = json.replace("#####", data.payload);
-                            if (allData.length() > 0)
-                                allData.append(',');
-                            allData.append(json);
-                        }
-                        allData.insert(0, "[");
-                        allData.append("]");
-                        String res = Utils.postGzipped("http://shmrl.ihostfull.com/stats/create.php",
-                                allData.toString(), headers);
-                        if (res.contains("stat was created")) {
-                            hasSent = true;
-                            Log.d("AnalTrack/send", "Successfully sent data: " + allData);
+                        String json = formatJson("{\n" +
+                                "\t\"evt\": \"%s\", \"time\": \"%s\", #####\n" +
+                                "}", sendData.eventName, sdf.format(sendData.date));
+                        json = json.replace("\t", "")
+                                .replace(", \n", ",")
+                                .replace("\n", "")
+                                .replace("\": \"", "\":\"");
+                        String payload = sendData.payload;
+                        payload = payload.substring(payload.indexOf('{') + 1);
+                        payload = payload.substring(0, payload.lastIndexOf('}'));
+                        json = json.replace("#####", payload);
+                        String url = String.format("https://shamarlymushaf.firebaseio.com/analytics/%s/events/%s.json",
+                                userInfo.appInstanceId, sdf.format(new Date()));
+                        String res = Utils.sendHttpRequest(url, "PUT", json, headers);
+                        if (res.contains("{")) {
+                            trackersData.setLastSend(new Date(), context);
+                            Log.d("AnalTrack/send", "Successfully sent data: " + json);
                         } else {
                             AnalyticData.Queue.enqueueMany(context, sendData);
-                            Log.d("AnalTrack/send", "Fail sending data: " + allData);
-                            if (res.length() > 0)
-                                updateWebCookie(context);
+                            Log.d("AnalTrack/send", "Fail sending data: " + json);
                             break;
                         }
                     } catch (Exception ex) {
@@ -360,8 +268,6 @@ public final class AnalyticsTrackers {
                         break;
                     }
                 }
-                if (hasSent)
-                    trackersData.setLastSend(new Date(), context);
                 sending.set(false);
             }
         }).start();
@@ -380,28 +286,13 @@ public final class AnalyticsTrackers {
 }
 class AnalyticsTrackersData implements Serializable {
 
-    static final long serialVersionUID = 1L;
+    static final long serialVersionUID = 2L;
     private static AnalyticsTrackersData instance;
     private static final String settingFilename = "AnalyticsTrackersData.dat";
 
-    private String cookie;
     private Date lastSend;
-    private Date cookieLastUpdate;
 
     private AnalyticsTrackersData() {
-    }
-
-    public String getCookie() {
-        long before12Hours = new Date().getTime() - 12 * 60 * 60 * 1000;
-        if (cookieLastUpdate != null && cookieLastUpdate.getTime() > before12Hours)
-            return cookie;
-        return null;
-    }
-
-    public void setCookie(String cookie, Context context) {
-        this.cookie = cookie;
-        cookieLastUpdate = new Date();
-        save(context);
     }
 
     public Date getLastSend() {

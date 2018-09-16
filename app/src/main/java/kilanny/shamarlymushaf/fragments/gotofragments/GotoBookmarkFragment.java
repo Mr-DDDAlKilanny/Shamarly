@@ -38,13 +38,13 @@ public class GotoBookmarkFragment extends GotoFragment {
         int inc = num == -1 ? 0 : 1;
         String[] book = new String[inc + setting.bookmarks.size()];
         if (num != -1) {
-            String tmp = num > 1 ? quranData.findSurahAtPage(num).name : "";
-            book[0] = "آخر موضع: " + tmp + ": " + num;
+            String tmp = num > 1 ? "سورة " + quranData.findSurahAtPage(num).name : "";
+            book[0] = "آخر موضع: " + tmp + " صفحة: " + num;
         }
         for (int i = 0; i < setting.bookmarks.size(); ++i) {
             String name = setting.bookmarks.get(i).name;
             book[i + inc] = "سورة " + quranData.findSurahAtPage(Integer.parseInt(name)).name
-                    + "، صفحة " + name;
+                    + "، صفحة: " + name;
         }
         l4.setAdapter(new ArrayAdapter<>(getActivity(),
                 android.R.layout.simple_list_item_1, android.R.id.text1,
@@ -53,7 +53,13 @@ public class GotoBookmarkFragment extends GotoFragment {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 String itemValue = (String) l4.getItemAtPosition(position);
-                showMainActivity(Integer.parseInt(itemValue.substring(itemValue.lastIndexOf(":") + 2)));
+                int page;
+                try {
+                    page = Integer.parseInt(itemValue.substring(itemValue.lastIndexOf(":") + 2));
+                } catch (NumberFormatException ignored) {
+                    page = quranData.surahs[0].page;
+                }
+                showMainActivity(page);
             }
         });
     }
