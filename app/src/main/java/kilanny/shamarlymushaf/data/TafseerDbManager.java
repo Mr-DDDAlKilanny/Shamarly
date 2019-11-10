@@ -6,6 +6,7 @@ import android.database.Cursor;
 import android.database.DatabaseErrorHandler;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -51,7 +52,7 @@ public class TafseerDbManager extends SQLiteOpenHelper {
                 return SQLiteDatabase.openDatabase(getDatabasePath(name).getPath(), factory,
                         SQLiteDatabase.OPEN_READWRITE);
             }
-        }, "tafaseer.db", null, 1);
+        }, "tafaseer.db", null, 2);
     }
 
     @Override
@@ -60,6 +61,16 @@ public class TafseerDbManager extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        if (oldVersion < 2) {
+            try {
+                db.beginTransaction();
+                db.execSQL("UPDATE Tafseer SET nass = REPLACE(nass, 'وهذا لا ينافي الإلهية', 'وهذا ينافي الإلهية') WHERE tafseer = 6 AND sura = 23 AND ayah = 91");
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+            Log.d("onUpgradeTafseer", "DB was upgraded successfully");
+        }
     }
 
     public ArrayList<ListItem> getAvailableTafaseer() {

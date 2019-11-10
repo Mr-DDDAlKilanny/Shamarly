@@ -2,6 +2,7 @@ package kilanny.shamarlymushaf.data;
 
 import android.arch.persistence.room.Room;
 import android.content.Context;
+import android.support.annotation.Nullable;
 
 import java.util.Date;
 
@@ -18,6 +19,7 @@ public class AnalyticData {
         private static final Object ox = new Object();
         public static final int MAX_ENTRIES = 6636 + 114;
         private static StatsDb statsDbInstance;
+        private static Integer _cachedSize;
 
         private static StatsDb getDb(Context context) {
             if (statsDbInstance != null)
@@ -30,8 +32,13 @@ public class AnalyticData {
 
         public static int size(Context context) {
             synchronized (ox) {
-                return getDb(context).statDao().count();
+                return _cachedSize = getDb(context).statDao().count();
             }
+        }
+
+        @Nullable
+        public static Integer cachedSize() {
+            return _cachedSize;
         }
 
         public static void enqueueMany(Context context, AnalyticData... analyticData) {
@@ -49,6 +56,7 @@ public class AnalyticData {
                 }
                 db.statDao().insertMany(stats);
             }
+            _cachedSize = Math.min(sz + analyticData.length, MAX_ENTRIES);
         }
 
         public static AnalyticData[] dequeueMany(Context context, int count) {
@@ -62,6 +70,7 @@ public class AnalyticData {
                 for (int i = 0; i < data.length; ++i)
                     data[i] = items[i].toAnalyticData();
                 db.statDao().deleteMany(items);
+                _cachedSize = sz - count;
                 return data;
             }
         }

@@ -27,6 +27,7 @@ import java.io.InputStream;
 
 import kilanny.shamarlymushaf.fragments.HelpFragment;
 import kilanny.shamarlymushaf.R;
+import kilanny.shamarlymushaf.util.AnalyticsTrackers;
 
 public class HelpActivity extends FragmentActivity {
 
@@ -79,9 +80,6 @@ public class HelpActivity extends FragmentActivity {
         String[] strings = new String[MyPagerAdapter.LENGTH];
         AssetManager am = getAssets();
         SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-        Typeface typeface = pref.getBoolean("fontBold", false) ?
-                Typeface.createFromAsset(am, "DroidNaskh-Regular.ttf")
-                : Typeface.createFromAsset(am, "DroidNaskh-Bold.ttf");
         int size = Integer.parseInt(pref.getString("fontSize", "20"));
         String all;
         try {
@@ -112,6 +110,9 @@ public class HelpActivity extends FragmentActivity {
         idx = all.indexOf("=", idx + 1);
         strings[3] = all.substring(tmp, idx);
         strings[4] = all.substring(all.lastIndexOf("=") + 1);
+        Typeface typeface = pref.getBoolean("fontBold", false) ?
+                Typeface.createFromAsset(am, "DroidNaskh-Regular.ttf")
+                : Typeface.createFromAsset(am, "DroidNaskh-Bold.ttf");
         adapter = new MyPagerAdapter(getSupportFragmentManager(), strings, typeface, size);
         pager.setAdapter(adapter);
         final int pageMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 4,
@@ -120,6 +121,7 @@ public class HelpActivity extends FragmentActivity {
         tabs.setShouldExpand(true);
         tabs.setViewPager(pager);
         changeColor(currentColor);
+        AnalyticsTrackers.send(getApplicationContext());
     }
 
     private Drawable.Callback drawableCallback = new Drawable.Callback() {

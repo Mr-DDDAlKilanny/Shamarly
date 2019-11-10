@@ -19,22 +19,29 @@ public class UserInfo implements Serializable {
     static final long serialVersionUID = 1L;
 
     public final String appInstanceId;
-    public final String appVersionCode, appVersionName,
-            deviceOsVersion, deviceSdkVersion,
+    public String appVersionCode, appVersionName;
+    public final String deviceOsVersion, deviceSdkVersion,
             deviceProduct, deviceName, deviceModel;
     public Integer ageCategory;
-    public Boolean gender;
+    public Boolean gender, hasChanged;
     public Integer locationCategory;
 
     private UserInfo() {
         appInstanceId = Utils.newUid();
-        appVersionName = BuildConfig.VERSION_NAME;
-        appVersionCode = "" + BuildConfig.VERSION_CODE;
+        loadAppVersionDetails();
         deviceOsVersion = System.getProperty("os.version");
         deviceSdkVersion = "" + Build.VERSION.SDK_INT;
         deviceName = Build.DEVICE;
         deviceModel = Build.MODEL;
         deviceProduct = Build.PRODUCT;
+    }
+
+    private void loadAppVersionDetails() {
+        String code = "" + BuildConfig.VERSION_CODE;
+        appVersionName = BuildConfig.VERSION_NAME;
+        if (appVersionCode != null && !appVersionCode.equals(code))
+            hasChanged = true;
+        appVersionCode = code;
     }
 
     public void save(Context context) {
@@ -66,6 +73,7 @@ public class UserInfo implements Serializable {
             setting = new UserInfo();
             setting.save(context);
         }
+        setting.loadAppVersionDetails();
         return instance = setting;
     }
 

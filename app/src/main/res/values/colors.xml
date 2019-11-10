@@ -1,7 +1,8 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <color name="black_overlay">#66000000</color>
     <color name="color_preloader_start">#ffffff</color>
     <color name="color_preloader_center">#ffff00</color>
     <color name="color_preloader_end">#000000</color>
     <color name="background_tab_pressed">#6633B5E5</color>
+    <color tools:override="true" name="button_material_dark">#ff5a595b</color>
 </resources>

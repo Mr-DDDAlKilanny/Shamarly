@@ -48,7 +48,11 @@ public class HelpFragment extends Fragment {
                 container, false);
         TextView v = (TextView) scrollView.findViewById(R.id.helpText);
         v.setGravity(Gravity.CENTER);
-        v.setTypeface(typeface);
+        if (typeface != null)
+            try {
+                v.setTypeface(typeface);
+            } catch (Exception ignored) {
+            }
         v.setTextSize(TypedValue.COMPLEX_UNIT_DIP, fontSize);
         v.setText(string);
         return scrollView;

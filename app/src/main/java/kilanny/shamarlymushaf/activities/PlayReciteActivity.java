@@ -14,6 +14,7 @@ import android.os.Bundle;
 import android.support.v4.content.res.ResourcesCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.text.method.ScrollingMovementMethod;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
@@ -67,6 +68,13 @@ public class PlayReciteActivity extends AppCompatActivity {
     protected void onStop() {
         super.onStop();
         isShown = false;
+        AnalyticsTrackers.send(getApplicationContext());
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        isShown = true;
         AnalyticsTrackers.send(getApplicationContext());
     }
 
@@ -126,6 +134,8 @@ public class PlayReciteActivity extends AppCompatActivity {
         TextView sName = (TextView) findViewById(R.id.textViewSurahAyah);
         TextView rName = (TextView) findViewById(R.id.textViewReciter);
         TextView aName = (TextView) findViewById(R.id.textViewAyahText);
+        if (aName.getMovementMethod() == null)
+            aName.setMovementMethod(new ScrollingMovementMethod());
         TextView eName = (TextView) findViewById(R.id.textViewError);
         if (force || isShown) {
             sName.setText("سورة " + quranData.surahs[currentSurah - 1].name);
@@ -215,6 +225,9 @@ public class PlayReciteActivity extends AppCompatActivity {
                     final String path = Utils.getAyahPath(PlayReciteActivity.this,
                             getSelectedSound(),
                             currentSurah, currentAyah, quranData, attempt.getData());
+                    if (path == null || path.startsWith("http") &&
+                            Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
+                        throw new IllegalStateException();
                     player.setDataSource(path);
                     Runnable tmpRunnable = new Runnable() {
                         @Override
@@ -230,8 +243,14 @@ public class PlayReciteActivity extends AppCompatActivity {
                         MainActivity.playBasmalah(PlayReciteActivity.this,
                                 getSelectedSound(), quranData, tmpRunnable);
                     else tmpRunnable.run();
-                } catch (IOException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
+                    showProgress(false);
+                    stopPlayback(false);
+                    updateUi(true, "قد يكون جهازك غير متصل بالشبكة أو أن الخادم لا يستجيب");
+                    Toast.makeText(PlayReciteActivity.this,
+                            "لا يمكن تشغيل التلاوة. ربما توجد مشكلة في اتصالك بالإنترنت أو أن الخادم لا يستجيب",
+                            Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -244,6 +263,8 @@ public class PlayReciteActivity extends AppCompatActivity {
                             currentSurah, currentAyah, quranData, 2);
                     if (path != null) {
                         try {
+                            if (path.startsWith("http") && Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
+                                throw new IllegalStateException();
                             player.reset();
                             player.setDataSource(path);
                             player.prepareAsync();
@@ -278,6 +299,9 @@ public class PlayReciteActivity extends AppCompatActivity {
         try {
             final String path = Utils.getAyahPath(this, getSelectedSound(),
                     currentSurah, currentAyah, quranData, 1);
+            if (path == null || path.startsWith("http") &&
+                    Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
+                throw new IllegalStateException();
             player.setDataSource(path);
             Runnable tmpRunnable = new Runnable() {
                 @Override
@@ -291,8 +315,14 @@ public class PlayReciteActivity extends AppCompatActivity {
             if (currentAyah == 1 && currentSurah > 1 && currentSurah != 9)
                 MainActivity.playBasmalah(this, getSelectedSound(), quranData, tmpRunnable);
             else tmpRunnable.run();
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
+            showProgress(false);
+            stopPlayback(false);
+            updateUi(true, "قد يكون جهازك غير متصل بالشبكة أو أن الخادم لا يستجيب");
+            Toast.makeText(PlayReciteActivity.this,
+                    "لا يمكن تشغيل التلاوة. ربما توجد مشكلة في اتصالك بالإنترنت أو أن الخادم لا يستجيب",
+                    Toast.LENGTH_SHORT).show();
         }
     }
 

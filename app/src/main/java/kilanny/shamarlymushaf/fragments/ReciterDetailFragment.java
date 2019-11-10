@@ -1,6 +1,8 @@
 package kilanny.shamarlymushaf.fragments;
 
+import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -17,6 +19,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
+import java.util.HashSet;
 
 import kilanny.shamarlymushaf.util.AnalyticsTrackers;
 import kilanny.shamarlymushaf.data.QuranData;
@@ -44,6 +47,7 @@ public class ReciterDetailFragment extends Fragment {
     private AsyncTask prevTask;
     private ArrayAdapter<SurahDownload> adapter;
     private int currentDownloadSurah;
+    private HashSet<Integer> downloadedSurahs = new HashSet<>();
 
     /**
      * prevent user from download/delete single items while
@@ -84,8 +88,6 @@ public class ReciterDetailFragment extends Fragment {
             this.currentDownloadSurah = currentDownloadSurah;
             adapter.notifyDataSetChanged();
         }
-        if (getContext() != null)
-            AnalyticsTrackers.send(getContext().getApplicationContext());
     }
 
     @Override
@@ -114,6 +116,22 @@ public class ReciterDetailFragment extends Fragment {
     class SurahDownload {
         public Surah surah;
         public int totalAyah, downloadedAyah;
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        Context context = getContext();
+        if (context != null && downloadedSurahs.size() > 0) {
+            final Context ctx = context.getApplicationContext();
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    AnalyticsTrackers.sendDownloadRecites(ctx, mItem, downloadedSurahs);
+                    AnalyticsTrackers.send(ctx);
+                }
+            }).start();
+        }
     }
 
     @Override
@@ -192,8 +210,7 @@ public class ReciterDetailFragment extends Fragment {
                                                         : "فشل التحميل. تأكد من اتصالك بالشبكة ووجود مساحة كافية بجهازك";
                                                 Toast.makeText(getActivity(), text, Toast.LENGTH_LONG).show();
                                             } else if (result == Utils.DOWNLOAD_OK)
-                                                AnalyticsTrackers.sendDownloadRecites(getActivity(),
-                                                        mItem, position + 1);
+                                                downloadedSurahs.add(position + 1);
                                             setCurrentDownloadSurah(CURRENT_SURAH_NONE);
                                         }
                                     }, quranData);
@@ -262,7 +279,10 @@ public class ReciterDetailFragment extends Fragment {
                     for (int i = 0; i < 114; ++i) {
                         adapter.getItem(i).downloadedAyah = Utils.getNumDownloaded(getActivity(), mItem, i + 1);
                     }
-                    getActivity().runOnUiThread(new Runnable() {
+                    Activity activity = getActivity();
+                    if (activity == null)
+                        return;
+                    activity.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
                             rootView.findViewById(R.id.progressBarLoading)

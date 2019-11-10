@@ -133,9 +133,7 @@ public class ReciterListActivity extends AppCompatActivity
             if (ContextCompat.checkSelfPermission(this,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
-                if (shouldShowExplainDlg &&
-                        ActivityCompat.shouldShowRequestPermissionRationale(this,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                if (shouldShowExplainDlg) {
                     Utils.showAlert(this,
                             "صلاحية القرص",
                             getString(R.string.request_storage_permission_msg),
@@ -166,7 +164,8 @@ public class ReciterListActivity extends AppCompatActivity
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == WRITE_EXTERNAL_STORAGE_REQUEST_CODE) {
-            if (grantResults[0] == PackageManager.PERMISSION_GRANTED)
+            if (grantResults.length > 0 &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED)
                 init();
             else {
                 Toast.makeText(getApplicationContext(),
@@ -235,6 +234,12 @@ public class ReciterListActivity extends AppCompatActivity
                             downloadAll.cancel(true);
                         Toast.makeText(this,
                                 "يتم إيقاف التحميل...", Toast.LENGTH_SHORT).show();
+                        return true;
+                    }
+                    if (Utils.getSurahDir(this, myReciter, 1) == null) {
+                        Toast.makeText(this,
+                                "فضلا اختر حافظة تحميل التلاوات أولا",
+                                Toast.LENGTH_LONG).show();
                         return true;
                     }
                     fragment.cancelActiveOperations();

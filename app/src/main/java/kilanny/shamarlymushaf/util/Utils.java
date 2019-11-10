@@ -1,14 +1,18 @@
 package kilanny.shamarlymushaf.util;
 
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
@@ -21,7 +25,6 @@ import android.widget.ListView;
 import org.htmlcleaner.CleanerProperties;
 import org.htmlcleaner.HtmlCleaner;
 import org.htmlcleaner.TagNode;
-import org.htmlcleaner.XPatherException;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
@@ -29,6 +32,7 @@ import org.xml.sax.SAXException;
 
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -52,7 +56,11 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -65,9 +73,9 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
+import kilanny.shamarlymushaf.R;
 import kilanny.shamarlymushaf.data.Ayah;
 import kilanny.shamarlymushaf.data.QuranData;
-import kilanny.shamarlymushaf.R;
 import kilanny.shamarlymushaf.data.Setting;
 import kilanny.shamarlymushaf.data.Shared;
 import kilanny.shamarlymushaf.views.QuranImageView;
@@ -87,12 +95,45 @@ public class Utils {
     public static final byte CONNECTION_STATUS_CONNECTED = 1,
             CONNECTION_STATUS_NOT_CONNECTED = 2,
             CONNECTION_STATUS_UNKNOWN_STATUS = 3;
+    //https://developer.android.com/topic/performance/threads
+    public static final int MIN_THREAD_MEMORY_ALLOCATION = 64 * 1024;
     public static final String NON_DOWNLOADED_QUEUE_FILE_PATH = "nonDownloaded";
 
     private static final int SECOND_MILLIS = 1000;
     private static final int MINUTE_MILLIS = 60 * SECOND_MILLIS;
     private static final int HOUR_MILLIS = 60 * MINUTE_MILLIS;
     private static final int DAY_MILLIS = 24 * HOUR_MILLIS;
+
+    public static int getCpuCoreCount(boolean forceReadFromSysFile) {
+        if(!forceReadFromSysFile && Build.VERSION.SDK_INT >= 17) {
+            return Runtime.getRuntime().availableProcessors();
+        } else {
+            //Private Class to display only CPU devices in the directory listing
+            try {
+                //Get directory containing CPU info
+                File dir = new File("/sys/devices/system/cpu/");
+                //Filter to only list the devices we care about
+                File[] files = dir.listFiles(new FileFilter() {
+                    @Override
+                    public boolean accept(File pathname) {
+                        //Check if filename is "cpu", followed by a single digit number
+                        if(Pattern.matches("cpu[0-9]+", pathname.getName())) {
+                            return true;
+                        }
+                        return false;
+                    }
+                });
+                //Return the number of cores (virtual CPU devices)
+                Log.d("getCpuCoreCount", "Found " + files.length + " cores");
+                return files.length;
+            } catch(Exception e) {
+                if (Build.VERSION.SDK_INT >= 17)
+                    return Runtime.getRuntime().availableProcessors();
+                //Default to return 1 core
+                return 1;
+            }
+        }
+    }
 
     public static class DownloadStatusArray {
 
@@ -198,6 +239,8 @@ public class Utils {
     }
 
     public static String getAyahUrl(String reciter, int surah, int ayah, QuranData data, int numAttempt) {
+        if (reciter == null)
+            return null;
         if (numAttempt == 1) {
             if (!reciter.startsWith("null"))
                 return String.format(Locale.ENGLISH, "http://www.everyayah.com/data/%s/%03d%03d.mp3",
@@ -220,7 +263,7 @@ public class Utils {
     private static int downloadTafaseerDbHelper(RecoverySystem.ProgressListener progressListener,
                                                 CancelOperationListener cancel,
                                                 File dbFile, String downloadUrl,
-                                                byte[] buffer) {
+                                                long expectedZipLength, byte[] buffer) {
         boolean error = true;
         URL url;
         boolean conn = true;
@@ -234,12 +277,12 @@ public class Utils {
             if (connection.getResponseCode() != HttpURLConnection.HTTP_OK)
                 return DOWNLOAD_SERVER_INVALID_RESPONSE;
             long zipLength;
-            final long ZIP_LENGTH = 36082873L;
+            //final long ZIP_LENGTH = 36486134L;
             if (Build.VERSION.SDK_INT >= 24)
                 zipLength = connection.getContentLengthLong();
             else
                 zipLength = connection.getContentLength();
-            if (zipLength != ZIP_LENGTH) return DOWNLOAD_SERVER_INVALID_RESPONSE;
+            if (zipLength != expectedZipLength) return DOWNLOAD_SERVER_INVALID_RESPONSE;
             // download the file
             ZipInputStream zipIs = new ZipInputStream(connection.getInputStream());
             ZipEntry entry = zipIs.getNextEntry();
@@ -314,7 +357,9 @@ public class Utils {
         byte[] buffer = new byte[4096];
         for (int id : urls) {
             res = downloadTafaseerDbHelper(progressListener, cancel, dbFile,
-                    context.getResources().getString(id), buffer);
+                    context.getResources().getString(id),
+                    Long.parseLong(context.getResources().getString(R.string.tafaseerDbZipLength)),
+                    buffer);
             if (res == DOWNLOAD_OK || res == DOWNLOAD_USER_CANCEL)
                 break;
             else if (dbFile.exists())
@@ -342,6 +387,8 @@ public class Utils {
     }
 
     private static int downloadFile(byte[] buffer, String fromUrl, File saveTo) {
+        if (fromUrl == null)
+            return DOWNLOAD_MALFORMED_URL;
         URL url;
         boolean conn = true;
         try {
@@ -370,6 +417,7 @@ public class Utils {
             }
             input.close();
             output.close();
+            connection.disconnect();
             return fileLength <= 0 || total == fileLength ?
                     DOWNLOAD_OK : DOWNLOAD_SERVER_INVALID_RESPONSE;
         } catch (MalformedURLException e) {
@@ -500,23 +548,29 @@ public class Utils {
         return new File(context.getFilesDir(), NON_DOWNLOADED_QUEUE_FILE_PATH);
     }
 
+    public static boolean canWarmStart(Context context) {
+        return getNonExistPagesFile(context).exists();
+    }
+
     public static void getNonExistPages(final Context context, final int maxPage,
-                              final RecoverySystem.ProgressListener listener, int numThreads) {
+                                        final RecoverySystem.ProgressListener listener,
+                                        final int numThreads) {
         File file = getNonExistPagesFile(context);
         if (file.exists()) file.delete();
         final ConcurrentLinkedQueue<Integer> q = new ConcurrentLinkedQueue<>();
         final Shared progress = new Shared();
         progress.setData(0);
-        final Thread[] threads = new Thread[numThreads];
-        final int work = maxPage / threads.length;
-        for (int i = 0; i < threads.length; ++i) {
+        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+        final int work = maxPage / numThreads;
+        ArrayList<Callable<Void>> callables = new ArrayList<>();
+        for (int i = 0; i < numThreads; ++i) {
             final int ii = i;
-            threads[i] = new Thread(new Runnable() {
+            callables.add(new Callable<Void>() {
                 @Override
-                public void run() {
+                public Void call() {
                     int myStart = ii * work + 1;
                     int myEnd = (ii + 1) * work;
-                    if (ii == threads.length - 1) myEnd = maxPage;
+                    if (ii == numThreads - 1) myEnd = maxPage;
                     for (int i = myStart; i <= myEnd; ++i) {
                         if (!pageExists(context, i)) {
                             q.add(i);
@@ -525,16 +579,16 @@ public class Utils {
                         progress.increment();
                         listener.onProgress(progress.getData());
                     }
+                    return null;
                 }
             });
         }
-        for (Thread thread : threads) thread.start();
-        for (Thread thread : threads)
-            try {
-                thread.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        try {
+            executor.invokeAll(callables);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        executor.shutdownNow();
         saveNonExistPagesToFile(context, q);
     }
 
@@ -825,6 +879,36 @@ public class Utils {
         dlgAlert.create().show();
     }
 
+    public static String getAyahText(Context context, int sura, int ayah) {
+        Document doc;
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        try {
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            InputSource is = new InputSource();
+            InputStream stream = context.getAssets().open("quran-uthmani.xml");
+            is.setCharacterStream(new InputStreamReader(stream));
+            doc = db.parse(is);
+            stream.close();
+        } catch (ParserConfigurationException e) {
+            return null;
+        } catch (SAXException e) {
+            return null;
+        } catch (IOException e) {
+            return null;
+        }
+        XPath xPath = XPathFactory.newInstance().newXPath();
+        try {
+            String res = ((NodeList) xPath.evaluate("/quran/sura[@index=\"" + sura
+                            + "\"]/aya[@index=\"" + ayah + "\"]",
+                    doc.getDocumentElement(), XPathConstants.NODESET))
+                    .item(0).getAttributes().getNamedItem("text").getTextContent();
+            return res;
+        } catch (XPathExpressionException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public static String getAllAyahText(Context context, ArrayList<Ayah> list, QuranData quranData) {
         Document doc;
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
@@ -949,6 +1033,18 @@ public class Utils {
         return hash;
     }
 
+    public static android.widget.Toast createToast(Context ctx, String text, int duration, int gravity) {
+        android.widget.Toast toast = android.widget.Toast.makeText(ctx, text, duration);
+        toast.setGravity(gravity, 0, 0);
+        return toast;
+    }
+
+    public static android.widget.Toast createToast(Context ctx, int textResId, int duration, int gravity) {
+        android.widget.Toast toast = android.widget.Toast.makeText(ctx, textResId, duration);
+        toast.setGravity(gravity, 0, 0);
+        return toast;
+    }
+
     public static String postGzipped(String url, String postData, Map<String, String> headers) {
         StringBuilder data = new StringBuilder();
 
@@ -1026,6 +1122,36 @@ public class Utils {
         }
 
         return data.toString();
+    }
+
+    public static boolean haveAvailableMemory(int sz) {
+        Runtime runtime = Runtime.getRuntime();
+        long mem = runtime.maxMemory(),
+                used = runtime.totalMemory();
+        return mem - used >= sz;
+    }
+
+    public static boolean isServiceRunning(Context context, Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static void openUrlInChromeOrDefault(Context context, String urlString) {
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(urlString));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.setPackage("com.android.chrome");
+        try {
+            context.startActivity(intent);
+        } catch (ActivityNotFoundException ex) {
+            // Chrome browser presumably not installed so allow user to choose instead
+            intent.setPackage(null);
+            context.startActivity(intent);
+        }
     }
 }
 

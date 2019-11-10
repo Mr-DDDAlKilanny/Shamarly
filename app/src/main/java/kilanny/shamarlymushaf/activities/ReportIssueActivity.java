@@ -43,16 +43,16 @@ public class ReportIssueActivity extends AppCompatActivity {
         findViewById(R.id.btnReportIssue).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                AnalyticsTrackers.send(getApplicationContext());
                 Intent emailIntent = new Intent(Intent.ACTION_SEND);
-                emailIntent.setData(Uri.parse("mailto:"));
-                emailIntent.setType("text/plain");
+                emailIntent.setDataAndType(Uri.parse("mailto:"), "text/plain");
                 try {
                     emailIntent.putExtra(Intent.EXTRA_EMAIL,
                             new String[] {"ibrahimalkilanny@gmail.com"});
                     emailIntent.putExtra(Intent.EXTRA_TEXT,
                             "السلام عليكم ورحمة الله\n\n\n***\nمعلومات الجهاز الخاص بي:\n"
                                     + AnalyticsTrackers.getDeviceInfo(ReportIssueActivity.this));
-                    startActivity(Intent.createChooser(emailIntent, "اتصل بنا"));
+                    startActivity(Intent.createChooser(emailIntent, "إرسال إيميل"));
                 } catch (android.content.ActivityNotFoundException ex) {
                     Toast.makeText(ReportIssueActivity.this,
                             "لا يوجد مزود بريد إلكتروني.", Toast.LENGTH_LONG).show();

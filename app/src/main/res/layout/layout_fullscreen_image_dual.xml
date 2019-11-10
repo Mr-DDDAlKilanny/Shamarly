@@ -37,19 +37,22 @@
                 android:layout_height="wrap_content" >
             </ProgressBar>
         </LinearLayout>
-        <LinearLayout
-            android:orientation="horizontal"
+        <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent">
             <RelativeLayout
-                android:layout_weight="0.5"
+                android:id="@+id/layLeft"
+                android:layout_alignParentLeft="true"
+                android:layout_toLeftOf="@id/sep"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
                 <ImageView
                     android:id="@+id/quranPageBorder_left"
                     android:layout_alignParentBottom="true"
                     android:layout_alignParentLeft="true"
+                    android:layout_alignParentStart="true"
                     android:layout_alignParentRight="true"
+                    android:layout_alignParentEnd="true"
                     android:layout_alignParentTop="true"
                     android:scaleType="fitXY"
                     android:layout_width="match_parent"
@@ -62,18 +65,23 @@
                     android:scaleType="fitXY" />
             </RelativeLayout>
             <View
+                android:id="@+id/sep"
                 android:background="@android:color/darker_gray"
+                android:layout_centerHorizontal="true"
                 android:layout_height="match_parent"
                 android:layout_width="3sp" />
             <RelativeLayout
+                android:layout_toRightOf="@id/sep"
+                android:layout_alignParentRight="true"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_weight="0.5">
+                android:layout_height="match_parent">
                 <ImageView
                     android:id="@+id/quranPageBorder_right"
                     android:layout_alignParentBottom="true"
                     android:layout_alignParentLeft="true"
+                    android:layout_alignParentStart="true"
                     android:layout_alignParentRight="true"
+                    android:layout_alignParentEnd="true"
                     android:layout_alignParentTop="true"
                     android:scaleType="fitXY"
                     android:layout_width="match_parent"
@@ -85,7 +93,7 @@
                     android:focusableInTouchMode="false"
                     android:scaleType="fitXY" />
             </RelativeLayout>
-        </LinearLayout>
+        </RelativeLayout>
     </LinearLayout>
 
 </LinearLayout>

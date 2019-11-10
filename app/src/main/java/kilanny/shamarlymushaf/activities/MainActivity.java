@@ -45,11 +45,15 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.FileProvider;
 import android.support.v4.content.res.ResourcesCompat;
 import android.support.v4.view.ViewPager;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Display;
 import android.view.GestureDetector;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -75,6 +79,9 @@ import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -149,7 +156,7 @@ public class MainActivity extends FragmentActivity {
 
     public static final String EXTRA_KHATMAH_NAME = "EXTRA_KHATMAH_NAME";
 
-    private static final ColorMatrixColorFilter filter = new ColorMatrixColorFilter(
+    private static final ColorMatrixColorFilter nightFilter = new ColorMatrixColorFilter(
             new ColorMatrix(new float[]
         {
                 -1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
@@ -178,6 +185,8 @@ public class MainActivity extends FragmentActivity {
     private static final int yellowColor = Color.rgb(255, 255, 225);
     public static final String SHOW_PAGE_MESSAGE = "kilanny.shamarlymushaf.activities.MainActivity.showPage";
     public static final String SHOW_AYAH_MESSAGE = "kilanny.shamarlymushaf.activities.MainActivity.showPage#withAyah";
+    private final ExecutorService executorService = Executors.newCachedThreadPool();
+    private static ExecutorService imageProcExecutor;
     public FullScreenImageAdapter adapter;
     private ViewPager viewPager;
     private Setting setting;
@@ -221,7 +230,7 @@ public class MainActivity extends FragmentActivity {
         if (pagesViewed != null) {
             final long diff = new Date().getTime() - startDate.getTime();
             if (diff >= 60 * 1000 || listenRecite != null || viewTafseer != null) {
-                new Thread(new Runnable() {
+                executorService.submit(new Runnable() {
                     @Override
                     public void run() {
                         Context context = getApplicationContext();
@@ -234,16 +243,22 @@ public class MainActivity extends FragmentActivity {
                         pagesViewed = null;
                         startDate = null;
                         sessionId = null;
-                        AnalyticsTrackers.send(getApplicationContext());
+                        executorService.shutdown();
                     }
-                }).start();
-            }
+                });
+            } else
+                executorService.shutdown();
+            AnalyticsTrackers.send(getApplicationContext());
         }
         DbManager.dispose();
         autoCloseTimer.cancel();
         if (adapter != null) {
             adapter.recycle();
             adapter = null;
+        }
+        if (imageProcExecutor != null) {
+            imageProcExecutor.shutdownNow();
+            imageProcExecutor = null;
         }
         finish(); // prevent re-use the activity after stopping it (causes exceptions)
     }
@@ -287,20 +302,25 @@ public class MainActivity extends FragmentActivity {
 
     private void initViewPagerAdapter() {
         adapter = new FullScreenImageAdapter(this, FullScreenImageAdapter.MAX_PAGE
-                - notDownloaded.size(), isDualPage());
+                - notDownloaded.size(), isDualPage(), autoHidePageInfo);
         if (notDownloaded.isEmpty())
             initAutoCloseTimer();
         final MyGestureDetector listener = new MyGestureDetector() {
 
             @Override
             public void onLongPress(MotionEvent e) {
+                if (adapter == null) // recycled
+                    return;
                 super.onLongPress(e);
                 if (adapter.isNotAllDownloaded()) {
                     downloadAll();
                     return;
                 }
                 idleUseCounter.setData(0);
-                if (autoHidePageInfo) {
+                if (autoHidePageInfo &&
+                        !adapter.isNotAllDownloaded() &&
+                        !isShowPageBorders(pref) &&
+                        pref.getBoolean("showPageInfo", true)) {
                     View pageInfo = getCurrentPageInfo();
                     if (pageInfo != null)
                         showAndSchedulePageInfoHide(pageInfo);
@@ -324,6 +344,8 @@ public class MainActivity extends FragmentActivity {
 
             @Override
             public boolean onSingleTapConfirmed(MotionEvent e) {
+                if (adapter == null) // recycled
+                    return false;
                 if (TOGGLE_ON_CLICK) {
                     mSystemUiHider.toggle();
                 } else {
@@ -343,7 +365,10 @@ public class MainActivity extends FragmentActivity {
                         imageView.selectedAyahIndex = QuranImageView.SELECTION_NONE;
                         imageView.invalidate();
                     }
-                    if (autoHidePageInfo) {
+                    if (autoHidePageInfo &&
+                            !adapter.isNotAllDownloaded() &&
+                            !isShowPageBorders(pref) &&
+                            pref.getBoolean("showPageInfo", true)) {
                         View pageInfo = getCurrentPageInfo();
                         if (pageInfo != null)
                             showAndSchedulePageInfoHide(pageInfo);
@@ -364,9 +389,12 @@ public class MainActivity extends FragmentActivity {
                         return false;
                     }
                 });
+                if (image.get().currentPage != null)
+                    Log.d("onInstantiate", "at page " + image.get().currentPage.page);
                 // this is not called at onPageSelected
                 // when activity starts in landscape, so call here
                 configOrientation(image.get());
+
                 initCurrentPageInfo(image.get(), parent);
                 if (initialHighlightAyah != null && image.get().currentPage != null
                         && image.get().currentPage.ayahs != null) {
@@ -614,6 +642,7 @@ public class MainActivity extends FragmentActivity {
     private WeakReference<QuranImageView> last, last2;
 
     private void onPageSelected(int position) {
+        Log.d("onPageSelect", "page " + position);
         if (adapter == null) // recycled
             return;
         idleUseCounter.setData(0);
@@ -664,7 +693,7 @@ public class MainActivity extends FragmentActivity {
                             txt = quranData.hizbs[(mid - 1) / 4 + 1].name;
                         else
                             txt = quranData.arba3[mid].name;
-                        Toast.makeText(MainActivity.this, txt, Toast.LENGTH_SHORT).show();
+                        Utils.createToast(MainActivity.this, txt, Toast.LENGTH_LONG, Gravity.CENTER).show();
                         break;
                     } else if (val < p)
                         low = mid + 1;
@@ -681,13 +710,16 @@ public class MainActivity extends FragmentActivity {
                             txt = quranData.juzs[1 + i / 2].name;
                         else
                             txt = quranData.hizbs[i].name;
-                        Toast.makeText(MainActivity.this, txt, Toast.LENGTH_SHORT).show();
+                        Utils.createToast(MainActivity.this, txt, Toast.LENGTH_SHORT, Gravity.CENTER).show();
                         break;
                     } else if (val > p) break;
                 }
             }
         }
-        if (autoHidePageInfo) {
+        if (autoHidePageInfo &&
+                !adapter.isNotAllDownloaded() &&
+                !isShowPageBorders(pref) &&
+                pref.getBoolean("showPageInfo", true)) {
             View pageInfo = getCurrentPageInfo();
             if (pageInfo != null)
                 showAndSchedulePageInfoHide(pageInfo);
@@ -862,12 +894,18 @@ public class MainActivity extends FragmentActivity {
     public static void playBasmalah(final Context context, final String selectedSound,
                                     final QuranData quranData,
                                     final Runnable finishCallback) {
-        final MediaPlayer player = new MediaPlayer();
         final Shared attempt = new Shared();
         attempt.setData(1);
+        MediaPlayer player1 = null;
         try {
             String path = Utils.getAyahPath(context, selectedSound, 1, 1, quranData,
                     attempt.getData());
+            if (path == null || path.startsWith("http") && Utils.isConnected(context) == Utils.CONNECTION_STATUS_NOT_CONNECTED) {
+                finishCallback.run();
+                return;
+            }
+            final MediaPlayer player = new MediaPlayer();
+            player1 = player;
             player.setDataSource(path);
             player.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                 @Override
@@ -890,7 +928,8 @@ public class MainActivity extends FragmentActivity {
                     if (num == 2) {
                         String path = Utils.getAyahPath(context, selectedSound, 1, 1,
                                 quranData, num);
-                        if (path == null) {
+                        if (path == null || path.startsWith("http") && Utils.isConnected(context) == Utils.CONNECTION_STATUS_NOT_CONNECTED) {
+                            player.release();
                             finishCallback.run();
                             return true;
                         }
@@ -901,6 +940,7 @@ public class MainActivity extends FragmentActivity {
                             lastRecitedAyahWasFile = path.startsWith("/");
                         } catch (IOException | IllegalStateException e) {
                             e.printStackTrace();
+                            player.release();
                             finishCallback.run();
                         }
                     } else finishCallback.run();
@@ -912,6 +952,8 @@ public class MainActivity extends FragmentActivity {
             lastRecitedAyahWasFile = path.startsWith("/");
         } catch (IOException | IllegalStateException e) {
             e.printStackTrace();
+            if (player1 != null)
+                player1.release();
             finishCallback.run();
         }
     }
@@ -1108,6 +1150,9 @@ public class MainActivity extends FragmentActivity {
                                     player.reset();
                                     String path = Utils.getAyahPath(MainActivity.this,
                                             getSelectedSound(), sura, ayah, quranData, attempt.getData());
+                                    if (path == null || path.startsWith("http") &&
+                                            Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
+                                        throw new IllegalStateException();
                                     player.setDataSource(path);
                                     player.prepareAsync();
                                     lastRecitedAyahWasFile = path.startsWith("/");
@@ -1148,6 +1193,8 @@ public class MainActivity extends FragmentActivity {
                                 sura, ayah, quranData, 2);
                         if (path != null) {
                             try {
+                                if (path.startsWith("http") && Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
+                                    throw new IllegalStateException();
                                 player.reset();
                                 player.setDataSource(path);
                                 player.prepareAsync();
@@ -1166,17 +1213,21 @@ public class MainActivity extends FragmentActivity {
                 }
             });
             player.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            Ayah a = image.currentPage.ayahs.get(currentAyaxIndex.getData());
-            player.setDataSource(Utils.getAyahPath(MainActivity.this, getSelectedSound(),
-                    sura = a.sura, ayah = a.ayah, quranData, 1));
+            final Ayah a = image.currentPage.ayahs.get(currentAyaxIndex.getData());
             Runnable tmpRunnable = new Runnable() {
                 @Override
                 public void run() {
                     if (player == null) //stopPlayback() was called
                         return;
                     try {
+                        String path = Utils.getAyahPath(MainActivity.this, getSelectedSound(),
+                                sura = a.sura, ayah = a.ayah, quranData, 1);
+                        if (path == null || path.startsWith("http") &&
+                                Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
+                            throw new IllegalStateException();
+                        player.setDataSource(path);
                         player.prepareAsync();
-                    } catch (IllegalStateException ignored) {
+                    } catch (IOException | IllegalStateException ignored) {
                         stopPlayback();
                         Toast.makeText(MainActivity.this,
                                 "لا يمكن تشغيل التلاوة. ربما توجد مشكلة في اتصالك بالإنترنت أو أن الخادم لا يستجيب",
@@ -1324,7 +1375,8 @@ public class MainActivity extends FragmentActivity {
                                     final ProgressDialog show = new ProgressDialog(MainActivity.this);
                                     show.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
                                     show.setIndeterminate(false);
-                                    show.setTitle("تحميل التفاسير: القرطبي وابن كثير والطبري وغيرهم");
+                                    show.setTitle("تحميل التفاسير الإضافية");
+                                    show.setMessage("يتم تحميل 8 تفاسير إضافية: الطبرى والقرطبى وابن كثير والتحرير لابن عاشور والسعدى والبغوى والإعراب لدعاس والوسيط");
                                     show.setMax(100);
                                     show.setProgress(0);
                                     show.show();
@@ -1504,6 +1556,7 @@ public class MainActivity extends FragmentActivity {
             @Override
             public void onItemSelected(AdapterView<?> parentView, View selectedItemView,
                                        int position, long id) {
+                idleUseCounter.setData(0);
                 ((TextView) parentView.getChildAt(0)).setTextColor(
                         ResourcesCompat.getColor(getResources(), R.color.bright_blue, null));
                 if (hasDownloadedTafaseer) {
@@ -1651,21 +1704,26 @@ public class MainActivity extends FragmentActivity {
         dialog.findViewById(R.id.buttonShareImage).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (shareImageView.mutliSelectList.size() > 0) {
-                    dialog.dismiss();
-                    File path = new File(Environment.getExternalStorageDirectory(),
-                            "shamraly_share.png");
-                    shareImageView.saveSelectedAyatAsImage(path, quranData);
-                    Intent share = new Intent(Intent.ACTION_SEND);
-                    share.setType("image/png");
-                    share.putExtra(Intent.EXTRA_STREAM,
-                            FileProvider.getUriForFile(MainActivity.this,
-                            getApplicationContext().getPackageName() + ".kilanny.shamarlymushaf.provider",
-                            path));
-                    share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                    startActivity(Intent.createChooser(share, "مشاركة"));
-                } else
-                    showError("فضلا حدد آية أو أكثر");
+                dialog.dismiss();
+                File path = new File(getExternalFilesDir(null),
+                        "shamraly_share.png");
+                try {
+                    shareImageView.saveSelectedAyatAsImage(MainActivity.this,
+                            path, quranData);
+                } catch (Exception ex) {
+                    Toast.makeText(MainActivity.this, "حدث خطأ أثناء محاولة حفظ الصورة",
+                            Toast.LENGTH_LONG).show();
+                    AnalyticsTrackers.sendException(MainActivity.this, "shareDlgSaveImg", ex);
+                    return;
+                }
+                Intent share = new Intent(Intent.ACTION_SEND);
+                share.setType("image/png");
+                share.putExtra(Intent.EXTRA_STREAM,
+                        FileProvider.getUriForFile(MainActivity.this,
+                        getApplicationContext().getPackageName() + ".kilanny.shamarlymushaf.provider",
+                        path));
+                share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                startActivity(Intent.createChooser(share, "مشاركة"));
             }
         });
         dialog.findViewById(R.id.buttonShareCopy).setOnClickListener(new View.OnClickListener() {
@@ -1793,15 +1851,26 @@ public class MainActivity extends FragmentActivity {
             Toast.makeText(this,
                     "فشل بدء التطبيق. لا يمكن الكتابة في ذاكرة الجهاز",
                     Toast.LENGTH_LONG).show();
-            AnalyticsTrackers.sendFatalError(this, "MainActivity.onCreate", "getDatabaseDir() == null");
+            executorService.submit(new Runnable() {
+                @Override
+                public void run() {
+                    AnalyticsTrackers.sendFatalError(getApplicationContext(),
+                            "MainActivity.onCreate", "getDatabaseDir() == null");
+                }
+            });
             finish();
             return;
         }
         notDownloaded = Utils.getNonExistPagesFromFile(this);
         if (notDownloaded == null) {
             Toast.makeText(this, "فشل بدء التطبيق. أغلق التطبيق ثم افتحه ثانية", Toast.LENGTH_LONG).show();
-            AnalyticsTrackers.sendFatalError(this, "MainActivity.onCreate",
-                    "serializable == null");
+            executorService.submit(new Runnable() {
+                @Override
+                public void run() {
+                    AnalyticsTrackers.sendFatalError(getApplicationContext(), "MainActivity.onCreate",
+                            "serializable == null");
+                }
+            });
             finish();
             return;
         }
@@ -1815,17 +1884,19 @@ public class MainActivity extends FragmentActivity {
         }
         try {
             db = DbManager.getInstanceWithTest(this);
-            AnalyticsTrackers.send(getApplicationContext());
+            pref = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
             deleteAll();
             quranData = QuranData.getInstance(this);
+            // Hiding the title bar has to happen before the view is created
+            requestWindowFeature(Window.FEATURE_NO_TITLE);
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
             setContentView(R.layout.activity_main);
             currentKhatmahName = getIntent().getStringExtra(EXTRA_KHATMAH_NAME);
             bar = (ProgressBar) this.findViewById(R.id.progressBar);
             tradionalArabicFont = Typeface.createFromAsset(getAssets(), "DroidNaskh-Regular.ttf");
             tradionalArabicBoldFont = Typeface.createFromAsset(getAssets(), "DroidNaskh-Bold.ttf");
-            pref = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
             autoHidePageInfo = pref.getBoolean("showPageInfo", true) &&
-                    pref.getBoolean("autoHidePageInfo", false);
+                    pref.getBoolean("autoHidePageInfo", true);
             rotationMode = Integer.parseInt(pref.getString("pageRotationMode",
                     getString(R.string.defaultPageRotationMode)));
             if (rotationMode == 1)
@@ -1845,14 +1916,57 @@ public class MainActivity extends FragmentActivity {
             initButtons();
             ActionBar bar = getActionBar();
             if (bar != null) bar.hide();
-        } catch (Exception ex) { //views maybe null?
+        } catch (final Exception ex) { //views maybe null?
             ex.printStackTrace();
-            AnalyticsTrackers.sendFatalError(this, "Main.onCreate()",
-                    ex.getMessage());
+            executorService.submit(new Runnable() {
+                @Override
+                public void run() {
+                    AnalyticsTrackers.sendFatalError(getApplicationContext(), "Main.onCreate()",
+                            ex.getMessage());
+                }
+            });
             Toast.makeText(this, "فشل بدء التطبيق.\n" + ex.getMessage(),
                     Toast.LENGTH_LONG).show();
             finish();
         }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT && hasFocus) {
+            Log.d("onWindowFocusChanged", "hiding system ui");
+            hideSystemUI();
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.KITKAT)
+    private void hideSystemUI() {
+        // Enables regular immersive mode.
+        // For "lean back" mode, remove SYSTEM_UI_FLAG_IMMERSIVE.
+        // Or for "sticky immersive," replace it with SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+        View decorView = getWindow().getDecorView();
+        decorView.setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_IMMERSIVE
+                        // Set the content to appear under the system bars so that the
+                        // content doesn't resize when the system bars hide and show.
+                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        // Hide the nav bar and status bar
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_FULLSCREEN);
+    }
+
+    // Shows the system bars by removing all the flags
+    // except for the ones that make the content appear under the system bars.
+    @TargetApi(Build.VERSION_CODES.KITKAT)
+    private void showSystemUI() {
+        View decorView = getWindow().getDecorView();
+        decorView.setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
     }
 
     @Override
@@ -1875,30 +1989,35 @@ public class MainActivity extends FragmentActivity {
      * TODO: remove in later versions
      */
     private void deleteAll() {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                File file;
-                try {
-                    if (Utils.isExternalStorageWritable()) {
-                        file = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES),
-                                "quran_Images");
-                    } else {
-                        file = new File(getFilesDir(), "quran_Images");
-                    }
-                    if (!file.exists()) return;
-                    for (int idx = 1; idx <= FullScreenImageAdapter.MAX_PAGE; ++idx) {
-                        File filename = new File(file, idx + "");
-                        if (filename.exists()) {
-                            System.out.println(filename);
-                            filename.delete();
-                        }
-                    }
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
+        try {
+            if (pref.getBoolean("hasDeletedOld", false))
+                return;
+            File file;
+            if (Utils.isExternalStorageWritable()) {
+                file = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES),
+                        "quran_Images");
+            } else {
+                file = new File(getFilesDir(), "quran_Images");
             }
-        }).start();
+            if (!file.exists()) {
+                pref.edit().putBoolean("hasDeletedOld", true).apply();
+                return;
+            }
+            File[] files = file.listFiles();
+            if (files == null) {
+                file.delete();
+                pref.edit().putBoolean("hasDeletedOld", true).apply();
+                return;
+            }
+            for (File fileName : files) {
+                System.out.println(fileName.getAbsolutePath());
+                fileName.delete();
+            }
+            file.delete();
+            pref.edit().putBoolean("hasDeletedOld", true).apply();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
 
     @Override
@@ -1991,21 +2110,24 @@ public class MainActivity extends FragmentActivity {
 
     private static void imageProcessing(final int k, final Bitmap tmp,
                                  int displayMode, boolean night) {
-        Thread[] threads = new Thread[4];
+        int nThreads = Utils.getCpuCoreCount(true);
+        if (imageProcExecutor == null) {
+            imageProcExecutor = Executors.newFixedThreadPool(nThreads);
+        }
         final Shared shared = new Shared();
         final Lock lock = new ReentrantLock(true);
         final Lock lock2 = new ReentrantLock(true);
         final Condition condition = lock.newCondition();
         shared.setData(0);
         final int width = tmp.getWidth(), height = tmp.getHeight();
-        int threadWork = height / threads.length;
+        int threadWork = height / nThreads;
         if (k == 0) { //no dilation, just set the font/background colors of the thresholded image
             final int background = !night ? displayMode == 0 ? yellowColor : -1 : 0;
             final int font = !night ? 0 : -1;
-            for (int idx = 0; idx < threads.length; ++idx) {
+            for (int idx = 0; idx < nThreads; ++idx) {
                 final int myStart = threadWork * idx,
-                        myEnd = idx == threads.length - 1 ? height : (idx + 1) * threadWork;
-                threads[idx] = new Thread(new Runnable() {
+                        myEnd = idx == nThreads - 1 ? height : (idx + 1) * threadWork;
+                imageProcExecutor.execute(new Runnable() {
                     @Override
                     public void run() {
                         for (int i = myStart; i < myEnd; ++i) {
@@ -2029,10 +2151,8 @@ public class MainActivity extends FragmentActivity {
                     }
                 });
             }
-            for (Thread thread : threads)
-                thread.start();
             lock.lock();
-            while (shared.getData() < threads.length) {
+            while (shared.getData() < nThreads) {
                 try {
                     condition.await();
                 } catch (InterruptedException e) {
@@ -2041,15 +2161,18 @@ public class MainActivity extends FragmentActivity {
                 }
             }
             lock.unlock();
+            Log.d("imageProc", "Finished thresholding as k == 0");
             return;
         }
 
         //else, prepare for dilation (set all 0/1)
         //http://blog.ostermiller.org/dilate-and-erode
-        for (int idx = 0; idx < threads.length; ++idx) {
+        Log.d("imageProc", "Started dilation, k = " + k);
+        Date startDate = new Date();
+        for (int idx = 0; idx < nThreads; ++idx) {
             final int myStart = threadWork * idx,
-                    myEnd = idx == threads.length - 1 ? height : (idx + 1) * threadWork;
-            threads[idx] = new Thread(new Runnable() {
+                    myEnd = idx == nThreads - 1 ? height : (idx + 1) * threadWork;
+            imageProcExecutor.execute(new Runnable() {
                 @Override
                 public void run() {
                     for (int i = myStart; i < myEnd; ++i) {
@@ -2070,10 +2193,8 @@ public class MainActivity extends FragmentActivity {
                 }
             });
         }
-        for (Thread thread : threads)
-            thread.start();
         lock.lock();
-        while (shared.getData() < threads.length) {
+        while (shared.getData() < nThreads) {
             try {
                 condition.await();
             } catch (InterruptedException e) {
@@ -2082,16 +2203,20 @@ public class MainActivity extends FragmentActivity {
             }
         }
         lock.unlock();
+        Log.d("imageProc", "Phase #1 took ms: " + (new Date().getTime() - startDate.getTime()));
+        Date phase2 = new Date();
         //dilate
         manhattan(width, height);
+        Log.d("imageProc", "Phase #2 took ms: " + (new Date().getTime() - phase2.getTime()));
         //restore colors of font/background
         final int background = !night ? displayMode == 0 ? yellowColor : -1 : 0;
         final int font = !night ? 0 : -1;
         shared.setData(0);
-        for (int idx = 0; idx < threads.length; ++idx) {
+        phase2 = new Date();
+        for (int idx = 0; idx < nThreads; ++idx) {
             final int myStart = threadWork * idx,
-                    myEnd = idx == threads.length - 1 ? height : (idx + 1) * threadWork;
-            threads[idx] = new Thread(new Runnable() {
+                    myEnd = idx == nThreads - 1 ? height : (idx + 1) * threadWork;
+            imageProcExecutor.execute(new Runnable() {
                 @Override
                 public void run() {
                     for (int i = myStart; i < myEnd; ++i) {
@@ -2111,10 +2236,8 @@ public class MainActivity extends FragmentActivity {
                 }
             });
         }
-        for (Thread thread : threads)
-            thread.start();
         lock.lock();
-        while (shared.getData() < threads.length) {
+        while (shared.getData() < nThreads) {
             try {
                 condition.await();
             } catch (InterruptedException e) {
@@ -2123,6 +2246,9 @@ public class MainActivity extends FragmentActivity {
             }
         }
         lock.unlock();
+        long el = new Date().getTime() - startDate.getTime();
+        Log.d("imageProc", "Phase #3 took ms: " + (new Date().getTime() - phase2.getTime()));
+        Log.d("imageProc", "Finished, elapsed ms: " + el);
     }
 
     public Bitmap readBorders(int page) {
@@ -2183,7 +2309,7 @@ Page number (561, 1528, 75, 38)
                         pageBackground.getHeight(), options.inPreferredConfig);
                 c = new Canvas(tmp);
                 paint = new Paint();
-                paint.setColorFilter(filter);
+                paint.setColorFilter(nightFilter);
                 c.drawBitmap(pageBackground, 0,0 , paint);
                 pageBackground.recycle();
                 pageBackground = tmp;
@@ -2202,7 +2328,7 @@ Page number (561, 1528, 75, 38)
         return pref.getBoolean("showPageBorders", false);
     }
 
-    private static void checkOutOfMemory() {
+    public static void checkOutOfMemory() throws MyOutOfMemoryException {
         Runtime runtime = Runtime.getRuntime();
         long mem = runtime.maxMemory(),
                 used = runtime.totalMemory();
@@ -2267,7 +2393,7 @@ Page number (561, 1528, 75, 38)
                 Canvas c;
                 if (boldSize < 0) {
                     Paint invertPaint = night ? new Paint() : null;
-                    if (night) invertPaint.setColorFilter(filter);
+                    if (night) invertPaint.setColorFilter(nightFilter);
                     int color;
                     if (displayMode == 0)
                         color = yellowColor;

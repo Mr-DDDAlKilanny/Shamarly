@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/txtAyah"
+    android:textSize="18sp"
+    android:paddingLeft="8dp"
+    android:paddingRight="8dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp"
+    android:textStyle="bold"
+    android:gravity="right"
+    android:background="@color/cardview_light_background"
+    android:text="{وجاهدوا في الله حق جهاده هو اجتباكم وما جعل عليكم في الدين من حرج ملة أبيكم إبراهيم هو سماكم المسلمين من قبل وفي هذا ليكون الرسول شهيدا عليكم وتكونوا شهداء على الناس فأقيموا الصلاة وآتوا الزكاة واعتصموا بالله هو مولاكم فنعم المولى ونعم النصير}"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content" />

@@ -84,6 +84,8 @@ public class ReciterDetailActivity extends AppCompatActivity {
         } else {
             fragment = (ReciterDetailFragment) getSupportFragmentManager()
                     .findFragmentById(R.id.reciter_detail_container);
+            //if (fragment.mItem == null)
+            //    fragment.mItem = myReciter;
         }
     }
 
@@ -129,6 +131,12 @@ public class ReciterDetailActivity extends AppCompatActivity {
                         downloadAll.cancel(true);
                     Toast.makeText(this,
                             "يتم إيقاف التحميل...", Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+                if (Utils.getSurahDir(this, myReciter, 1) == null) {
+                    Toast.makeText(this,
+                            "فضلا اختر حافظة تحميل التلاوات أولا",
+                            Toast.LENGTH_LONG).show();
                     return true;
                 }
                 fragment.cancelActiveOperations();

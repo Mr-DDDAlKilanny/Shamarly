@@ -104,7 +104,7 @@
             android:title="إخفاء تلقائي لمعلومات الصفحة"
             android:summary="إخفاء شريط المعلومات العلوي تلقائيا مع الشريط السفلي"
             android:dependency="showPageInfo"
-            android:defaultValue="false" />
+            android:defaultValue="true" />
         <CheckBoxPreference
             android:key="manuallyScrollPageInfo"
             android:title="تحريك يدوي لمعلومات الصفحة"

@@ -6,8 +6,10 @@ import android.graphics.BitmapFactory;
 import android.graphics.Point;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
+import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -35,14 +37,17 @@ public class QuranImageFragment extends Fragment {
     FullScreenImageAdapter.OnInstantiateQuranImageViewListener listener;
     private QuranImageView imgDisplay, imgDisplay2;
     private ImageView imgDisplayBorders, imgDisplayBorders2;
-    private boolean isDualPage;
+    private boolean isDualPage, isAutoHidePageInfo;
+    private Handler uiHandler;
 
-    public static QuranImageFragment newInstance(int val, boolean isDualPage, MainActivity _activity,
-                              FullScreenImageAdapter.OnInstantiateQuranImageViewListener listener) {
+    public static QuranImageFragment newInstance(int val, boolean isDualPage, boolean isAutoHidePageInfo,
+                                                 MainActivity _activity,
+                                                 FullScreenImageAdapter.OnInstantiateQuranImageViewListener listener) {
         QuranImageFragment imageFragment = new QuranImageFragment();
         imageFragment._activity = _activity;
         imageFragment.listener = listener;
         imageFragment.isDualPage = isDualPage;
+        imageFragment.isAutoHidePageInfo = isAutoHidePageInfo;
         // Supply val input as an argument.
         Bundle args = new Bundle();
         args.putInt("pos", val);
@@ -88,6 +93,7 @@ public class QuranImageFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        uiHandler = new Handler();
         fragPos = getArguments() != null ? getArguments().getInt("pos") : -1;
     }
 
@@ -134,8 +140,10 @@ public class QuranImageFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        final View viewLayout = inflater.inflate(isDualPage ?
-                R.layout.layout_fullscreen_image_dual : R.layout.layout_fullscreen_image,
+        final View viewLayout = inflater.inflate(
+                !isAutoHidePageInfo ?
+                        isDualPage ? R.layout.layout_fullscreen_image_dual : R.layout.layout_fullscreen_image
+                        : isDualPage ? R.layout.layout_fullscreen_image_dual_auto_hide_info : R.layout.layout_fullscreen_image_auto_hide_info,
                 container, false);
         if (!isDualPage) {
             imgDisplay = (QuranImageView) viewLayout.findViewById(R.id.quranPage);
@@ -151,18 +159,44 @@ public class QuranImageFragment extends Fragment {
         imgDisplay.pref = _activity.pref;
         if (isDualPage) imgDisplay2.pref = _activity.pref;
         if (fragPos == -1) {
-            Display display = _activity.getWindowManager().getDefaultDisplay();
-            Point p = new Point();
-            display.getSize(p);
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inDither = true;
-            options.inPreferredConfig = Bitmap.Config.RGB_565;
-            options.inSampleSize = MainActivity.calculateInSampleSize(p.x, p.y);
-            Bitmap bitmap = BitmapFactory.decodeResource(_activity.getResources(), R.drawable.pls_download,
-                    options);
-            imgDisplay.setImageBitmap(bitmap);
-            if (isDualPage) imgDisplay2.setImageBitmap(bitmap);
-        } else {
+            try {
+                MainActivity.checkOutOfMemory();
+                Display display = _activity.getWindowManager().getDefaultDisplay();
+                Point p = new Point();
+                display.getSize(p);
+                BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inDither = true;
+                options.inPreferredConfig = Bitmap.Config.RGB_565;
+                options.inSampleSize = MainActivity.calculateInSampleSize(p.x, p.y);
+                final Bitmap bitmap = BitmapFactory.decodeResource(_activity.getResources(), R.drawable.pls_download,
+                        options);
+                _activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        showProgress(viewLayout, bitmap, null,
+                                isDualPage ? R.id.quranPage_right : R.id.quranPage,
+                                isDualPage ? R.id.quranPageBorder_right : R.id.quranPageBorder);
+                        if (listener != null) {
+                            listener.onInstantiate(new WeakReference<>(imgDisplay), viewLayout);
+                        }
+                    }
+                });
+                if (isDualPage) {
+                    _activity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            showProgress(viewLayout, bitmap, null,
+                                    R.id.quranPage_left, R.id.quranPageBorder_left);
+                            if (listener != null) {
+                                listener.onInstantiate(new WeakReference<>(imgDisplay2), viewLayout);
+                            }
+                        }
+                    });
+                }
+            } catch (MyOutOfMemoryException | OutOfMemoryError e) {
+                e.printStackTrace();
+            }
+        } else if (_activity.adapter != null) {
             final int position = _activity.adapter.getCount() - fragPos;
             if (position >= 0) {
                 DbManager db = DbManager.getInstance(getActivity());
@@ -232,14 +266,24 @@ public class QuranImageFragment extends Fragment {
                                         }
                                     });
                                     else {
-                                        recycle();
+                                        uiHandler.post(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                recycle();
+                                            }
+                                        });
                                         bitmap2.recycle();
                                         if (bitmapBorders2 != null)
                                             bitmapBorders2.recycle();
                                         return;
                                     }
                                 } else if (_activity == null) {
-                                    recycle();
+                                    uiHandler.post(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            recycle();
+                                        }
+                                    });
                                     return;
                                 }
                             } else {
@@ -263,7 +307,12 @@ public class QuranImageFragment extends Fragment {
                                 });
                                 AnalyticsTrackers.sendException(_activity, "QuranPageRead", err);
                             }
-                            recycle();
+                            uiHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    recycle();
+                                }
+                            });
                         } catch (final Exception ex) {
                             ex.printStackTrace();
                             if (_activity != null) {
@@ -278,11 +327,19 @@ public class QuranImageFragment extends Fragment {
                                 });
                                 //AnalyticsTrackers.sendException(_activity, ex);
                             }
-                            recycle();
+                            uiHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    recycle();
+                                }
+                            });
                         }
                     }
                 };
-                new Thread(runnable).start(); //TODO: causes screen flickering
+                //TODO: screen flickering
+                //new Thread(runnable).start();
+                runnable.run(); // HACK: prevent super fast page swiping causing OutOfMemory
+                Log.d("QuranImgFrag.create", "onCreate at " + fragPos);
             }
             viewLayout.setTag(position);
         }

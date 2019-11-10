@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 
+import kilanny.shamarlymushaf.activities.MainActivity;
 import kilanny.shamarlymushaf.util.AnalyticsTrackers;
 import kilanny.shamarlymushaf.data.Ayah;
 import kilanny.shamarlymushaf.data.Page;
@@ -54,8 +55,8 @@ public class QuranImageView extends TouchImageView {
         rectPaint = new Paint();
         fontPaint = new Paint();
         rectPaint.setStyle(Paint.Style.FILL);
-        fontPaint.setColor(Color.WHITE);
-        fontPaint.setTextSize(20);
+        fontPaint.setColor(Color.rgb(139, 69, 19));
+        fontPaint.setTextSize(30);
         if (!isInEditMode()) {
             AssetManager am = getContext().getAssets();
             fontPaint.setTypeface(Typeface.createFromAsset(am, "DroidNaskh-Bold.ttf"));
@@ -94,9 +95,7 @@ public class QuranImageView extends TouchImageView {
 
     @Override
     public synchronized void draw(Canvas canvas) {
-        if (rectPaint == null || myBitmap != null && myBitmap.isRecycled()) {
-            AnalyticsTrackers.sendFatalError(getContext(), "QuranImageView.draw",
-                    "Attempted to draw finalized Image");
+        if (rectPaint == null || myBitmap == null || myBitmap.isRecycled()) {
             return;
         }
         //http://stackoverflow.com/a/17002006/3441905
@@ -106,6 +105,7 @@ public class QuranImageView extends TouchImageView {
             mCanvas=canvas;
         } catch (Exception e) {
             e.printStackTrace();
+            return;
         }
         if (mCanvas == null) return;
         canvas = mCanvas;
@@ -171,56 +171,103 @@ public class QuranImageView extends TouchImageView {
         });
     }
 
-    public void saveSelectedAyatAsImage(File file, QuranData quranData) {
+    public void saveSelectedAyatAsImage(MainActivity activity, File file, QuranData quranData) {
         if (!isMultiSelectMode)
             throw new IllegalStateException("This method can be only invoked in multi-select mode");
         if (myBitmap != null) {
-            sortMutliSelectList(mutliSelectList);
-            float totalHeight = 100 + 90;
-            for (Ayah a : mutliSelectList) {
-                float mny = a.rects.get(0).top,
-                        mxy = a.rects.get(a.rects.size() - 1).bottom;
-                //TODO: check intersecting rects
-                totalHeight += mxy - mny + 100;
-            }
-            Bitmap draw = Bitmap.createBitmap(QuranData.NORMAL_PAGE_WIDTH, (int) Math.ceil(totalHeight),
-                    myBitmap.getConfig());
-            Canvas canvas = new Canvas(draw);
-            String text = "سورة " + quranData.surahs[mutliSelectList.get(0).sura - 1].name;
+            Bitmap share;
             Rect bounds = new Rect();
-            fontPaint.getTextBounds(text, 0, text.length(), bounds);
-            canvas.drawText(text, QuranData.NORMAL_PAGE_WIDTH / 2 - bounds.height() / 2, 45, fontPaint);
-            int y = 100;
-            for (Ayah a : mutliSelectList) {
-                for (int i = 0; i < a.rects.size(); ++i) {
-                    RectF rect = a.rects.get(i);
-                    int increment = i == a.rects.size() - 1 ? 20 : 0;
-                    canvas.drawBitmap(myBitmap,
-                            new Rect((int) rect.left, (int) rect.top, (int) rect.right, (int) rect.bottom + increment),
-                            new Rect((int) rect.left, y, (int) rect.right, y + (int) rect.height() + increment),
-                            null);
-                    y += (int) rect.height();
+            if (currentPage.page < 4) {
+                share = myBitmap.copy(myBitmap.getConfig(), true);
+                Canvas canvas = new Canvas(share);
+                Bitmap logo = BitmapFactory.decodeResource(res, R.drawable.ic_launcher);
+                canvas.drawBitmap(logo,
+                        new Rect(0, 0, logo.getWidth(), logo.getHeight()),
+                        new Rect(735,
+                                1280,
+                                735 + 96,
+                                1280 + 96),
+                        null);
+                String text = "تطبيق مصحف الشمرلي (الحرمين)";
+                fontPaint.getTextBounds(text, 0, text.length(), bounds);
+                canvas.drawText(text,
+                        745 - bounds.width() - 16,
+                        1310 + 64 - bounds.height() + 8,
+                        fontPaint);
+                logo.recycle();
+                rectPaint.setColor(drawColor);
+                rectPaint.setAlpha(125);
+                for (Ayah a : mutliSelectList)
+                    for (RectF rect : a.rects)
+                        canvas.drawRect(rect, rectPaint);
+            } else {
+                MainActivity.checkOutOfMemory();
+                Bitmap borders = activity.readBorders(currentPage.page);
+                Canvas canvas = new Canvas(borders);
+                float fw = (1 - (float) QuranData.NORMAL_PAGE_WIDTH / QuranData.BORDERED_PAGE_WIDTH),
+                        fh = (1 - (float) QuranData.NORMAL_PAGE_HEIGHT / QuranData.BORDERED_PAGE_HEIGHT);
+                int left = (int) (borders.getWidth() * fw * 0.53f + 0.5f); //round
+                int right = borders.getWidth() - (int) (borders.getWidth() * fw * 0.47f + 0.5f);
+                int top = (int) (borders.getHeight() * fh * 0.47f + 0.5f);
+                int bottom = borders.getHeight() - (int) (borders.getHeight() * fh * 0.53f + 0.5f);
+                canvas.drawBitmap(myBitmap,
+                        new Rect(0, 0, myBitmap.getWidth(), myBitmap.getHeight()),
+                        new Rect(left, top, right, bottom),
+                        null);
+
+                String text;
+                if (currentPage.ayahs.size() > 0) {
+                    text = "سورة " + quranData.surahs[
+                            mutliSelectList.size() > 0 ?
+                                    mutliSelectList.get(0).sura - 1
+                                    : currentPage.ayahs.get(0).sura - 1].name;
+                    fontPaint.getTextBounds(text, 0, text.length(), bounds);
+                    canvas.drawText(text,
+                            right - bounds.width() + 1,
+                            top - bounds.height() - 64,
+                            fontPaint);
                 }
-                y += 80;
+                Bitmap logo = BitmapFactory.decodeResource(res, R.drawable.ic_launcher);
+                int w = 128, h = 128;
+                canvas.drawBitmap(logo,
+                        new Rect(0, 0, logo.getWidth(), logo.getHeight()),
+                        new Rect(right - w + 64,
+                                bottom + 48,
+                                right + 64,
+                                bottom + 48 + h),
+                        null);
+                text = "تطبيق مصحف الشمرلي (الحرمين)";
+                fontPaint.getTextBounds(text, 0, text.length(), bounds);
+                canvas.drawText(text,
+                        right - w + 64 - bounds.width() - 16,
+                        bottom + 48 + h - bounds.height() - 8,
+                        fontPaint);
+                logo.recycle();
+                rectPaint.setColor(drawColor);
+                rectPaint.setAlpha(125);
+                for (Ayah a : mutliSelectList)
+                    for (RectF rect : a.rects)
+                        canvas.drawRect(left + rect.left,
+                                top + rect.top,
+                                left + rect.right,
+                                top + rect.bottom,
+                                rectPaint);
+                share = borders;
             }
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inPreferredConfig = myBitmap.getConfig();
-            Bitmap tmp = BitmapFactory.decodeResource(res, R.drawable.googleplay, options);
-            canvas.drawBitmap(tmp, null,
-                    new Rect(2, (int) totalHeight - 90, QuranData.NORMAL_PAGE_WIDTH - 2, (int) totalHeight - 5),
-                    null);
-            tmp.recycle();
+
             FileOutputStream outputStream;
             try {
                 if (!file.exists())
                     file.createNewFile();
                 outputStream = new FileOutputStream(file, false);
-                draw.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
+                share.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
                 outputStream.close();
             } catch (IOException e) {
                 e.printStackTrace();
+                throw new RuntimeException(e);
+            } finally {
+                share.recycle();
             }
-            draw.recycle();
         } else throw new IllegalStateException("myBitmap is null");
     }
 }

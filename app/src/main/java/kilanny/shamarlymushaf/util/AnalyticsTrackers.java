@@ -5,6 +5,12 @@ import android.content.Context;
 import android.os.Build;
 import android.util.Log;
 
+//import com.amplitude.api.Amplitude;
+//import com.amplitude.api.AmplitudeClient;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
@@ -18,15 +24,51 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import kilanny.shamarlymushaf.App;
 import kilanny.shamarlymushaf.BuildConfig;
 import kilanny.shamarlymushaf.data.AnalyticData;
 import kilanny.shamarlymushaf.data.UserInfo;
 
 public final class AnalyticsTrackers {
 
+    //private static AmplitudeClient instance;
     private static AtomicBoolean sending = new AtomicBoolean(false);
+    private static Executor executor = new ThreadPoolExecutor(1, // core size
+            2, // max size
+            10*60, // idle timeout
+            TimeUnit.SECONDS,
+            new ArrayBlockingQueue<Runnable>(3)); // queue with a size;
+
+//    private static AmplitudeClient getInstance(Context context) {
+//        if (instance == null) {
+//            instance = Amplitude.getInstance();
+//            UserInfo userInfo = UserInfo.getInstance(context);
+//            JSONObject jsonObject = new JSONObject();
+//            try {
+//                jsonObject.put("appInstanceId", userInfo.appInstanceId);
+//                jsonObject.put("deviceName", userInfo.deviceName);
+//                jsonObject.put("deviceModel", userInfo.deviceModel);
+//                jsonObject.put("deviceOsVersion", userInfo.deviceOsVersion);
+//                jsonObject.put("deviceProduct", userInfo.deviceProduct);
+//                jsonObject.put("deviceSdkVersion", userInfo.deviceSdkVersion);
+//                jsonObject.put("appVersionName", userInfo.appVersionName);
+//                jsonObject.put("appVersionCode", userInfo.appVersionCode);
+//            } catch (JSONException e) {
+//                e.printStackTrace();
+//            }
+//            instance.initialize(context, "2dc4b3f0d0704ece0e44623c1bfc5bce")
+//                    .setUserId(userInfo.appInstanceId)
+//                    .enableForegroundTracking(App.get(context))
+//                    .setUserProperties(jsonObject);
+//        }
+//        return instance;
+//    }
 
     public static String getDeviceInfo(Context context) {
         long vmHead = -1, recomendHeap = -1, totalMem = -1,
@@ -44,7 +86,7 @@ public final class AnalyticsTrackers {
             ex.printStackTrace();
         }
         return String.format(Locale.ENGLISH,
-                "App [Version: %s, code: %d]\nOS Version: %s\nAPI Level: %d\nDevice: %s\nModel: %s\nProduct: %s\n" +
+                "kilanny.shamarlymushaf.App [Version: %s, code: %d]\nOS Version: %s\nAPI Level: %d\nDevice: %s\nModel: %s\nProduct: %s\n" +
                         "Recommended Heap: %d\nFree Memory: %d\nProcessor Count: %d\nVM Heap size: %d\n" +
                         "Total Memory: %d",
                 BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE,
@@ -177,12 +219,17 @@ public final class AnalyticsTrackers {
         }
     }
 
-    private static void addEvent(String evtName, String payload, Context context) {
-        AnalyticData event = new AnalyticData();
-        event.eventName = evtName;
-        event.date = new Date();
-        event.payload = payload;
-        AnalyticData.Queue.enqueueMany(context, event);
+    private static void addEvent(final String evtName, final String payload, final Context context) {
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                AnalyticData event = new AnalyticData();
+                event.eventName = evtName;
+                event.date = new Date();
+                event.payload = payload;
+                AnalyticData.Queue.enqueueMany(context, event);
+            }
+        });
     }
 
     private static boolean sendUserInfo(Context context) {
@@ -190,14 +237,15 @@ public final class AnalyticsTrackers {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS", Locale.US);
         String gender = userInfo.gender == null ? "" : userInfo.gender ? "1" : "2";
         TimeZone timeZone = TimeZone.getDefault();
-        String json = formatJson("{\"info\":{\n" +
+        String json = formatJson("{\n" +
                         "\t\"app_code\": \"%s\", \"app_ver\": \"%s\", \"os_ver\": \"%s\", \n" +
                         "\t\"sdk_ver\":\"%s\", \"dev_name\": \"%s\", \"dev_model\": \"%s\", \"dev_prod\": \"%s\", \"age\": \"%s\", \n" +
                         "\t\"gender\": \"%s\", \"location\": \"%s\", \"lastUpdate\":\"%s\",\"tz\":\"%s\"\n" +
-                        "}}",
+                        "}",
                 userInfo.appVersionCode, userInfo.appVersionName, userInfo.deviceOsVersion,
-                userInfo.deviceSdkVersion, userInfo.deviceName, userInfo.deviceModel, userInfo.deviceProduct, userInfo.ageCategory + "",
-                gender, userInfo.locationCategory, sdf.format(new Date()),
+                userInfo.deviceSdkVersion, userInfo.deviceName, userInfo.deviceModel,
+                userInfo.deviceProduct, userInfo.ageCategory + "", gender,
+                userInfo.locationCategory, sdf.format(new Date()),
                 timeZone.getDisplayName(false, TimeZone.SHORT) + "_" + timeZone.getID()
         );
         json = json.replace("\t", "")
@@ -206,15 +254,23 @@ public final class AnalyticsTrackers {
                 .replace("\": \"", "\":\"");
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json; charset=UTF-8");
-        String url = String.format("https://shamarlymushaf.firebaseio.com/analytics/%s.json", userInfo.appInstanceId);
+        String url = String.format("https://shamarlymushaf.firebaseio.com/analytics/%s/info.json",
+                userInfo.appInstanceId);
         String put = Utils.sendHttpRequest(url, "PUT", json, headers);
         return put.contains(userInfo.appInstanceId);
     }
 
     public static void send(final Context context) {
+        if (sending.get())
+            return;
+        Integer tmpSz = AnalyticData.Queue.cachedSize();
+        if (tmpSz != null && tmpSz == 0)
+            return;
         if (Utils.isConnected(context) != Utils.CONNECTION_STATUS_CONNECTED)
             return;
-        new Thread(new Runnable() {
+        if (!Utils.haveAvailableMemory(Utils.MIN_THREAD_MEMORY_ALLOCATION * 2))
+            return;
+        executor.execute(new Runnable() {
             @Override
             public void run() {
                 if (sending.get())
@@ -225,15 +281,15 @@ public final class AnalyticsTrackers {
                     return;
                 }
                 int sz = AnalyticData.Queue.size(context);
-                if (sz == 0) {
-                    sending.set(false);
-                    return;
-                }
-                AnalyticsTrackersData trackersData = AnalyticsTrackersData.getInstance(context);
-                if (trackersData.getLastSend() == null)
-                    if (sendUserInfo(context))
-                        trackersData.setLastSend(new Date(), context);
                 UserInfo userInfo = UserInfo.getInstance(context);
+                boolean hasChanged = userInfo.hasChanged != null && userInfo.hasChanged;
+                AnalyticsTrackersData trackersData = AnalyticsTrackersData.getInstance(context);
+                if (trackersData.getLastSend() == null || hasChanged)
+                    if (sendUserInfo(context)) {
+                        trackersData.setLastSend(new Date(), context);
+                        userInfo.hasChanged = false;
+                        userInfo.save(context);
+                    }
                 SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmssSSS", Locale.US);
                 for (int i = 0; i < 10 && sz > 0; ++i, --sz) {
                     AnalyticData sendData = AnalyticData.Queue.dequeueMany(context, 1)[0];
@@ -241,8 +297,8 @@ public final class AnalyticsTrackers {
                     headers.put("Content-Type", "application/json; charset=UTF-8");
                     try {
                         String json = formatJson("{\n" +
-                                "\t\"evt\": \"%s\", \"time\": \"%s\", #####\n" +
-                                "}", sendData.eventName, sdf.format(sendData.date));
+                                "\t\"av\": \"%s\", \"evt\": \"%s\", \"time\": \"%s\", #####\n" +
+                                "}", userInfo.appVersionCode, sendData.eventName, sdf.format(sendData.date));
                         json = json.replace("\t", "")
                                 .replace(", \n", ",")
                                 .replace("\n", "")
@@ -251,7 +307,8 @@ public final class AnalyticsTrackers {
                         payload = payload.substring(payload.indexOf('{') + 1);
                         payload = payload.substring(0, payload.lastIndexOf('}'));
                         json = json.replace("#####", payload);
-                        String url = String.format("https://shamarlymushaf.firebaseio.com/analytics/%s/events/%s.json",
+                        String url = String.format(
+                                "https://shamarlymushaf.firebaseio.com/analytics/%s/events/%s.json",
                                 userInfo.appInstanceId, sdf.format(new Date()));
                         String res = Utils.sendHttpRequest(url, "PUT", json, headers);
                         if (res.contains("{")) {
@@ -270,7 +327,7 @@ public final class AnalyticsTrackers {
                 }
                 sending.set(false);
             }
-        }).start();
+        });
     }
 
     private static String formatJson(String format, Object ...args) {
@@ -283,7 +340,36 @@ public final class AnalyticsTrackers {
         }
         return String.format(Locale.US, format, args);
     }
+
+    public static void sendWidgetEnabled(Context context, boolean enabled) {
+        try {
+            String payload = "{\"e\":" + enabled + "}";
+            addEvent("widgetEnabled", payload, context);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public static void sendWidgetRefresh(Context context, int sura, int ayah) {
+        try {
+            String payload = String.format(Locale.US,
+                    "{\"s\":%d,\"a\":%d}", sura, ayah);
+            addEvent("widgetRefresh", payload, context);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public static void sendMaqraahResponse(Context context, int value) {
+        try {
+            String payload = String.format(Locale.US, "{\"v\":%d}", value);
+            addEvent("maqraahResponse", payload, context);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
 }
+
 class AnalyticsTrackersData implements Serializable {
 
     static final long serialVersionUID = 2L;

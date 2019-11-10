@@ -19,8 +19,7 @@ import kilanny.shamarlymushaf.R;
  */
 public class PageInfoAdapter extends PagerAdapter {
 
-    private static Typeface typeface;
-
+    private Typeface typeface;
     private String pageNumber;
     private String juzNumber;
     private String surahName;
@@ -81,9 +80,13 @@ public class PageInfoAdapter extends PagerAdapter {
         Resources res = context.getResources();
         viewLayout.setTextColor(ResourcesCompat.getColor(res, android.R.color.primary_text_dark,
                 null));
-        if (typeface == null)
-            typeface = Typeface.createFromAsset(context.getAssets(), "DroidNaskh-Bold.ttf");
-        viewLayout.setTypeface(typeface);
+        try {
+            if (typeface == null)
+                typeface = Typeface.createFromAsset(context.getAssets(),
+                        "DroidNaskh-Bold.ttf");
+            viewLayout.setTypeface(typeface);
+        } catch (Exception ignored) {
+        }
         switch (position) {
             case 4:
                 viewLayout.setText(getKhatmahName());
