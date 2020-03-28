@@ -34,4 +34,8 @@
          كل ما عليك إضافة الأرقام من الأسماء الخاصة بك ليتم الرن عليهم حتى يستيقظوا
     </string>
     <string name="auto_caller">الرنان الآلي</string>
+    <string name="title_activity_external_recites_download">ExternalRecitesDownloadActivity</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

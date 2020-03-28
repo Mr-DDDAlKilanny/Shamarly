@@ -34,7 +34,7 @@
         android:layout_margin="10dp"
         android:textSize="15sp" />
 
-    <android.support.v7.widget.CardView
+    <androidx.cardview.widget.CardView
         android:layout_above="@id/bottomLayout"
         android:layout_below="@id/txtDetails"
         app:cardCornerRadius="6dp"
@@ -59,7 +59,7 @@
             app:sliderIndicatorUnselectedColor="#FFF"
             app:sliderScrollTimeInSec="1"
             app:sliderStartAutoCycle="true" />
-    </android.support.v7.widget.CardView>
+    </androidx.cardview.widget.CardView>
     <LinearLayout
         android:id="@+id/bottomLayout"
         style="?android:attr/buttonBarStyle"

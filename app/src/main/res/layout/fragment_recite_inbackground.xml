@@ -23,22 +23,22 @@
             android:text="بدء القراءة" />
 
         <LinearLayout
+            android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginEnd="5sp"
             android:layout_marginRight="5sp">
 
-            <Spinner
-                android:id="@+id/spinnerAutostopBackgroundRecite"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_weight="0.6" />
-
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="0.4"
                 android:text="إيقاف تشغيل التلاوة تلقائيا بعد" />
+
+            <Spinner
+                android:id="@+id/spinnerAutostopBackgroundRecite"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
         </LinearLayout>
 
         <CheckBox
@@ -47,6 +47,7 @@
             android:layout_height="wrap_content"
             android:text="تكرار التلاوة"
             android:layout_gravity="right"
+            android:layoutDirection="rtl"
             android:paddingBottom="25dp" />
         <LinearLayout
             android:id="@+id/repeatReciteLayout"

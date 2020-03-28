@@ -1,14 +1,10 @@
 package kilanny.shamarlymushaf.widgets;
 
 import android.appwidget.AppWidgetManager;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.support.v4.content.LocalBroadcastManager;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
-import android.widget.Toast;
 
 import kilanny.shamarlymushaf.R;
 import kilanny.shamarlymushaf.data.TafsserViewModel;

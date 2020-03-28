@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -10,7 +10,6 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="kilanny.shamarlymushaf.activities.PlayReciteActivity">
     <TextView
-        android:layout_weight="2"
         android:id="@+id/textViewSurahAyah"
         android:textSize="30sp"
         android:ellipsize="end"
@@ -18,73 +17,79 @@
         android:gravity="center"
         android:textColor="@android:color/holo_blue_dark"
         android:text="سورة آل عمران : 5"
+        android:paddingBottom="@dimen/activity_vertical_margin"
         android:layout_width="match_parent"
-        android:layout_height="0dp" />
+        android:layout_height="wrap_content" />
     <TextView
-        android:layout_weight="4"
+        android:layout_below="@id/textViewSurahAyah"
+        android:paddingBottom="@dimen/activity_vertical_margin"
         android:id="@+id/textViewAyahText"
         android:textSize="18sp"
         android:ellipsize="end"
         android:gravity="right"
         android:text="{هُوَ الَّذِيَ أَنزَلَ عَلَيْكَ الْكِتَابَ مِنْهُ آيَاتٌ مُّحْكَمَاتٌ هُنَّ أُمُّ الْكِتَابِ وَأُخَرُ مُتَشَابِهَاتٌ فَأَمَّا الَّذِينَ فِي قُلُوبِهِمْ زَيْغٌ فَيَتَّبِعُونَ مَا تَشَابَهَ مِنْهُ ابْتِغَاء الْفِتْنَةِ وَابْتِغَاء تَأْوِيلِهِ وَمَا يَعْلَمُ تَأْوِيلَهُ إِلاَّ اللَّهُ وَالرَّاسِخُونَ فِي الْعِلْمِ يَقُولُونَ آمَنَّا بِهِ كُلٌّ مِّنْ عِندِ رَبِّنَا وَمَا يَذَّكَّرُ إِلاَّ أُوْلُواْ الأَلْبَابِ }"
         android:layout_width="match_parent"
-        android:layout_height="0dp" />
+        android:layout_height="wrap_content" />
     <TextView
+        android:layout_below="@id/textViewAyahText"
+        android:paddingBottom="@dimen/activity_vertical_margin"
         android:id="@+id/textViewReciter"
         android:textSize="20sp"
-        android:layout_weight="2"
         android:ellipsize="end"
         android:maxLines="1"
         android:gravity="center"
         android:textColor="@android:color/holo_green_dark"
         android:text="عبد الباسط عبد الصمد (المجود)"
         android:layout_width="match_parent"
-        android:layout_height="0dp" />
+        android:layout_height="wrap_content" />
     <ProgressBar
-        android:layout_weight=".75"
+        android:layout_below="@id/textViewReciter"
+        android:paddingBottom="@dimen/activity_vertical_margin"
         android:id="@+id/progressBarLoadingRecite"
         android:indeterminateDrawable="@android:drawable/progress_indeterminate_horizontal"
         android:minHeight="24dip"
         android:indeterminate="true"
         android:maxHeight="24dip"
         android:layout_width="fill_parent"
-        android:layout_height="0dp"/>
-    <View
-        android:layout_weight="1"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"/>
+        android:layout_height="wrap_content"/>
     <TextView
-        android:layout_weight="1"
+        android:layout_below="@id/progressBarLoadingRecite"
+        android:paddingBottom="@dimen/activity_vertical_margin"
+        android:id="@+id/textViewAutoStop"
         android:gravity="center"
         android:textSize="20sp"
         android:text="إيقاف التلاوة تلقائيا بعد"
         android:layout_width="match_parent"
-        android:layout_height="0dp" />
+        android:layout_height="wrap_content" />
     <TextView
+        android:layout_below="@id/textViewAutoStop"
+        android:paddingBottom="@dimen/activity_vertical_margin"
         android:id="@+id/textViewTiming"
         android:textSize="25sp"
-        android:layout_weight="1"
         android:gravity="center"
         android:text="00:05:34"
         android:layout_width="match_parent"
-        android:layout_height="0dp" />
+        android:layout_height="wrap_content" />
     <TextView
         android:id="@+id/textViewError"
         android:textSize="15sp"
-        android:layout_weight="2"
+        android:layout_below="@id/textViewTiming"
+        android:layout_above="@id/confLay"
         android:gravity="center"
         android:visibility="invisible"
         android:textColor="@android:color/holo_red_dark"
         android:text="حدث خطأ أثناء محاولة تشغيل الملف"
         android:layout_width="match_parent"
-        android:layout_height="0dp" />
+        android:layout_height="wrap_content" />
     <LinearLayout
+        android:id="@+id/confLay"
+        android:layout_above="@id/permissionCheckLayout"
         android:orientation="horizontal"
-        android:gravity="center"
-        android:layout_gravity="center"
-        android:layout_weight="4"
+        android:layout_centerHorizontal="true"
+        android:gravity="bottom"
+        android:layoutDirection="rtl"
         android:layout_width="wrap_content"
-        android:layout_height="0dp">
+        android:layout_height="wrap_content">
         <ImageButton
             android:enabled="false"
             android:src="@android:drawable/ic_media_rew"
@@ -112,4 +117,28 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
     </LinearLayout>
-</LinearLayout>
+    <RelativeLayout
+        android:visibility="visible"
+        android:layout_alignParentBottom="true"
+        android:id="@+id/permissionCheckLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <TextView
+            android:text="قم بإعطاء التطبيق صلاحية الهاتف لكي يقوم بإيقاف التلاوة عند بدء أي مكالمة"
+            android:layout_toLeftOf="@id/btnPermissions"
+            android:layout_toStartOf="@id/btnPermissions"
+            android:layout_centerVertical="true"
+            android:gravity="center"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <Button
+            android:id="@+id/btnPermissions"
+            android:text="منح الصلاحية"
+            android:layout_centerVertical="true"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentEnd="true"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </RelativeLayout>
+</RelativeLayout>

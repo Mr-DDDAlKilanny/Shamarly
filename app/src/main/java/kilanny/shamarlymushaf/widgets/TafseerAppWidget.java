@@ -120,6 +120,7 @@ public class TafseerAppWidget extends AppWidgetProvider {
                     return;
                 Setting setting = Setting.getInstance(context);
                 intent = new Intent(context, MainActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 intent.putExtra(MainActivity.SHOW_PAGE_MESSAGE,
                         lastViewModel.page / (setting.lastWasDualPage ? 2 : 1));
                 intent.putExtra(MainActivity.SHOW_AYAH_MESSAGE, String.format(Locale.ENGLISH, "%d,%d",

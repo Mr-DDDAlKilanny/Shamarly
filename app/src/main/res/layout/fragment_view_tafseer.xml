@@ -11,7 +11,7 @@
         <Button
             android:text="&lt;"
             android:textSize="25sp"
-            android:textColor="@color/bright_blue"
+            android:textColor="@android:color/holo_blue_bright"
             android:layout_weight="0.2"
             android:id="@+id/btnTafseerNext"
             android:layout_width="wrap_content"
@@ -22,14 +22,14 @@
             android:layout_marginLeft="4dp"
             android:layout_marginRight="4dp"
             android:textSize="25sp"
-            android:textColor="@color/bright_blue"
+            android:textColor="@android:color/holo_blue_bright"
             android:id="@+id/txtTafseerDlgTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
         <Button
             android:layout_weight="0.2"
             android:text="&gt;"
-            android:textColor="@color/bright_blue"
+            android:textColor="@android:color/holo_blue_bright"
             android:textSize="25sp"
             android:id="@+id/btnTafseerPrev"
             android:layout_width="wrap_content"

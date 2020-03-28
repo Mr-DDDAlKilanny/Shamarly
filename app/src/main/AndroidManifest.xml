@@ -3,14 +3,15 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="kilanny.shamarlymushaf">
 
+    <uses-sdk tools:overrideLibrary="com.smarteist.autoimageslider" />
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
-    <!--<uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />-->
 
     <application
         android:name=".App"
@@ -23,6 +24,17 @@
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true"
         tools:replace="android:theme">
+
+        <service
+            android:name=".services.PlayReciteService"
+            android:enabled="true"
+            android:exported="false" />
+
+        <activity
+            android:name=".activities.ExternalRecitesDownloadActivity"
+            android:label="@string/title_activity_external_recites_download"
+            android:theme="@style/AppTheme.NoActionBar" />
+
         <receiver android:name=".widgets.TafseerAppWidget">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -94,13 +106,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
         <activity
             android:name=".activities.GotoActivity"
             android:label="@string/title_activity_goto" />
         <activity
             android:name=".activities.PlayReciteActivity"
             android:configChanges="orientation"
+            android:noHistory="true"
             android:screenOrientation="portrait" />
 
         <provider
@@ -112,9 +124,13 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
+
         <activity android:name=".activities.ReportIssueActivity" />
-        <service android:name=".widgets.WidgetService"
+
+        <service
+            android:name=".widgets.WidgetService"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
+
         <activity android:name=".activities.AppTutorialActivity" />
     </application>
 

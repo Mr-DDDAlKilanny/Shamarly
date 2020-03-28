@@ -1,36 +1,37 @@
 package kilanny.shamarlymushaf.activities;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.RecoverySystem;
-import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.app.ActionBar;
-import android.support.v4.app.NavUtils;
-import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.widget.Toast;
 
-import net.rdrei.android.dirchooser.DirectoryChooserConfig;
-import net.rdrei.android.dirchooser.DirectoryChooserFragment;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NavUtils;
+import androidx.core.content.ContextCompat;
+
+import com.obsez.android.lib.filechooser.ChooserDialog;
 
 import java.io.File;
 import java.util.HashSet;
 
-import kilanny.shamarlymushaf.util.AnalyticsTrackers;
-import kilanny.shamarlymushaf.data.QuranData;
 import kilanny.shamarlymushaf.R;
+import kilanny.shamarlymushaf.data.QuranData;
+import kilanny.shamarlymushaf.data.SerializableInFile;
+import kilanny.shamarlymushaf.data.Setting;
 import kilanny.shamarlymushaf.fragments.ReciterDetailFragment;
 import kilanny.shamarlymushaf.fragments.ReciterListFragment;
-import kilanny.shamarlymushaf.data.Setting;
+import kilanny.shamarlymushaf.util.AnalyticsTrackers;
 import kilanny.shamarlymushaf.util.DownloadAllProgressChangeListener;
 import kilanny.shamarlymushaf.util.DownloadTaskCompleteListener;
 import kilanny.shamarlymushaf.util.Utils;
@@ -54,9 +55,11 @@ import kilanny.shamarlymushaf.util.Utils;
  */
 public class ReciterListActivity extends AppCompatActivity
         implements ReciterListFragment.Callbacks,
-        DirectoryChooserFragment.OnFragmentInteractionListener {
+        ChooserDialog.Result,
+        DialogInterface.OnCancelListener,
+        DialogInterface.OnClickListener {
 
-    private static final int WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 1;
+    public static final int WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 1;
 
     private ReciterDetailFragment fragment;
     private AsyncTask downloadAll;
@@ -70,25 +73,25 @@ public class ReciterListActivity extends AppCompatActivity
 
     private Setting setting;
 
-    private DirectoryChooserFragment mDialog;
-
     private boolean forceDialogSelection;
 
-    private void chooseDir(final boolean force) {
+    private void chooseDir(boolean force) {
         forceDialogSelection = force;
-        Utils.showAlert(this, "تحميل التلاوات",
-                "فضلا اضغط موافق، ثم اختر الحافظة التي سيتم التحميل فيها",
-                new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        final DirectoryChooserConfig config = DirectoryChooserConfig.builder()
-                                .newDirectoryName("DialogSample")
-                                .build();
-                        mDialog = DirectoryChooserFragment.newInstance(config);
-                        mDialog.setCancelable(!force);
-                        mDialog.show(getFragmentManager(), null);
-                    }
-                });
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            Utils.showAlert(this, "تحميل التلاوات",
+                    "فضلا اضغط موافق، ثم اختر الحافظة التي سيتم التحميل فيها",
+                    (dialog, which) -> new ChooserDialog(ReciterListActivity.this)
+                            .withFilter(true, false)
+                            .withStringResources("اختيار حافظة التحميل", "اختيار", "إلغاء")
+                            .withStartFile(force ? null : setting.saveSoundsDirectory)
+                            .withOnCancelListener(ReciterListActivity.this)
+                            .withChosenListener(ReciterListActivity.this)
+                            .withNegativeButtonListener(ReciterListActivity.this)
+                            .build()
+                            .show());
+        } else {
+            setting.saveSoundsDirectory = getExternalFilesDir(null).getAbsolutePath();
+        }
     }
 
     @Override
@@ -124,27 +127,24 @@ public class ReciterListActivity extends AppCompatActivity
     }
 
     private void initWithPermissionCheck(boolean shouldShowExplainDlg) {
-        if (checkStoragePermission(shouldShowExplainDlg))
+        if (checkStoragePermission(this, shouldShowExplainDlg,
+                () -> initWithPermissionCheck(false))) {
             init();
+        }
     }
 
-    private boolean checkStoragePermission(boolean shouldShowExplainDlg) {
+    public static boolean checkStoragePermission(Activity context, boolean shouldShowExplainDlg, Runnable onOk) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (ContextCompat.checkSelfPermission(this,
+            if (ContextCompat.checkSelfPermission(context,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
                 if (shouldShowExplainDlg) {
-                    Utils.showAlert(this,
+                    Utils.showAlert(context,
                             "صلاحية القرص",
-                            getString(R.string.request_storage_permission_msg),
-                            new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    initWithPermissionCheck(false);
-                                }
-                            });
+                            context.getString(R.string.request_storage_permission_msg),
+                            (dialog, which) -> onOk.run());
                 } else {
-                    requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    context.requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
                             WRITE_EXTERNAL_STORAGE_REQUEST_CODE);
                 }
                 return false;
@@ -158,6 +158,24 @@ public class ReciterListActivity extends AppCompatActivity
         setting = Setting.getInstance(this);
         if (setting.saveSoundsDirectory == null || !new File(setting.saveSoundsDirectory).exists())
             chooseDir(true);
+        else {
+            SerializableInFile<Integer> appResponse = new SerializableInFile<>(
+                    getApplicationContext(), "down__st", 0);
+            if (appResponse.getData() == 0) {
+                new AlertDialog.Builder(this)
+                        .setTitle("تحميل مصحف القارئ كاملا")
+                        .setMessage("تم فتح إمكانية تحميل القارئ بالكامل بدون كمية يومية!")
+                        .setPositiveButton("أرني كيف", (dialogInterface, i) -> {
+                            Toast.makeText(this,
+                                    "اضغط على علامة القائمة (النقاط الثلاث الرأسية) لفتح هذه الخاصية",
+                                    Toast.LENGTH_LONG).show();
+                        })
+                        .setNegativeButton("لا تخبرني ثانية", (dialogInterface, i) -> {
+                            appResponse.setData(-1, this);
+                        })
+                        .show();
+            }
+        }
     }
 
     @Override
@@ -184,6 +202,8 @@ public class ReciterListActivity extends AppCompatActivity
             menu.getItem(0).setVisible(false);
             menu.getItem(1).setVisible(false);
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            menu.getItem(2).setVisible(false);
         return true;
     }
 
@@ -199,12 +219,9 @@ public class ReciterListActivity extends AppCompatActivity
     @Override
     public void onBackPressed() {
         if (downloadAll != null && !downloadAll.isCancelled()) {
-            Utils.showConfirm(this, "تأكيد", "إيقاف التحميل الجاري؟", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    //downloadAll will be cancelled by onStop()
-                    ReciterListActivity.super.onBackPressed();
-                }
+            Utils.showConfirm(this, "تأكيد", "إيقاف التحميل الجاري؟", (dialog, which) -> {
+                //downloadAll will be cancelled by onStop()
+                ReciterListActivity.super.onBackPressed();
             }, null);
         } else super.onBackPressed();
     }
@@ -223,9 +240,11 @@ public class ReciterListActivity extends AppCompatActivity
             NavUtils.navigateUpFromSameTask(this);
             return true;
         }
-        if (item.getItemId() == R.id.chooseDownloadDir)
+        if (item.getItemId() == R.id.chooseDownloadDir) {
             chooseDir(false);
-        else if (fragment != null) { //make sure user has selected a reciter
+        } else if (item.getItemId() == R.id.unlimitedDownload) {
+            startActivity(new Intent(this, ExternalRecitesDownloadActivity.class));
+        } else if (fragment != null) { //make sure user has selected a reciter
             final String myReciter = fragment.mItem;
             switch (item.getItemId()) {
                 case R.id.downloadAll:
@@ -286,21 +305,16 @@ public class ReciterListActivity extends AppCompatActivity
                     itemChanged = false;
                     fragment.cancelActiveOperations();
                     fragment.setCanDoSingleOperation(false);
-                    Utils.deleteAll(this, myReciter, new RecoverySystem.ProgressListener() {
-                        @Override
-                        public void onProgress(int progress) {
-                            if (!itemChanged)
-                                fragment.setSurahProgress(progress, 0, false);
-                        }
-                    }, new Runnable() {
-                        @Override
-                        public void run() {
-                            fragment.setCanDoSingleOperation(true);
-                            Toast.makeText(ReciterListActivity.this,
-                                    "تم حذف جميع التلاوات لهذا القارئ",
-                                    Toast.LENGTH_LONG).show();
-                        }
-                    });
+                    Utils.deleteAll(this, myReciter,
+                            progress -> {
+                                if (!itemChanged)
+                                    fragment.setSurahProgress(progress, 0, false);
+                            }, () -> {
+                                fragment.setCanDoSingleOperation(true);
+                                Toast.makeText(ReciterListActivity.this,
+                                        "تم حذف جميع التلاوات لهذا القارئ",
+                                        Toast.LENGTH_LONG).show();
+                            });
                     return true;
             }
         }
@@ -343,28 +357,26 @@ public class ReciterListActivity extends AppCompatActivity
     }
 
     @Override
-    public void onSelectDirectory(@NonNull String path) {
-        setting.saveSoundsDirectory = path;
+    public void onChoosePath(String dir, File dirFile) {
+        setting.saveSoundsDirectory = dir;
         setting.save(this);
-        if (mDialog != null) mDialog.dismiss();
     }
 
     @Override
-    public void onCancelChooser() {
-        if (mDialog != null) mDialog.dismiss();
+    public void onCancel(DialogInterface dialogInterface) {
         if (forceDialogSelection) {
-            Utils.showConfirm(this, "اختيار الحافظة", "لا بد من اختيار حافظة للتحميل. اختيار الآن؟", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    chooseDir(true);
-                }
-            }, new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    NavUtils.navigateUpFromSameTask(ReciterListActivity.this);
-                    finish();
-                }
-            });
+            Utils.showConfirm(this, "اختيار الحافظة",
+                    "لا بد من اختيار حافظة للتحميل. اختيار الآن؟",
+                    (dialog, which) -> chooseDir(true),
+                    (dialog, which) -> {
+                        NavUtils.navigateUpFromSameTask(ReciterListActivity.this);
+                        finish();
+                    });
         }
+    }
+
+    @Override
+    public void onClick(DialogInterface dialogInterface, int i) {
+        onCancel(dialogInterface);
     }
 }

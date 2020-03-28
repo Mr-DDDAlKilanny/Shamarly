@@ -1,14 +1,14 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 28
-    buildToolsVersion '28.0.3'
+    compileSdkVersion 29
+    buildToolsVersion '29.0.2'
     defaultConfig {
         applicationId "kilanny.shamarlymushaf"
-        minSdkVersion 15
-        targetSdkVersion 28
-        versionName '2.955'
-        versionCode 33
+        minSdkVersion 14
+        targetSdkVersion 29
+        versionName '2.96'
+        versionCode 35
     }
     buildTypes {
         release {
@@ -17,6 +17,10 @@ android {
         }
     }
     productFlavors {
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 }
 repositories {
@@ -27,22 +31,27 @@ repositories {
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation('net.rdrei.android.dirchooser:library:3.2@aar') { transitive = true; }
+    //implementation('net.rdrei.android.dirchooser:library:3.2@aar') { transitive = true; }
+    implementation 'com.github.hedzr:android-file-chooser:v1.2.0-final'
     implementation('cn.trinea.android.view.autoscrollviewpager:android-auto-scroll-view-pager:1.1.2') {
         exclude module: 'support-v4'
     }
     implementation files('htmlcleaner-2.21.jar')
-    implementation 'com.android.support:appcompat-v7:28.0.0'
-    implementation 'com.android.support:support-v4:28.0.0'
-    implementation 'com.android.support:design:28.0.0'
-    implementation 'com.android.support:cardview-v7:28.0.0'
-    implementation 'com.android.support.constraint:constraint-layout:1.1.3'
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'androidx.legacy:legacy-support-v4:1.0.0'
+    implementation 'com.google.android.material:material:1.1.0'
+    implementation 'androidx.cardview:cardview:1.0.0'
+    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
     annotationProcessor 'com.google.auto.value:auto-value:1.1'
-    def room_version = "1.1.1"
-    implementation "android.arch.persistence.room:runtime:$room_version"
-    annotationProcessor "android.arch.persistence.room:compiler:$room_version"
+    implementation 'androidx.room:room-runtime:2.2.5'
+    annotationProcessor 'androidx.room:room-compiler:2.2.5'
     //implementation 'com.amplitude:android-sdk:2.16.0'
+    //implementation 'com.google.android.gms:play-services-auth:16.0.0'
     implementation 'com.github.smarteist:autoimageslider:1.3.2-appcompat'
+
+    def work_version = "2.3.4"
+    implementation "androidx.work:work-runtime:$work_version"
+    implementation "androidx.work:work-rxjava2:$work_version"
 }
 
 //apply plugin: 'com.google.gms.google-services'

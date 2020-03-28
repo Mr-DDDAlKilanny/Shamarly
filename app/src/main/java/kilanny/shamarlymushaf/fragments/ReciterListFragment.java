@@ -1,9 +1,12 @@
 package kilanny.shamarlymushaf.fragments;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.res.Resources;
 import android.os.Bundle;
-import android.support.v4.app.ListFragment;
+
+import androidx.annotation.NonNull;
+import androidx.fragment.app.ListFragment;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
@@ -109,7 +112,7 @@ public class ReciterListFragment extends ListFragment {
     }
 
     @Override
-    public void onAttach(Activity activity) {
+    public void onAttach(@NonNull Context activity) {
         super.onAttach(activity);
 
         // Activities containing this fragment must implement its callbacks.

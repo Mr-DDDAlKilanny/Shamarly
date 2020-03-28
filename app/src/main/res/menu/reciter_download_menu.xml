@@ -8,4 +8,6 @@
         android:id="@+id/deleteAll" />
     <item android:title="اختيار حافظة التحميل"
         android:id="@+id/chooseDownloadDir"/>
+    <item android:title="تحميل غير محدود للتلاوة"
+        android:id="@+id/unlimitedDownload" />
 </menu>

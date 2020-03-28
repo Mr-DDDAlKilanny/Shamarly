@@ -1,8 +1,8 @@
 package kilanny.shamarlymushaf.adapters;
 
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentPagerAdapter;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentPagerAdapter;
 
 import kilanny.shamarlymushaf.fragments.gotofragments.GotoBookmarkFragment;
 import kilanny.shamarlymushaf.fragments.gotofragments.GotoHizbFragment;

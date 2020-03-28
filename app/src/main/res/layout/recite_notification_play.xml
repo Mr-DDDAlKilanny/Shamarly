@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+    <ImageView
+        android:id="@+id/imgLogo"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true"
+        android:src="@drawable/ic_launcher_64"
+        android:layout_alignBottom="@id/contentLay"
+        android:contentDescription="شعار مصحف الشمرلي"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+    <LinearLayout
+        android:id="@+id/contentLay"
+        android:layout_alignParentTop="true"
+        android:layout_toLeftOf="@id/imgLogo"
+        android:layout_toRightOf="@id/controlLay"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+        <TextView
+            android:text="مصحف الشمرلي"
+            android:textAlignment="center"
+            android:gravity="center"
+            android:textStyle="bold"
+            android:textSize="15sp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+        <TextView
+            android:textAlignment="center"
+            android:textDirection="rtl"
+            android:id="@+id/txtSurahName"
+            android:text="سورة الفاتحة"
+            android:gravity="center"
+            android:textSize="13sp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+        <TextView
+            android:textAlignment="center"
+            android:textDirection="rtl"
+            android:id="@+id/txtReciteName"
+            android:text="محمد صديق المنشاوي (المجود)"
+            android:gravity="center"
+            android:textSize="12sp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+        <ProgressBar
+            android:visibility="gone"
+            android:indeterminate="true"
+            style="@style/Widget.AppCompat.ProgressBar"
+            android:id="@+id/progressBarLoadingRecite"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+        <TextView
+            android:textAlignment="center"
+            android:textDirection="rtl"
+            android:id="@+id/txtError"
+            android:visibility="gone"
+            android:text="لا يمكن الاتصال بالشبكة"
+            android:textColor="@android:color/holo_red_light"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:textSize="14sp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+    <LinearLayout
+        android:id="@+id/controlLay"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:gravity="center"
+        android:layout_alignBottom="@id/contentLay"
+        android:orientation="vertical"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+        <ImageView
+            android:background="@android:color/darker_gray"
+            android:id="@+id/btnPauseRecite"
+            android:src="@android:drawable/ic_media_pause"
+            android:layout_margin="5dp"
+            android:layout_width="24dp"
+            android:layout_height="24dp" />
+        <ImageView
+            android:id="@+id/btnStopRecite"
+            android:background="@android:color/darker_gray"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:layout_width="24dp"
+            android:layout_height="24dp" />
+    </LinearLayout>
+</RelativeLayout>

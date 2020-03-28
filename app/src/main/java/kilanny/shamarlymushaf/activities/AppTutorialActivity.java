@@ -21,7 +21,7 @@ public class AppTutorialActivity extends TutorialActivity {
                         .setPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE})
                         .setTitle("Need Permission").setContent("Please give us permission")
                         .setBackgroundColor(Color.parseColor("#FF0957"))
-                        .setDrawable(R.drawable.ic_action_create)
+                        .setDrawable(android.R.drawable.ic_input_add)
                         .setSummary("Continue and learn")
                         .build());
         addFragment(

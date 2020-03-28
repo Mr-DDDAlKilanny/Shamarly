@@ -1,6 +1,5 @@
 package kilanny.shamarlymushaf.adapters;
 
-import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -48,7 +47,7 @@ public class AdsSliderAdapter extends SliderViewAdapter<SliderAdapterViewHolder>
             "اختيار اسم لإضافته لقائمة الرن، بالضغط على زر + في قائمة الاتصال",
             "تغيير مدينة الشخص",
             "يمكن إضافة مدن جديدة من هذه الشاشة",
-            "عرض السجل والمساعدة",
+            "عرض السجل والمساعدة"
     };
 
     private final boolean mPrayerAlarm;

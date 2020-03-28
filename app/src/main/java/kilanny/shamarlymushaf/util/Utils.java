@@ -1,5 +1,6 @@
 package kilanny.shamarlymushaf.util;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
@@ -10,6 +11,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
@@ -17,10 +19,18 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
 import android.os.RecoverySystem;
-import android.support.annotation.NonNull;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+
+import androidx.annotation.NonNull;
 
 import org.htmlcleaner.CleanerProperties;
 import org.htmlcleaner.HtmlCleaner;
@@ -60,6 +70,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
@@ -207,6 +218,7 @@ public class Utils {
                 Environment.MEDIA_MOUNTED_READ_ONLY.equals(state);
     }
 
+    @NonNull
     public static File getSurahDir(Context context, String reciter, int surah) {
         Setting s = Setting.getInstance(context);
         if (s.saveSoundsDirectory == null) return null;
@@ -384,6 +396,99 @@ public class Utils {
         }
         zipIs.close();
         zip.close();
+    }
+
+    public static int findReciteZipItemByFileName(@NonNull Context context, @NonNull File zipFile) {
+        String name;
+        if (zipFile.getName().contains("muhammad_siddiq_al-minshawi_teacher"))
+            name = "null_1";
+        else
+            name = zipFile.getName().substring(0, zipFile.getName().lastIndexOf('.'));
+        String[] r = context.getResources().getStringArray(R.array.reciter_values);
+        for (int i = 0; i < r.length; ++i) if (name.contains(r[i])) return i;
+        return -1;
+    }
+
+    public static boolean extractReciteZipFile(@NonNull Context context, @NonNull File zipFile) throws IOException {
+        int reciteIdx = findReciteZipItemByFileName(context, zipFile);
+        if (reciteIdx == -1) return false;
+        byte[] buffer = new byte[1024];
+        String[] r = context.getResources().getStringArray(R.array.reciter_values);
+        FileInputStream fis = new FileInputStream(zipFile);
+        ZipInputStream zis = new ZipInputStream(fis);
+        ZipEntry ze = zis.getNextEntry();
+        Pattern pattern = Pattern.compile("^(\\d{3})(\\d{3}).mp3$");
+        while (ze != null){
+            Matcher matcher = pattern.matcher(ze.getName());
+            if (matcher.matches()) {
+                int surah = Integer.parseInt(matcher.group(1));
+                int ayah = Integer.parseInt(matcher.group(2));
+                File surahDir = getSurahDir(context, r[reciteIdx], surah);
+                if (!surahDir.exists()) surahDir.mkdirs();
+                File ayahFile = getAyahFile(ayah, surahDir);
+                if (!ayahFile.exists()) {
+                    Log.d("extractSurahZip", "Unzipping to " + ayahFile.getAbsolutePath());
+                    FileOutputStream fos = new FileOutputStream(ayahFile);
+                    int len;
+                    while ((len = zis.read(buffer)) > 0) {
+                        fos.write(buffer, 0, len);
+                    }
+                    fos.close();
+                }
+            }
+            zis.closeEntry();
+            ze = zis.getNextEntry();
+        }
+        zis.closeEntry();
+        zis.close();
+        fis.close();
+        return true;
+    }
+
+    public static androidx.appcompat.app.AlertDialog showIndeterminateProgressDialog(Context context, String title) {
+        int llPadding = 30;
+        LinearLayout ll = new LinearLayout(context);
+        ll.setOrientation(LinearLayout.HORIZONTAL);
+        ll.setPadding(llPadding, llPadding, llPadding, llPadding);
+        ll.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams llParam = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        llParam.gravity = Gravity.CENTER;
+        ll.setLayoutParams(llParam);
+
+        ProgressBar progressBar = new ProgressBar(context);
+        progressBar.setIndeterminate(true);
+        progressBar.setPadding(0, 0, llPadding, 0);
+        progressBar.setLayoutParams(llParam);
+
+        llParam = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        llParam.gravity = Gravity.CENTER;
+        TextView tvText = new TextView(context);
+        tvText.setText(title);
+        tvText.setTextColor(Color.parseColor("#000000"));
+        tvText.setTextSize(20);
+        tvText.setLayoutParams(llParam);
+
+        ll.addView(progressBar);
+        ll.addView(tvText);
+
+        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(context);
+        builder.setCancelable(true);
+        builder.setView(ll);
+
+        androidx.appcompat.app.AlertDialog dialog = builder.create();
+        dialog.show();
+        Window window = dialog.getWindow();
+        if (window != null) {
+            WindowManager.LayoutParams layoutParams = new WindowManager.LayoutParams();
+            layoutParams.copyFrom(dialog.getWindow().getAttributes());
+            layoutParams.width = LinearLayout.LayoutParams.WRAP_CONTENT;
+            layoutParams.height = LinearLayout.LayoutParams.WRAP_CONTENT;
+            dialog.getWindow().setAttributes(layoutParams);
+        }
+        return dialog;
     }
 
     private static int downloadFile(byte[] buffer, String fromUrl, File saveTo) {
@@ -565,22 +670,19 @@ public class Utils {
         ArrayList<Callable<Void>> callables = new ArrayList<>();
         for (int i = 0; i < numThreads; ++i) {
             final int ii = i;
-            callables.add(new Callable<Void>() {
-                @Override
-                public Void call() {
-                    int myStart = ii * work + 1;
-                    int myEnd = (ii + 1) * work;
-                    if (ii == numThreads - 1) myEnd = maxPage;
-                    for (int i = myStart; i <= myEnd; ++i) {
-                        if (!pageExists(context, i)) {
-                            q.add(i);
-                            Log.d("getNotExitPages", "Page " + i + " does not exist");
-                        }
-                        progress.increment();
-                        listener.onProgress(progress.getData());
+            callables.add(() -> {
+                int myStart = ii * work + 1;
+                int myEnd = (ii + 1) * work;
+                if (ii == numThreads - 1) myEnd = maxPage;
+                for (int i1 = myStart; i1 <= myEnd; ++i1) {
+                    if (!pageExists(context, i1)) {
+                        q.add(i1);
+                        Log.d("getNotExitPages", "Page " + i1 + " does not exist");
                     }
-                    return null;
+                    progress.increment();
+                    listener.onProgress(progress.getData());
                 }
+                return null;
             });
         }
         try {
@@ -634,48 +736,24 @@ public class Utils {
             throw new IllegalStateException("User has not selected download dir");
         if (!surahDir.exists())
             surahDir.mkdirs();
-        Thread[] threads = new Thread[4];
         final Shared progress = new Shared();
         progress.setData(data.surahs[surah - 1].ayahCount + (surah == 1 ? 1 : 0) - q.size());
-        final DownloadStatusArray error = new DownloadStatusArray(threads.length);
-        final Shared interrupt = new Shared();
-        interrupt.setData(0);
-        for (int th = 0; th < threads.length; ++th) {
-            final int myIdx = th;
-            threads[th] = new Thread(new Runnable() {
-
-                @Override
-                public void run() {
-                    byte[] buf = new byte[1024];
-                    //Basmalah if not downloaded
-                    downloadAyah(context, reciter, 1, 1, buf,
-                            getSurahDir(context, reciter, 1), data);
-                    while (interrupt.getData() == 0 &&
-                            cancel.canContinue() && error.isAnyOk()) {
-                        Integer per = q.poll();
-                        if (per == null) break;
-                        int code = downloadAyah(context, reciter, surah, per,
-                                buf, surahDir, data);
-                        error.status[myIdx].setData(code);
-                        if (code == DOWNLOAD_OK) {
-                            progress.increment();
-                            progressListener.onProgress(progress.getData());
-                        }
-                    }
-                }
-            });
-        }
-        for (Thread thread1 : threads) thread1.start();
-        for (Thread thread : threads)
-            try {
-                thread.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-                interrupt.setData(1);
-                break;
+        byte[] buf = new byte[1024];
+        //Basmalah if not downloaded
+        int err = DOWNLOAD_OK;
+        downloadAyah(context, reciter, 1, 1, buf,
+                getSurahDir(context, reciter, 1), data);
+        while (err == DOWNLOAD_OK && cancel.canContinue()) {
+            Integer per = q.poll();
+            if (per == null) break;
+            err = downloadAyah(context, reciter, surah, per,
+                    buf, surahDir, data);
+            if (err == DOWNLOAD_OK) {
+                progress.increment();
+                progressListener.onProgress(progress.getData());
             }
-        listener.taskCompleted(!cancel.canContinue() || interrupt.getData() != 0 ?
-                DOWNLOAD_USER_CANCEL : error.getFirstError());
+        }
+        listener.taskCompleted(!cancel.canContinue() ? DOWNLOAD_USER_CANCEL : err);
     }
 
     public static AsyncTask downloadSurah(final Context context,
@@ -688,22 +766,12 @@ public class Utils {
             @Override
             protected Integer doInBackground(Void... params) {
                 final Shared res = new Shared();
-                myDownloadSurah(context, reciter, surah, new RecoverySystem.ProgressListener() {
-                    @Override
-                    public void onProgress(int progress) {
-                        publishProgress(progress);
-                    }
-                }, new DownloadTaskCompleteListener() {
-                    @Override
-                    public void taskCompleted(int result) {
-                        res.setData(result);
-                    }
-                }, new CancelOperationListener() {
-                    @Override
-                    public boolean canContinue() {
-                        return !isCancelled();
-                    }
-                }, new boolean[290], data);
+                myDownloadSurah(context, reciter, surah,
+                        this::publishProgress,
+                        res::setData,
+                        () -> !isCancelled(),
+                        new boolean[290], data
+                );
                 return res.getData();
             }
 
@@ -771,40 +839,37 @@ public class Utils {
                                  final Runnable finish) {
         showConfirm(context, "حذف جميع التلاوات لقارئ",
                 "حذف جميع التلاوات التي تم تحميلها لهذا القارئ نهائيا؟",
-                new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        final ProgressDialog show = new ProgressDialog(context);
-                        show.setTitle("حذف جميع تلاوات قارئ");
-                        show.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-                        show.setIndeterminate(false);
-                        show.setCancelable(false);
-                        show.setMax(114);
-                        show.setProgress(0);
-                        show.show();
-                        new AsyncTask<Void, Integer, Void>() {
-                            @Override
-                            protected Void doInBackground(Void... params) {
-                                for (int i = 1; i <= 114; ++i) {
-                                    deleteSurah(context, reciter, i);
-                                    publishProgress(i);
-                                }
-                                return null;
+                (dialog, which) -> {
+                    final ProgressDialog show = new ProgressDialog(context);
+                    show.setTitle("حذف جميع تلاوات قارئ");
+                    show.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+                    show.setIndeterminate(false);
+                    show.setCancelable(false);
+                    show.setMax(114);
+                    show.setProgress(0);
+                    show.show();
+                    new AsyncTask<Void, Integer, Void>() {
+                        @Override
+                        protected Void doInBackground(Void... params) {
+                            for (int i = 1; i <= 114; ++i) {
+                                deleteSurah(context, reciter, i);
+                                publishProgress(i);
                             }
+                            return null;
+                        }
 
-                            @Override
-                            protected void onProgressUpdate(final Integer... values) {
-                                show.setProgress(values[0]);
-                                progress.onProgress(values[0]);
-                            }
+                        @Override
+                        protected void onProgressUpdate(final Integer... values) {
+                            show.setProgress(values[0]);
+                            progress.onProgress(values[0]);
+                        }
 
-                            @Override
-                            protected void onPostExecute(Void v) {
-                                finish.run();
-                                show.dismiss();
-                            }
-                        }.execute();
-                    }
+                        @Override
+                        protected void onPostExecute(Void v) {
+                            finish.run();
+                            show.dismiss();
+                        }
+                    }.execute();
                 }, null);
     }
 
@@ -1034,12 +1099,14 @@ public class Utils {
     }
 
     public static android.widget.Toast createToast(Context ctx, String text, int duration, int gravity) {
+        @SuppressLint("ShowToast")
         android.widget.Toast toast = android.widget.Toast.makeText(ctx, text, duration);
         toast.setGravity(gravity, 0, 0);
         return toast;
     }
 
     public static android.widget.Toast createToast(Context ctx, int textResId, int duration, int gravity) {
+        @SuppressLint("ShowToast")
         android.widget.Toast toast = android.widget.Toast.makeText(ctx, textResId, duration);
         toast.setGravity(gravity, 0, 0);
         return toast;

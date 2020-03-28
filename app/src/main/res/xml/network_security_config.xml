@@ -7,5 +7,6 @@
         <domain includeSubdomains="true">www.yaquran.com</domain>
         <domain includeSubdomains="true">audio.recitequran.com</domain>
         <domain includeSubdomains="true">shamarlymushaf.firebaseio.com</domain>
+        <domain includeSubdomains="true">www.mediafire.com</domain>
     </domain-config>
 </network-security-config>

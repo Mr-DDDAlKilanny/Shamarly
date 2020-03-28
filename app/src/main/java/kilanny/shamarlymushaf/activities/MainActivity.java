@@ -2,6 +2,7 @@ package kilanny.shamarlymushaf.activities;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.ActionBar;
 import android.app.ActivityManager;
@@ -39,12 +40,12 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.RecoverySystem;
 import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.app.FragmentActivity;
-import android.support.v4.content.FileProvider;
-import android.support.v4.content.res.ResourcesCompat;
-import android.support.v4.view.ViewPager;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.FragmentActivity;
+import androidx.core.content.FileProvider;
+import androidx.core.content.res.ResourcesCompat;
+import androidx.viewpager.widget.ViewPager;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Display;
@@ -79,7 +80,6 @@ import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Condition;
@@ -97,9 +97,11 @@ import kilanny.shamarlymushaf.data.DbManager;
 import kilanny.shamarlymushaf.data.Khatmah;
 import kilanny.shamarlymushaf.data.ListItem;
 import kilanny.shamarlymushaf.data.QuranData;
+import kilanny.shamarlymushaf.data.SerializableInFile;
 import kilanny.shamarlymushaf.data.Setting;
 import kilanny.shamarlymushaf.data.Shared;
 import kilanny.shamarlymushaf.data.TafseerDbManager;
+import kilanny.shamarlymushaf.services.PlayReciteService;
 import kilanny.shamarlymushaf.util.AnalyticsTrackers;
 import kilanny.shamarlymushaf.util.ArabicNumbers;
 import kilanny.shamarlymushaf.util.CancelOperationListener;
@@ -460,7 +462,7 @@ public class MainActivity extends FragmentActivity {
         } else if (image.currentPage != null && image.currentPage.ayahs != null
                 && image.currentPage.ayahs.size() > 0) {
             pageInfo.setVisibility(View.VISIBLE);
-            AutoScrollViewPager pager = (AutoScrollViewPager) parent.findViewById(R.id.pageTitleViewPager);
+            AutoScrollViewPager pager = parent.findViewById(R.id.pageTitleViewPager);
             int page = image.currentPage.page;
             String juz = "", hizb = "";
             ListItem j = quranData.findJuzAtPage(page);
@@ -798,66 +800,60 @@ public class MainActivity extends FragmentActivity {
         }
         final CheckBox checkBoxRepeat = (CheckBox) dialog.findViewById(R.id.checkBoxRepeat);
         final LinearLayout repeatReciteLayout = dialog.findViewById(R.id.repeatReciteLayout);
-        checkBoxRepeat.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                repeatReciteLayout.setVisibility(isChecked ? View.VISIBLE : View.GONE);
-                spinner1.setClickable(isChecked);
-                spinner2.setClickable(isChecked);
-                from.setEnabled(isChecked);
-                to.setEnabled(isChecked);
-            }
+        checkBoxRepeat.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            repeatReciteLayout.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+            spinner1.setClickable(isChecked);
+            spinner2.setClickable(isChecked);
+            from.setEnabled(isChecked);
+            to.setEnabled(isChecked);
         });
-        dialog.findViewById(R.id.buttonStartReciteInBackground).setOnClickListener(new View.OnClickListener() {
-
-            @Override
-            public void onClick(View v) {
-                int autoStop = (int) ((ListItem) stopPeriod.getSelectedItem()).value;
-                int sf, f, st = 0, t = 0;
-                if (checkBoxRepeat.isChecked()) {
-                    String ff = from.getText().toString();
-                    String tt = to.getText().toString();
-                    if (spinner1.getSelectedItemPosition() < 1
-                            || spinner2.getSelectedItemPosition() < 1
-                            || ff.isEmpty() || tt.isEmpty()) {
-                        showError("الرجاء تعبئة جميع الحقول");
-                        return;
-                    }
-                    try {
-                        f = Integer.parseInt(ff);
-                        t = Integer.parseInt(tt);
-                    } catch (Exception ex) {
-                        showError("الأرقام غير صحيحة");
-                        return;
-                    }
-                    if (f <= 0 || t <= 0) {
-                        showError("رقم الآية يبدء من 1 فما فوق");
-                        return;
-                    }
-                    sf = (int) ((ListItem) spinner1.getSelectedItem()).value;
-                    st = (int) ((ListItem) spinner2.getSelectedItem()).value;
-                    f = Math.min(f, quranData.surahs[sf - 1].ayahCount);
-                    t = Math.min(t, quranData.surahs[st - 1].ayahCount);
-                    if ((sf > st || sf == st && f > t)
-                            && !pref.getBoolean("backToBegin", true)) {
-                        showError("البداية يجب أن لا تكون أعلى من النهاية. فعل خيار البدء من الفاتحة للاستمرار");
-                        return;
-                    }
-                } else if (image.currentPage != null && image.currentPage.ayahs != null) {
-                    Ayah a = image.currentPage.ayahs.get(result.selectionIndex >= 0 ?
-                            result.selectionIndex : 0);
-                    sf = a.sura; f = a.ayah;
-                } else {
-                    sf = 1;
-                    f = 1;
+        dialog.findViewById(R.id.buttonStartReciteInBackground).setOnClickListener(v -> {
+            int autoStop = (int) ((ListItem) stopPeriod.getSelectedItem()).value;
+            int sf, f, st = 0, t = 0;
+            if (checkBoxRepeat.isChecked()) {
+                String ff = from.getText().toString();
+                String tt = to.getText().toString();
+                if (spinner1.getSelectedItemPosition() < 1
+                        || spinner2.getSelectedItemPosition() < 1
+                        || ff.isEmpty() || tt.isEmpty()) {
+                    showError("الرجاء تعبئة جميع الحقول");
+                    return;
                 }
-                Intent intent = new Intent(MainActivity.this, PlayReciteActivity.class);
-                intent.putExtra(PlayReciteActivity.AUTO_STOP_PERIOD_MINUTES_EXTRA, autoStop);
-                intent.putExtra(PlayReciteActivity.REPEAT_STRING_EXTRA,
-                        String.format(Locale.ENGLISH, "%d:%d-%d:%d", sf, f, st, t));
-                startActivity(intent);
-                dialog.dismiss();
+                try {
+                    f = Integer.parseInt(ff);
+                    t = Integer.parseInt(tt);
+                } catch (Exception ex) {
+                    showError("الأرقام غير صحيحة");
+                    return;
+                }
+                if (f <= 0 || t <= 0) {
+                    showError("رقم الآية يبدء من 1 فما فوق");
+                    return;
+                }
+                sf = (int) ((ListItem) spinner1.getSelectedItem()).value;
+                st = (int) ((ListItem) spinner2.getSelectedItem()).value;
+                f = Math.min(f, quranData.surahs[sf - 1].ayahCount);
+                t = Math.min(t, quranData.surahs[st - 1].ayahCount);
+                if ((sf > st || sf == st && f > t)
+                        && !pref.getBoolean("backToBegin", true)) {
+                    showError("البداية يجب أن لا تكون أعلى من النهاية. فعل خيار البدء من الفاتحة للاستمرار");
+                    return;
+                }
+            } else if (image.currentPage != null && image.currentPage.ayahs != null) {
+                Ayah a = image.currentPage.ayahs.get(result.selectionIndex >= 0 ?
+                        result.selectionIndex : 0);
+                sf = a.sura; f = a.ayah;
+            } else {
+                sf = 1;
+                f = 1;
             }
+            Intent intent = new Intent(MainActivity.this, PlayReciteService.class);
+            intent.putExtra(PlayReciteService.ARG_AUTO_STOP_PERIOD_MINUTES_EXTRA, autoStop);
+            intent.putExtra(PlayReciteService.ARG_REPEAT_STRING_EXTRA,
+                    String.format(Locale.ENGLISH, "%d:%d-%d:%d", sf, f, st, t));
+            startService(intent);
+            dialog.dismiss();
+            finish();
         });
         dialog.setTitle("سماع التلاوة");
         dialog.show();
@@ -974,6 +970,9 @@ public class MainActivity extends FragmentActivity {
             stopPlayback();
             return;
         }
+
+        displayPlayTutorial();
+
         final boolean repeat = !(fromSurah == -1 || fromAyah == -1
                 || toSurah == -1 || toAyah == -1);
         togglePlayButton(true);
@@ -1045,194 +1044,179 @@ public class MainActivity extends FragmentActivity {
                 player.release();
             }
             player = new MediaPlayer();
-            player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                @Override
-                public void onCompletion(MediaPlayer mp) {
-                    if (listenRecite == null)
-                        listenRecite = new HashSet<>();
-                    listenRecite.add(String.format(Locale.US, "{\"r\":\"%s\",\"f\":\"%s\",\"s\":%d,\"a\":%d}",
-                            getSelectedSound(), lastRecitedAyahWasFile + "", sura, ayah));
-                    if (!allPagePlay) {
-                        stopPlayback();
-                    } else {
-                        QuranImageView image = getCurrentPage(playRecitePageIsRight);
-                        int next = quranData.surahs[sura - 1].ayahCount >= ayah + 1 ?
-                                ayah + 1 : 1;
-                        if (repeat) {
-                            if (sura == toSurah && ayah == toAyah) {
-                                sura = fromSurah;
-                                ayah = fromAyah;
-                                autoSwipPage = true;
-                                showPageForRecite(db.getPage(fromSurah, fromAyah));
-                                image = getCurrentPage(playRecitePageIsRight);
-                                if (image != null && image.currentPage != null && image.currentPage.ayahs != null)
-                                    for (int i = 0; i < image.currentPage.ayahs.size(); ++i) {
-                                        Ayah a = image.currentPage.ayahs.get(i);
-                                        if (a.sura == fromSurah && a.ayah == fromAyah) {
-                                            currentAyaxIndex.setData(i - 1); // will be increased later
-                                            break;
-                                        }
-                                    }
-                            } else if (next <= ayah) {
-                                if (++sura > quranData.surahs.length) {
-                                    if (pref.getBoolean("backToBegin", true)) {
-                                        sura = ayah = 1;
-                                        autoSwipPage = true;
-                                        showPageForRecite(db.getPage(1, 1));
-                                        image = getCurrentPage(playRecitePageIsRight);
-                                        currentAyaxIndex.setData(0);
-                                    } else {
-                                        stopPlayback();
-                                        return;
-                                    }
-                                } else ayah = next;
-                            } else {
-                                ayah = next;
-                            }
-                        } else {
-                            if (next <= ayah) {
-                                if (++sura > quranData.surahs.length) {
-                                    if (pref.getBoolean("backToBegin", true)) {
-                                        sura = next = 1;
-                                        autoSwipPage = true;
-                                        showPageForRecite(db.getPage(1, 1));
-                                        image = getCurrentPage(playRecitePageIsRight);
-                                        currentAyaxIndex.setData(0);
-                                    } else {
-                                        stopPlayback();
-                                        return;
+            player.setOnCompletionListener(mp -> {
+                if (listenRecite == null)
+                    listenRecite = new HashSet<>();
+                listenRecite.add(String.format(Locale.US, "{\"r\":\"%s\",\"f\":\"%s\",\"s\":%d,\"a\":%d}",
+                        getSelectedSound(), lastRecitedAyahWasFile + "", sura, ayah));
+                if (!allPagePlay) {
+                    stopPlayback();
+                } else {
+                    QuranImageView image12 = getCurrentPage(playRecitePageIsRight);
+                    int next = quranData.surahs[sura - 1].ayahCount >= ayah + 1 ?
+                            ayah + 1 : 1;
+                    if (repeat) {
+                        if (sura == toSurah && ayah == toAyah) {
+                            sura = fromSurah;
+                            ayah = fromAyah;
+                            autoSwipPage = true;
+                            showPageForRecite(db.getPage(fromSurah, fromAyah));
+                            image12 = getCurrentPage(playRecitePageIsRight);
+                            if (image12 != null && image12.currentPage != null && image12.currentPage.ayahs != null)
+                                for (int i = 0; i < image12.currentPage.ayahs.size(); ++i) {
+                                    Ayah a = image12.currentPage.ayahs.get(i);
+                                    if (a.sura == fromSurah && a.ayah == fromAyah) {
+                                        currentAyaxIndex.setData(i - 1); // will be increased later
+                                        break;
                                     }
                                 }
-                            }
+                        } else if (next <= ayah) {
+                            if (++sura > quranData.surahs.length) {
+                                if (pref.getBoolean("backToBegin", true)) {
+                                    sura = ayah = 1;
+                                    autoSwipPage = true;
+                                    showPageForRecite(db.getPage(1, 1));
+                                    image12 = getCurrentPage(playRecitePageIsRight);
+                                    currentAyaxIndex.setData(0);
+                                } else {
+                                    stopPlayback();
+                                    return;
+                                }
+                            } else ayah = next;
+                        } else {
                             ayah = next;
                         }
-                        if (image == null || image.currentPage == null || image.currentPage.ayahs == null) {
+                    } else {
+                        if (next <= ayah) {
+                            if (++sura > quranData.surahs.length) {
+                                if (pref.getBoolean("backToBegin", true)) {
+                                    sura = next = 1;
+                                    autoSwipPage = true;
+                                    showPageForRecite(db.getPage(1, 1));
+                                    image12 = getCurrentPage(playRecitePageIsRight);
+                                    currentAyaxIndex.setData(0);
+                                } else {
+                                    stopPlayback();
+                                    return;
+                                }
+                            }
+                        }
+                        ayah = next;
+                    }
+                    if (image12 == null || image12.currentPage == null || image12.currentPage.ayahs == null) {
+                        stopPlayback();
+                        return;
+                    }
+                    currentAyaxIndex.setData(image12.selectedAyahIndex =
+                            currentAyaxIndex.getData() + 1);
+                    if (image12.selectedAyahIndex == image12.currentPage.ayahs.size()) {
+                        autoSwipPage = true;
+                        if (isDualPage() && playRecitePageIsRight) {
+                            image12 = getCurrentPage(playRecitePageIsRight);
+                            if (image12 != null) {
+                                image12.selectedAyahIndex = QuranImageView.SELECTION_NONE;
+                                image12.invalidate();
+                            }
+                            image12 = getCurrentPage(playRecitePageIsRight = false);
+                        } else {
+                            showPageForRecite(isDualPage() ? setting.page * 2 + 2 :
+                                    setting.page + 1);
+                            image12 = getCurrentPage(playRecitePageIsRight);
+                        }
+                        if (image12 == null || image12.currentPage == null
+                                || image12.currentPage.ayahs == null) {
                             stopPlayback();
                             return;
                         }
-                        currentAyaxIndex.setData(image.selectedAyahIndex =
-                                currentAyaxIndex.getData() + 1);
-                        if (image.selectedAyahIndex == image.currentPage.ayahs.size()) {
-                            autoSwipPage = true;
-                            if (isDualPage() && playRecitePageIsRight) {
-                                image = getCurrentPage(playRecitePageIsRight);
-                                if (image != null) {
-                                    image.selectedAyahIndex = QuranImageView.SELECTION_NONE;
-                                    image.invalidate();
-                                }
-                                image = getCurrentPage(playRecitePageIsRight = false);
-                            } else {
-                                showPageForRecite(isDualPage() ? setting.page * 2 + 2 :
-                                        setting.page + 1);
-                                image = getCurrentPage(playRecitePageIsRight);
-                            }
-                            if (image == null || image.currentPage == null
-                                    || image.currentPage.ayahs == null) {
-                                stopPlayback();
-                                return;
-                            }
-                            currentAyaxIndex.setData(image.selectedAyahIndex = 0);
-                            if (image.currentPage.ayahs.get(0).ayah == 0)
-                                currentAyaxIndex.setData(image.selectedAyahIndex =
-                                        currentAyaxIndex.getData() + 1);
-                        }
-                        image.invalidate();
-                        bar.setVisibility(View.VISIBLE);
-                        final QuranImageView image1 = image;
-                        //attempt.setData(1);
-                        //instead remember last working choice
-                        Runnable tmpRunnable = new Runnable() {
-                            @Override
-                            public void run() {
-                                if (player == null) //stopPlayback() was called
-                                    return;
-                                try {
-                                    player.reset();
-                                    String path = Utils.getAyahPath(MainActivity.this,
-                                            getSelectedSound(), sura, ayah, quranData, attempt.getData());
-                                    if (path == null || path.startsWith("http") &&
-                                            Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
-                                        throw new IllegalStateException();
-                                    player.setDataSource(path);
-                                    player.prepareAsync();
-                                    lastRecitedAyahWasFile = path.startsWith("/");
-                                } catch (IOException | IllegalStateException e) {
-                                    e.printStackTrace();
-                                    bar.setVisibility(View.GONE);
-                                    Toast.makeText(MainActivity.this,
-                                            "لا يمكن تشغيل التلاوة. ربما هناك مشكلة في اتصال الشبكة",
-                                            Toast.LENGTH_SHORT).show();
-                                    image1.selectedAyahIndex = QuranImageView.SELECTION_NONE;
-                                    image1.invalidate();
-                                    togglePlayButton(false);
-                                }
-                            }
-                        };
-                        if (ayah == 1 && sura > 1 && sura != 9)
-                            playBasmalah(MainActivity.this, getSelectedSound(), quranData,
-                                    tmpRunnable);
-                        else tmpRunnable.run();
+                        currentAyaxIndex.setData(image12.selectedAyahIndex = 0);
+                        if (image12.currentPage.ayahs.get(0).ayah == 0)
+                            currentAyaxIndex.setData(image12.selectedAyahIndex =
+                                    currentAyaxIndex.getData() + 1);
                     }
+                    image12.invalidate();
+                    bar.setVisibility(View.VISIBLE);
+                    final QuranImageView image1 = image12;
+                    //attempt.setData(1);
+                    //instead remember last working choice
+                    Runnable tmpRunnable = () -> {
+                        if (player == null) //stopPlayback() was called
+                            return;
+                        try {
+                            player.reset();
+                            String path = Utils.getAyahPath(MainActivity.this,
+                                    getSelectedSound(), sura, ayah, quranData, attempt.getData());
+                            if (path == null || path.startsWith("http") &&
+                                    Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
+                                throw new IllegalStateException();
+                            player.setDataSource(path);
+                            player.prepareAsync();
+                            lastRecitedAyahWasFile = path.startsWith("/");
+                        } catch (IOException | IllegalStateException e) {
+                            e.printStackTrace();
+                            bar.setVisibility(View.GONE);
+                            Toast.makeText(MainActivity.this,
+                                    "لا يمكن تشغيل التلاوة. ربما هناك مشكلة في اتصال الشبكة",
+                                    Toast.LENGTH_SHORT).show();
+                            image1.selectedAyahIndex = QuranImageView.SELECTION_NONE;
+                            image1.invalidate();
+                            togglePlayButton(false);
+                        }
+                    };
+                    if (ayah == 1 && sura > 1 && sura != 9)
+                        playBasmalah(MainActivity.this, getSelectedSound(), quranData,
+                                tmpRunnable);
+                    else tmpRunnable.run();
                 }
             });
-            player.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-                @Override
-                public void onPrepared(MediaPlayer mp) {
-                    if (player != null) { //user closed/cancelled before prepare completes
-                        player.start();
-                    }
-                    bar.setVisibility(View.GONE);
+            player.setOnPreparedListener(mp -> {
+                if (player != null) { //user closed/cancelled before prepare completes
+                    player.start();
                 }
+                bar.setVisibility(View.GONE);
             });
-            player.setOnErrorListener(new MediaPlayer.OnErrorListener() {
-                @Override
-                public boolean onError(MediaPlayer mp, int what, int extra) {
-                    attempt.increment();
-                    if (attempt.getData() == 2) {
-                        String path = Utils.getAyahPath(MainActivity.this, getSelectedSound(),
-                                sura, ayah, quranData, 2);
-                        if (path != null) {
-                            try {
-                                if (path.startsWith("http") && Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
-                                    throw new IllegalStateException();
-                                player.reset();
-                                player.setDataSource(path);
-                                player.prepareAsync();
-                                lastRecitedAyahWasFile = path.startsWith("/");
-                                return true;
-                            } catch (IOException | IllegalStateException e) {
-                                e.printStackTrace();
-                            }
+            player.setOnErrorListener((mp, what, extra) -> {
+                attempt.increment();
+                if (attempt.getData() == 2) {
+                    String path = Utils.getAyahPath(MainActivity.this, getSelectedSound(),
+                            sura, ayah, quranData, 2);
+                    if (path != null) {
+                        try {
+                            if (path.startsWith("http") && Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
+                                throw new IllegalStateException();
+                            player.reset();
+                            player.setDataSource(path);
+                            player.prepareAsync();
+                            lastRecitedAyahWasFile = path.startsWith("/");
+                            return true;
+                        } catch (IOException | IllegalStateException e) {
+                            e.printStackTrace();
                         }
                     }
+                }
+                stopPlayback();
+                Toast.makeText(MainActivity.this,
+                        "لا يمكن تشغيل التلاوة. ربما توجد مشكلة في اتصالك بالإنترنت أو أن الخادم لا يستجيب",
+                        Toast.LENGTH_LONG).show();
+                return true;
+            });
+            player.setAudioStreamType(AudioManager.STREAM_MUSIC);
+            final Ayah a = image.currentPage.ayahs.get(currentAyaxIndex.getData());
+            Runnable tmpRunnable = () -> {
+                if (player == null) //stopPlayback() was called
+                    return;
+                try {
+                    String path = Utils.getAyahPath(MainActivity.this, getSelectedSound(),
+                            sura = a.sura, ayah = a.ayah, quranData, 1);
+                    if (path == null || path.startsWith("http") &&
+                            Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
+                        throw new IllegalStateException();
+                    player.setDataSource(path);
+                    player.prepareAsync();
+                } catch (IOException | IllegalStateException ignored) {
                     stopPlayback();
                     Toast.makeText(MainActivity.this,
                             "لا يمكن تشغيل التلاوة. ربما توجد مشكلة في اتصالك بالإنترنت أو أن الخادم لا يستجيب",
                             Toast.LENGTH_LONG).show();
-                    return true;
-                }
-            });
-            player.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            final Ayah a = image.currentPage.ayahs.get(currentAyaxIndex.getData());
-            Runnable tmpRunnable = new Runnable() {
-                @Override
-                public void run() {
-                    if (player == null) //stopPlayback() was called
-                        return;
-                    try {
-                        String path = Utils.getAyahPath(MainActivity.this, getSelectedSound(),
-                                sura = a.sura, ayah = a.ayah, quranData, 1);
-                        if (path == null || path.startsWith("http") &&
-                                Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
-                            throw new IllegalStateException();
-                        player.setDataSource(path);
-                        player.prepareAsync();
-                    } catch (IOException | IllegalStateException ignored) {
-                        stopPlayback();
-                        Toast.makeText(MainActivity.this,
-                                "لا يمكن تشغيل التلاوة. ربما توجد مشكلة في اتصالك بالإنترنت أو أن الخادم لا يستجيب",
-                                Toast.LENGTH_LONG).show();
-                    }
                 }
             };
             if (ayah == 1 && sura > 1 && sura != 9)
@@ -1269,6 +1253,25 @@ public class MainActivity extends FragmentActivity {
         return res;
     }
 
+    private void displayPlayTutorial() {
+        final SerializableInFile<Integer> maqraahResponse = new SerializableInFile<>(
+                getApplicationContext(), "playTutorial__st", 0);
+        if (maqraahResponse.getData() == 0) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("هل تعلم؟");
+            builder.setIcon(android.R.drawable.ic_dialog_alert);
+            builder.setMessage("يمكنك\n- تشغيل التلاوة بلا توقف من خلال تفعيل ذلك من الإعدادات\n- تشغيل في الخلفية لتوفير البطارية من الزر المجاور للتلاوة بالأسفل\n- تحميل لا محدود للتلاوات بدون اتصال من شاشة التحميلات");
+            builder.setPositiveButton("لا تخبرني مرة أخرى", (dialog, id) -> {
+                dialog.cancel();
+                maqraahResponse.setData(1, MainActivity.this);
+            });
+            builder.setNegativeButton("حسنا", (dialog, id) -> {
+                dialog.cancel();
+            });
+            builder.create().show();
+        }
+    }
+
     private void initButtons() {
         Button btn = (Button) findViewById(R.id.bookmarkBtn);
         btn.setOnClickListener(new View.OnClickListener() {
@@ -1284,29 +1287,32 @@ public class MainActivity extends FragmentActivity {
             }
         });
         final int minPage = isDualPage() ? 1 : 2;
-        findViewById(R.id.listenBackground).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (adapter.isNotAllDownloaded() || setting.page < minPage) {
-                    Toast.makeText(MainActivity.this, "يستخدم هذا الزر لاستماع التلاوة مع توفير البطارية",
-                            Toast.LENGTH_LONG).show();
-                    return;
-                }
-                displayReciteInBackgroundDlg();
+        findViewById(R.id.listenBackground).setOnClickListener(v -> {
+            if (adapter.isNotAllDownloaded() || setting.page < minPage) {
+                Toast.makeText(MainActivity.this, "يستخدم هذا الزر لاستماع التلاوة مع توفير البطارية",
+                        Toast.LENGTH_LONG).show();
+                return;
             }
+            if (Utils.isServiceRunning(this, PlayReciteService.class)) {
+                Utils.createToast(this, "تم تشغيل التلاوات في الخلفية. يمكن الوصول إليها عبر شريط الحالة بجوار الساعة",
+                        Toast.LENGTH_LONG, Gravity.CENTER).show();
+                return;
+            }
+            displayReciteInBackgroundDlg();
         });
         btn = (Button) findViewById(R.id.listen);
-        btn.setOnClickListener(new View.OnClickListener() {
-
-            @Override
-            public void onClick(View v) {
-                if (adapter.isNotAllDownloaded() || setting.page < minPage) {
-                    Toast.makeText(MainActivity.this, "يستخدم هذا الزر لتشغيل التلاوة",
-                            Toast.LENGTH_LONG).show();
-                    return;
-                }
-                playRecite(-1, -1, -1, -1);
+        btn.setOnClickListener(v -> {
+            if (adapter.isNotAllDownloaded() || setting.page < minPage) {
+                Toast.makeText(MainActivity.this, "يستخدم هذا الزر لتشغيل التلاوة",
+                        Toast.LENGTH_LONG).show();
+                return;
             }
+            if (Utils.isServiceRunning(this, PlayReciteService.class)) {
+                Utils.createToast(this, "تم تشغيل التلاوات في الخلفية. يمكن الوصول إليها عبر شريط الحالة بجوار الساعة",
+                        Toast.LENGTH_LONG, Gravity.CENTER).show();
+                return;
+            }
+            playRecite(-1, -1, -1, -1);
         });
         btn = (Button) findViewById(R.id.tafseer);
         btn.setOnClickListener(new View.OnClickListener() {
@@ -1558,7 +1564,7 @@ public class MainActivity extends FragmentActivity {
                                        int position, long id) {
                 idleUseCounter.setData(0);
                 ((TextView) parentView.getChildAt(0)).setTextColor(
-                        ResourcesCompat.getColor(getResources(), R.color.bright_blue, null));
+                        ResourcesCompat.getColor(getResources(), android.R.color.holo_blue_bright, null));
                 if (hasDownloadedTafaseer) {
                     currentSelectedTafseer = position;
                     displayAyahTafseerHelper(db2, (Integer) items[currentSelectedTafseer].value,
@@ -1648,6 +1654,7 @@ public class MainActivity extends FragmentActivity {
         dialog.show();
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private void displayShareDlg(QuranImageView image) {
         if (image.currentPage == null || image.currentPage.ayahs == null ||
                 image.currentPage.ayahs.size() == 0) {
@@ -1701,68 +1708,56 @@ public class MainActivity extends FragmentActivity {
                 return false;
             }
         });
-        dialog.findViewById(R.id.buttonShareImage).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
+        dialog.findViewById(R.id.buttonShareImage).setOnClickListener(v -> {
+            dialog.dismiss();
+            File path = new File(getExternalFilesDir(null),
+                    "shamraly_share.png");
+            try {
+                shareImageView.saveSelectedAyatAsImage(MainActivity.this,
+                        path, quranData);
+            } catch (Exception ex) {
+                Toast.makeText(MainActivity.this, "حدث خطأ أثناء محاولة حفظ الصورة",
+                        Toast.LENGTH_LONG).show();
+                AnalyticsTrackers.sendException(MainActivity.this, "shareDlgSaveImg", ex);
+                return;
+            }
+            Intent share = new Intent(Intent.ACTION_SEND);
+            share.setType("image/png");
+            share.putExtra(Intent.EXTRA_STREAM,
+                    FileProvider.getUriForFile(MainActivity.this,
+                    getApplicationContext().getPackageName() + ".kilanny.shamarlymushaf.provider",
+                    path));
+            share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(share, "مشاركة"));
+        });
+        dialog.findViewById(R.id.buttonShareCopy).setOnClickListener(v -> {
+            if (shareImageView.mutliSelectList.size() > 0) {
+                String text = Utils.getAllAyahText(MainActivity.this,
+                        shareImageView.mutliSelectList, quranData);
                 dialog.dismiss();
-                File path = new File(getExternalFilesDir(null),
-                        "shamraly_share.png");
-                try {
-                    shareImageView.saveSelectedAyatAsImage(MainActivity.this,
-                            path, quranData);
-                } catch (Exception ex) {
-                    Toast.makeText(MainActivity.this, "حدث خطأ أثناء محاولة حفظ الصورة",
-                            Toast.LENGTH_LONG).show();
-                    AnalyticsTrackers.sendException(MainActivity.this, "shareDlgSaveImg", ex);
-                    return;
-                }
-                Intent share = new Intent(Intent.ACTION_SEND);
-                share.setType("image/png");
-                share.putExtra(Intent.EXTRA_STREAM,
-                        FileProvider.getUriForFile(MainActivity.this,
-                        getApplicationContext().getPackageName() + ".kilanny.shamarlymushaf.provider",
-                        path));
-                share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                startActivity(Intent.createChooser(share, "مشاركة"));
-            }
+                ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                clipboard.setPrimaryClip(ClipData.newPlainText("مصحف الشمرلي", text));
+                Toast.makeText(MainActivity.this, "تم نسخ النص إلى الحافظة", Toast.LENGTH_LONG).show();
+            } else
+                showError("فضلا حدد آية أو أكثر");
         });
-        dialog.findViewById(R.id.buttonShareCopy).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (shareImageView.mutliSelectList.size() > 0) {
-                    String text = Utils.getAllAyahText(MainActivity.this,
-                            shareImageView.mutliSelectList, quranData);
-                    dialog.dismiss();
-                    ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-                    clipboard.setPrimaryClip(ClipData.newPlainText("مصحف الشمرلي", text));
-                    Toast.makeText(MainActivity.this, "تم نسخ النص إلى الحافظة", Toast.LENGTH_LONG).show();
-                } else
-                    showError("فضلا حدد آية أو أكثر");
-            }
+        dialog.findViewById(R.id.buttonShareText).setOnClickListener(v -> {
+            if (shareImageView.mutliSelectList.size() > 0) {
+                String text = Utils.getAllAyahText(MainActivity.this,
+                        shareImageView.mutliSelectList, quranData);
+                dialog.dismiss();
+                Intent sharingIntent = new Intent(Intent.ACTION_SEND);
+                sharingIntent.setType("text/plain");
+                sharingIntent.putExtra(Intent.EXTRA_SUBJECT, "");
+                sharingIntent.putExtra(Intent.EXTRA_TEXT, text);
+                startActivity(Intent.createChooser(sharingIntent, "مشاركة مجموعة من الآيات"));
+            } else
+                showError("فضلا حدد آية أو أكثر");
         });
-        dialog.findViewById(R.id.buttonShareText).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (shareImageView.mutliSelectList.size() > 0) {
-                    String text = Utils.getAllAyahText(MainActivity.this,
-                            shareImageView.mutliSelectList, quranData);
-                    dialog.dismiss();
-                    Intent sharingIntent = new Intent(android.content.Intent.ACTION_SEND);
-                    sharingIntent.setType("text/plain");
-                    sharingIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, "");
-                    sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, text);
-                    startActivity(Intent.createChooser(sharingIntent, "مشاركة مجموعة من الآيات"));
-                } else
-                    showError("فضلا حدد آية أو أكثر");
-            }
-        });
-        dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
-            @Override
-            public void onDismiss(DialogInterface dialog) {
-                if (shareImageView != null) {
-                    shareImageView.setImageBitmap(null);
-                    shareImageView = null;
-                }
+        dialog.setOnDismissListener(dialog1 -> {
+            if (shareImageView != null) {
+                shareImageView.setImageBitmap(null);
+                shareImageView = null;
             }
         });
         dialog.setTitle("مشاركة آية أو أكثر");

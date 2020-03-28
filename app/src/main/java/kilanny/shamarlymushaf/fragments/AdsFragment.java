@@ -4,8 +4,8 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.v4.app.DialogFragment;
-import android.support.v4.app.Fragment;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -69,37 +69,30 @@ public class AdsFragment extends DialogFragment {
         SliderView sliderView = view.findViewById(R.id.imageSlider);
         sliderView.setSliderAdapter(mAdsSliderAdapter = new AdsSliderAdapter(mPrayerAlarm));
         sliderView.startAutoCycle();
+        sliderView.setCircularHandlerEnabled(false);
         sliderView.setIndicatorAnimation(IndicatorAnimations.WORM);
         sliderView.setSliderTransformAnimation(SliderAnimations.SIMPLETRANSFORMATION);
         sliderView.setAutoCycleDirection(SliderView.AUTO_CYCLE_DIRECTION_RIGHT);
         sliderView.setIndicatorSelectedColor(Color.WHITE);
         sliderView.setIndicatorUnselectedColor(Color.GRAY);
         sliderView.setScrollTimeInSec(4); //set scroll delay in seconds :
-        view.findViewById(R.id.btnOk).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (mPrayerAlarm) {
-                    String appPackageName = "kilanny.muslimalarm";
-                    try {
-                        startActivity(new Intent(Intent.ACTION_VIEW,
-                                Uri.parse("market://details?id=" + appPackageName)));
-                    } catch (android.content.ActivityNotFoundException anfe) {
-                        startActivity(new Intent(Intent.ACTION_VIEW,
-                                Uri.parse("https://play.google.com/store/apps/details?id=" + appPackageName)));
-                    }
-                } else {
-                    Utils.openUrlInChromeOrDefault(v.getContext().getApplicationContext(),
-                            "https://sites.google.com/view/auto-caller/home");
+        view.findViewById(R.id.btnOk).setOnClickListener(v -> {
+            if (mPrayerAlarm) {
+                String appPackageName = "kilanny.muslimalarm";
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW,
+                            Uri.parse("market://details?id=" + appPackageName)));
+                } catch (android.content.ActivityNotFoundException anfe) {
+                    startActivity(new Intent(Intent.ACTION_VIEW,
+                            Uri.parse("https://play.google.com/store/apps/details?id=" + appPackageName)));
                 }
-                getDialog().dismiss();
+            } else {
+                Utils.openUrlInChromeOrDefault(v.getContext().getApplicationContext(),
+                        "https://sites.google.com/view/auto-caller/home");
             }
+            getDialog().dismiss();
         });
-        view.findViewById(R.id.btnCancel).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                getDialog().dismiss();
-            }
-        });
+        view.findViewById(R.id.btnCancel).setOnClickListener(v -> getDialog().dismiss());
         return view;
     }
 

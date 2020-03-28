@@ -4,8 +4,11 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
-    tools:context=".activities.AppTutorialActivity">
-
-
+    app:layout_behavior="@string/appbar_scrolling_view_behavior"
+    tools:context=".activities.ExternalRecitesDownloadActivity"
+    tools:showIn="@layout/activity_external_recites_download">
+    <ListView
+        android:id="@+id/listViewReciters"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>

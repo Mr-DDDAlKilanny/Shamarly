@@ -7,7 +7,7 @@ import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.RecoverySystem;
-import android.support.v4.app.Fragment;
+import androidx.fragment.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -94,7 +94,7 @@ public class ReciterDetailFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        if (getArguments().containsKey(ARG_ITEM_ID)) {
+        if (getArguments() != null && getArguments().containsKey(ARG_ITEM_ID)) {
             // Load the dummy content specified by the fragment
             // arguments. In a real-world scenario, use a Loader
             // to load content from a content provider.
@@ -124,12 +124,9 @@ public class ReciterDetailFragment extends Fragment {
         Context context = getContext();
         if (context != null && downloadedSurahs.size() > 0) {
             final Context ctx = context.getApplicationContext();
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    AnalyticsTrackers.sendDownloadRecites(ctx, mItem, downloadedSurahs);
-                    AnalyticsTrackers.send(ctx);
-                }
+            new Thread(() -> {
+                AnalyticsTrackers.sendDownloadRecites(ctx, mItem, downloadedSurahs);
+                AnalyticsTrackers.send(ctx);
             }).start();
         }
     }
@@ -195,24 +192,17 @@ public class ReciterDetailFragment extends Fragment {
                             }
                             setCurrentDownloadSurah(position + 1);
                             prevTask = Utils.downloadSurah(getActivity(), mItem, position + 1,
-                                    new RecoverySystem.ProgressListener() {
-                                        @Override
-                                        public void onProgress(int prog) {
-                                            setSurahProgress(position + 1, prog, true);
-                                        }
-                                    }, new DownloadTaskCompleteListener() {
-                                        @Override
-                                        public void taskCompleted(int result) {
-                                            prevTask = null;
-                                            if (result != Utils.DOWNLOAD_OK && result != Utils.DOWNLOAD_USER_CANCEL) {
-                                                String text = result == Utils.DOWNLOAD_QUOTA_EXCEEDED ?
-                                                        "تم بلوغ الكمية القصوى للتحميل لهذا اليوم. نرجوا المحاولة غدا"
-                                                        : "فشل التحميل. تأكد من اتصالك بالشبكة ووجود مساحة كافية بجهازك";
-                                                Toast.makeText(getActivity(), text, Toast.LENGTH_LONG).show();
-                                            } else if (result == Utils.DOWNLOAD_OK)
-                                                downloadedSurahs.add(position + 1);
-                                            setCurrentDownloadSurah(CURRENT_SURAH_NONE);
-                                        }
+                                    prog -> setSurahProgress(position + 1, prog, true),
+                                    result -> {
+                                        prevTask = null;
+                                        if (result != Utils.DOWNLOAD_OK && result != Utils.DOWNLOAD_USER_CANCEL) {
+                                            String text = result == Utils.DOWNLOAD_QUOTA_EXCEEDED ?
+                                                    "تم بلوغ الكمية القصوى للتحميل لهذا اليوم. نرجوا المحاولة غدا"
+                                                    : "فشل التحميل. تأكد من اتصالك بالشبكة ووجود مساحة كافية بجهازك";
+                                            Toast.makeText(getActivity(), text, Toast.LENGTH_LONG).show();
+                                        } else if (result == Utils.DOWNLOAD_OK)
+                                            downloadedSurahs.add(position + 1);
+                                        setCurrentDownloadSurah(CURRENT_SURAH_NONE);
                                     }, quranData);
                             Toast.makeText(getActivity(),
                                     "يتم التحميل...", Toast.LENGTH_SHORT).show();
@@ -227,45 +217,42 @@ public class ReciterDetailFragment extends Fragment {
                                     item.surah.name);
                             Utils.showConfirm(getActivity(), "حذف سورة",
                                     "متأكد أنك تريد " + message + " ؟"
-                                    , new DialogInterface.OnClickListener() {
-                                        @Override
-                                        public void onClick(DialogInterface dialog, int which) {
-                                            final ProgressDialog show = new ProgressDialog(getActivity());
-                                            show.setTitle(message);
-                                            show.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-                                            show.setIndeterminate(false);
-                                            show.setCancelable(false);
-                                            show.setMax(item.totalAyah);
-                                            show.setProgress(0);
-                                            show.show();
-                                            new AsyncTask<Void, Integer, Void>() {
-                                                @Override
-                                                protected Void doInBackground(Void... params) {
-                                                    File surahDir = Utils.getSurahDir(getActivity(),
-                                                            mItem, position + 1);
-                                                    if (surahDir != null && surahDir.exists()) {
-                                                        for (int i = 0; i <= item.totalAyah; ++i) {
-                                                            File file = Utils.getAyahFile(i, surahDir);
-                                                            if (file.exists())
-                                                                file.delete();
-                                                            publishProgress(i);
-                                                        }
-                                                    } else publishProgress(item.totalAyah);
-                                                    return null;
-                                                }
+                                    , (dialog, which) -> {
+                                        final ProgressDialog show = new ProgressDialog(getActivity());
+                                        show.setTitle(message);
+                                        show.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+                                        show.setIndeterminate(false);
+                                        show.setCancelable(false);
+                                        show.setMax(item.totalAyah);
+                                        show.setProgress(0);
+                                        show.show();
+                                        new AsyncTask<Void, Integer, Void>() {
+                                            @Override
+                                            protected Void doInBackground(Void... params) {
+                                                File surahDir = Utils.getSurahDir(getActivity(),
+                                                        mItem, position + 1);
+                                                if (surahDir != null && surahDir.exists()) {
+                                                    for (int i = 0; i <= item.totalAyah; ++i) {
+                                                        File file = Utils.getAyahFile(i, surahDir);
+                                                        if (file.exists())
+                                                            file.delete();
+                                                        publishProgress(i);
+                                                    }
+                                                } else publishProgress(item.totalAyah);
+                                                return null;
+                                            }
 
-                                                @Override
-                                                protected void onProgressUpdate(final Integer... values) {
-                                                    show.setProgress(values[0]);
-                                                }
+                                            @Override
+                                            protected void onProgressUpdate(final Integer... values) {
+                                                show.setProgress(values[0]);
+                                            }
 
-                                                @Override
-                                                protected void onPostExecute(Void v) {
-                                                    setSurahProgress(position + 1, 0, false);
-                                                    show.dismiss();
-                                                }
-                                            }.execute();
-                                        }
+                                            @Override
+                                            protected void onPostExecute(Void v) {
+                                                setSurahProgress(position + 1, 0, false);
+                                                show.dismiss();
+                                            }
+                                        }.execute();
                                     }, null);
                         }
                     });
@@ -273,27 +260,20 @@ public class ReciterDetailFragment extends Fragment {
                 }
             };
 
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    for (int i = 0; i < 114; ++i) {
-                        adapter.getItem(i).downloadedAyah = Utils.getNumDownloaded(getActivity(), mItem, i + 1);
-                    }
-                    Activity activity = getActivity();
-                    if (activity == null)
-                        return;
-                    activity.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            rootView.findViewById(R.id.progressBarLoading)
-                                    .setVisibility(View.GONE);
-                            ListView listview = (ListView)
-                                    rootView.findViewById(R.id.listview_reciter_detail);
-                            listview.setAdapter(adapter);
-                            listview.setVisibility(View.VISIBLE);
-                        }
-                    });
+            new Thread(() -> {
+                for (int i = 0; i < 114; ++i) {
+                    adapter.getItem(i).downloadedAyah = Utils.getNumDownloaded(getActivity(), mItem, i + 1);
                 }
+                Activity activity = getActivity();
+                if (activity == null)
+                    return;
+                activity.runOnUiThread(() -> {
+                    rootView.findViewById(R.id.progressBarLoading)
+                            .setVisibility(View.GONE);
+                    ListView listview = rootView.findViewById(R.id.listview_reciter_detail);
+                    listview.setAdapter(adapter);
+                    listview.setVisibility(View.VISIBLE);
+                });
             }).start();
         }
 

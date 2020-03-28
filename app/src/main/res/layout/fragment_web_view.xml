@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".fragments.WebViewFragment">
+    <TextView
+        android:id="@+id/txtName"
+        android:layout_centerHorizontal="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+    <TextView
+        android:layout_below="@id/txtName"
+        android:id="@+id/txtHelp"
+        android:text="فضلا اضغط الزر الأخضر عندما تظهر الصفحة لبدء التحميل\nبعد اكتمال التحميل، الرجاء الضغط على استيراد بجوار زر التحميل لإضافة التلاوات لمصحف الشمرلى"
+        android:layout_centerHorizontal="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+    <Button
+        android:layout_centerHorizontal="true"
+        android:id="@+id/btnOpenInBrowser"
+        android:text="إذا لم تعمل افتحها في المتصفح من هنا"
+        android:layout_below="@id/txtHelp"
+        android:visibility="invisible"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+    <WebView
+        android:layout_below="@id/btnOpenInBrowser"
+        android:id="@+id/webView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+</RelativeLayout>

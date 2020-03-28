@@ -278,4 +278,142 @@
         <item>@string/defaultTafseerTheme</item>
         <item>1</item>
     </string-array>
+
+    <string-array name="full_quran_download_files">
+        <item>http://www.mediafire.com/file/virnewz87apqa74/Abdul_Basit_Murattal_64kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/u2qausk2rb8o4k7/Abdul_Basit_Mujawwad_128kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/xs0vt7p1cqrooc7/Abdullaah_3awwaad_Al-Juhaynee_128kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/prf5fx0x6y9cru6/Abdullah_Basfar_64kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/ciigqgvxltta4l2/Abdullah_Matroud_128kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/i01wkbneqogf8t4/Abdurrahmaan_As-Sudais_64kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/b329ujrftj3auct/Abu_Bakr_Ash-Shaatree_64kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/lac3ot77eaq6anw/Ahmed_Neana_128kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/lr24eknd6xoemw3/ahmed_ibn_ali_al_ajamy_128kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/xgb18nwit03atzx/Akram_AlAlaqimy_128kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/g5et94e4o8msr15/Alafasy_64kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/xwyyi70y6ekbf12/Ali_Hajjaj_AlSuesy_128kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/wd8b96rotgao277/Ali_Jaber_64kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/9bp27g4ktf4pi7s/Fares_Abbad_64kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/qqch7ypdt131rhy/Ghamadi_40kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/fz30sfxv615cg65/Hani_Rifai_64kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/9pwcgp19148edvz/Hudhaify_64kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/t9ou0rqgpbl3v76/Husary_64kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/lzu1fti5rjndmc4/Husary_Muallim_128kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/sgife2a0vd42jwu/Husary_Mujawwad_64kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/zotwl70gdzxxq47/Ibrahim_Akhdar_32kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/seocrhwcjkk3mbg/Karim_Mansoori_40kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/plpdk16n716jb2o/Khaalid_Abdullaah_al-Qahtaanee_192kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/ztzk4jsryccuuip/Maher_AlMuaiqly_64kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/54rdet6zj0sv2cc/Menshawi_32kbps_16kbps.zip/file</item> <!-- Menshawi_32kbps  -->
+        <item>http://www.mediafire.com/file/ge7rt87zaed9rnl/Minshawy_Mujawwad_64kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/l1th1k4u8vtwv5u/muhammad_siddiq_al-minshawi_teacher.zip/file</item>
+        <item>http://www.mediafire.com/file/wdubfxlicgblkts/Muhammad_AbdulKareem_128kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/se97cvxld9qjrqf/Muhammad_Ayyoub_64kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/czcpj1nz8jxox24/Muhammad_Jibreel_64kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/a8riwszlkegp2uz/Muhsin_Al_Qasim_192kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/5ujx2n26i5z2uwt/Mustafa_Ismail_48kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/epih58yftle9aoz/Nasser_Alqatami_128kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/yqlzu5dn32av2n1/Sahl_Yassin_128kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/qv6313j2nc61w8q/Salaah_AbdulRahman_Bukhatir_128kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/4r5fn2nhhmk7pte/Salah_Al_Budair_128kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/tzzhrwhej3aa6o0/Saood_ash-Shuraym_64kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/7arezgugkml9684/Yaser_Salamah_128kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/e8mbmlu36sh3111/Yasser_Ad-Dussary_128kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/u7ovreep9sfdw1o/aziz_alili_128kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/1kgy2cz6167n9ji/khalefa_al_tunaiji_64kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/5j5ml18fn7trn13/mahmoud_ali_al_banna_32kbps.zip/file</item>
+        <item>http://www.mediafire.com/file/lr3tvu0mmt1mc0q/Mohammad_al_Tablaway_64kbps.zip/file</item>
+    </string-array>
+
+    <string-array name="full_quran_download_file_names">
+        <item>Abdul_Basit_Murattal_64kbps</item>
+        <item>Abdul_Basit_Mujawwad_128kbps</item>
+        <item>Abdullaah_3awwaad_Al-Juhaynee_128kbps</item>
+        <item>Abdullah_Basfar_64kbps</item>
+        <item>Abdullah_Matroud_128kbps</item>
+        <item>Abdurrahmaan_As-Sudais_64kbps</item>
+        <item>Abu_Bakr_Ash-Shaatree_64kbps</item>
+        <item>Ahmed_Neana_128kbps</item>
+        <item>ahmed_ibn_ali_al_ajamy_128kbps</item>
+        <item>Akram_AlAlaqimy_128kbps</item>
+        <item>Alafasy_64kbps</item>
+        <item>Ali_Hajjaj_AlSuesy_128kbps</item>
+        <item>Ali_Jaber_64kbps</item>
+        <item>Fares_Abbad_64kbps</item>
+        <item>Ghamadi_40kbps</item>
+        <item>Hani_Rifai_64kbps</item>
+        <item>Hudhaify_64kbps</item>
+        <item>Husary_64kbps</item>
+        <item>Husary_Muallim_128kbps</item>
+        <item>Husary_Mujawwad_64kbps</item>
+        <item>Ibrahim_Akhdar_32kbps</item>
+        <item>Karim_Mansoori_40kbps</item>
+        <item>Khaalid_Abdullaah_al-Qahtaanee_192kbps</item>
+        <item>Maher_AlMuaiqly_64kbps</item>
+        <item>Menshawi_32kbps_16kbps</item> <!-- Menshawi_32kbps  -->
+        <item>Minshawy_Mujawwad_64kbps</item>
+        <item>muhammad_siddiq_al-minshawi_teacher</item>
+        <item>Muhammad_AbdulKareem_128kbps</item>
+        <item>Muhammad_Ayyoub_64kbps</item>
+        <item>Muhammad_Jibreel_64kbps</item>
+        <item>Muhsin_Al_Qasim_192kbps</item>
+        <item>Mustafa_Ismail_48kbps</item>
+        <item>Nasser_Alqatami_128kbps</item>
+        <item>Sahl_Yassin_128kbps</item>
+        <item>Salaah_AbdulRahman_Bukhatir_128kbps</item>
+        <item>Salah_Al_Budair_128kbps</item>
+        <item>Saood_ash-Shuraym_64kbps</item>
+        <item>Yaser_Salamah_128kbps</item>
+        <item>Yasser_Ad-Dussary_128kbps</item>
+        <item>aziz_alili_128kbps</item>
+        <item>khalefa_al_tunaiji_64kbps</item>
+        <item>mahmoud_ali_al_banna_32kbps</item>
+        <item>Mohammad_al_Tablaway_64kbps</item>
+    </string-array>
+
+    <string-array name="full_quran_download_sizes">
+        <item>1.8 G.B.</item>
+        <item>6.2 G.B.</item>
+        <item>2.2 G.B.</item>
+        <item>1.8 G.B.</item>
+        <item>3.1 G.B.</item>
+        <item>1.1 G.B.</item>
+        <item>1.5 G.B.</item>
+        <item>3.4 G.B.</item>
+        <item>3.0 G.B.</item>
+        <item>3.2 G.B.</item>
+        <item>1.8 G.B.</item>
+        <item>3.4 G.B.</item>
+        <item>1.5 G.B.</item>
+        <item>1.2 G.B.</item>
+        <item>0.9 G.B.</item>
+        <item>1.5 G.B.</item>
+        <item>1.7 G.B.</item>
+        <item>2.5 G.B.</item>
+        <item>5.1 G.B.</item>
+        <item>3.4 G.B.</item>
+        <item>1.0 G.B.</item>
+        <item>2.1 G.B.</item>
+        <item>4.4 G.B.</item>
+        <item>1.2 G.B.</item>
+        <item>0.7 G.B.</item>
+        <item>3.4 G.B.</item>
+        <item>5.6 G.B.</item>
+        <item>2.5 G.B.</item>
+        <item>1.8 G.B.</item>
+        <item>1.5 G.B.</item>
+        <item>3.5 G.B.</item>
+        <item>0.3 G.B.</item>
+        <item>2.3 G.B.</item>
+        <item>1.7 G.B.</item>
+        <item>2.6 G.B.</item>
+        <item>2.5 G.B.</item>
+        <item>1.1 G.B.</item>
+        <item>3.0 G.B.</item>
+        <item>3.0 G.B.</item>
+        <item>2.8 G.B.</item>
+        <item>1.6 G.B.</item>
+        <item>0.8 G.B.</item>
+        <item>1.7 G.B.</item>
+    </string-array>
 </resources>

@@ -8,6 +8,16 @@ import android.util.Log;
 //import com.amplitude.api.Amplitude;
 //import com.amplitude.api.AmplitudeClient;
 
+import androidx.annotation.NonNull;
+import androidx.work.BackoffPolicy;
+import androidx.work.Constraints;
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.NetworkType;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
+import androidx.work.Worker;
+import androidx.work.WorkerParameters;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -38,7 +48,7 @@ import kilanny.shamarlymushaf.data.UserInfo;
 public final class AnalyticsTrackers {
 
     //private static AmplitudeClient instance;
-    private static AtomicBoolean sending = new AtomicBoolean(false);
+//    private static AtomicBoolean sending = new AtomicBoolean(false);
     private static Executor executor = new ThreadPoolExecutor(1, // core size
             2, // max size
             10*60, // idle timeout
@@ -158,10 +168,11 @@ public final class AnalyticsTrackers {
         }
     }
 
-    public static void sendForegroundListenReciteStats(Context context, HashSet<String> strings) {
+    public static void sendForegroundListenReciteStats(Context context, String reciter, HashSet<String> strings) {
         try {
             Object[] arr = strings.toArray();
-            String payload = Arrays.toString(arr);
+            String payload = String.format("{\"r\":\"%s\",\"s\":%s}",
+                    reciter, Arrays.toString(arr));
             addEvent("listenForegroundRecites", payload, context);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -220,15 +231,12 @@ public final class AnalyticsTrackers {
     }
 
     private static void addEvent(final String evtName, final String payload, final Context context) {
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                AnalyticData event = new AnalyticData();
-                event.eventName = evtName;
-                event.date = new Date();
-                event.payload = payload;
-                AnalyticData.Queue.enqueueMany(context, event);
-            }
+        executor.execute(() -> {
+            AnalyticData event = new AnalyticData();
+            event.eventName = evtName;
+            event.date = new Date();
+            event.payload = payload;
+            AnalyticData.Queue.enqueueMany(context, event);
         });
     }
 
@@ -257,77 +265,27 @@ public final class AnalyticsTrackers {
         String url = String.format("https://shamarlymushaf.firebaseio.com/analytics/%s/info.json",
                 userInfo.appInstanceId);
         String put = Utils.sendHttpRequest(url, "PUT", json, headers);
-        return put.contains(userInfo.appInstanceId);
+        try {
+            JSONObject jsonObject = new JSONObject(put);
+            return jsonObject.getString("app_code").equals(userInfo.appVersionCode);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return false;
+        }
     }
 
     public static void send(final Context context) {
-        if (sending.get())
-            return;
-        Integer tmpSz = AnalyticData.Queue.cachedSize();
-        if (tmpSz != null && tmpSz == 0)
-            return;
-        if (Utils.isConnected(context) != Utils.CONNECTION_STATUS_CONNECTED)
-            return;
-        if (!Utils.haveAvailableMemory(Utils.MIN_THREAD_MEMORY_ALLOCATION * 2))
-            return;
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                if (sending.get())
-                    return;
-                sending.set(true);
-                if (Utils.isConnected(context) != Utils.CONNECTION_STATUS_CONNECTED) {
-                    sending.set(false);
-                    return;
-                }
-                int sz = AnalyticData.Queue.size(context);
-                UserInfo userInfo = UserInfo.getInstance(context);
-                boolean hasChanged = userInfo.hasChanged != null && userInfo.hasChanged;
-                AnalyticsTrackersData trackersData = AnalyticsTrackersData.getInstance(context);
-                if (trackersData.getLastSend() == null || hasChanged)
-                    if (sendUserInfo(context)) {
-                        trackersData.setLastSend(new Date(), context);
-                        userInfo.hasChanged = false;
-                        userInfo.save(context);
-                    }
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmssSSS", Locale.US);
-                for (int i = 0; i < 10 && sz > 0; ++i, --sz) {
-                    AnalyticData sendData = AnalyticData.Queue.dequeueMany(context, 1)[0];
-                    Map<String, String> headers = new HashMap<>();
-                    headers.put("Content-Type", "application/json; charset=UTF-8");
-                    try {
-                        String json = formatJson("{\n" +
-                                "\t\"av\": \"%s\", \"evt\": \"%s\", \"time\": \"%s\", #####\n" +
-                                "}", userInfo.appVersionCode, sendData.eventName, sdf.format(sendData.date));
-                        json = json.replace("\t", "")
-                                .replace(", \n", ",")
-                                .replace("\n", "")
-                                .replace("\": \"", "\":\"");
-                        String payload = sendData.payload;
-                        payload = payload.substring(payload.indexOf('{') + 1);
-                        payload = payload.substring(0, payload.lastIndexOf('}'));
-                        json = json.replace("#####", payload);
-                        String url = String.format(
-                                "https://shamarlymushaf.firebaseio.com/analytics/%s/events/%s.json",
-                                userInfo.appInstanceId, sdf.format(new Date()));
-                        String res = Utils.sendHttpRequest(url, "PUT", json, headers);
-                        if (res.contains("{")) {
-                            trackersData.setLastSend(new Date(), context);
-                            Log.d("AnalTrack/send", "Successfully sent data: " + json);
-                        } else {
-                            AnalyticData.Queue.enqueueMany(context, sendData);
-                            Log.d("AnalTrack/send", "Fail sending data: " + json);
-                            break;
-                        }
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                        AnalyticData.Queue.enqueueMany(context, sendData);
-                        break;
-                    }
-                }
-                sending.set(false);
-            }
-        });
+        Constraints constraints = new Constraints
+                .Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build();
+        PeriodicWorkRequest saveRequest = new PeriodicWorkRequest
+                .Builder(UploadLogsWorker.class, 12, TimeUnit.HOURS)
+                .setConstraints(constraints)
+                .setBackoffCriteria(BackoffPolicy.LINEAR, 1, TimeUnit.HOURS)
+                .build();
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(UploadLogsWorker.class.getName(),
+                ExistingPeriodicWorkPolicy.REPLACE, saveRequest);
     }
 
     private static String formatJson(String format, Object ...args) {
@@ -366,6 +324,74 @@ public final class AnalyticsTrackers {
             addEvent("maqraahResponse", payload, context);
         } catch (Exception ex) {
             ex.printStackTrace();
+        }
+    }
+
+    public static class UploadLogsWorker extends Worker {
+
+        public UploadLogsWorker(
+                @NonNull Context context,
+                @NonNull WorkerParameters params) {
+            super(context, params);
+        }
+
+        @NonNull
+        @Override
+        public Result doWork() {
+            Integer tmpSz = AnalyticData.Queue.cachedSize();
+            if (tmpSz != null && tmpSz == 0)
+                return Result.success();
+            if (Utils.isConnected(getApplicationContext()) != Utils.CONNECTION_STATUS_CONNECTED)
+                return Result.retry();
+            int sz = AnalyticData.Queue.size(getApplicationContext());
+            UserInfo userInfo = UserInfo.getInstance(getApplicationContext());
+            boolean hasChanged = userInfo.hasChanged != null && userInfo.hasChanged;
+            AnalyticsTrackersData trackersData = AnalyticsTrackersData.getInstance(getApplicationContext());
+            if (trackersData.getLastSend() == null || hasChanged) {
+                if (sendUserInfo(getApplicationContext())) {
+                    trackersData.setLastSend(new Date(), getApplicationContext());
+                    userInfo.hasChanged = false;
+                    userInfo.save(getApplicationContext());
+                } else {
+                    return Result.retry();
+                }
+            }
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmssSSS", Locale.US);
+            for (int i = 0; i < 10 && sz > 0; ++i, --sz) {
+                AnalyticData sendData = AnalyticData.Queue.dequeueMany(getApplicationContext(), 1)[0];
+                Map<String, String> headers = new HashMap<>();
+                headers.put("Content-Type", "application/json; charset=UTF-8");
+                try {
+                    String json = formatJson("{\n" +
+                            "\t\"av\": \"%s\", \"evt\": \"%s\", \"time\": \"%s\", #####\n" +
+                            "}", userInfo.appVersionCode, sendData.eventName, sdf.format(sendData.date));
+                    json = json.replace("\t", "")
+                            .replace(", \n", ",")
+                            .replace("\n", "")
+                            .replace("\": \"", "\":\"");
+                    String payload = sendData.payload;
+                    payload = payload.substring(payload.indexOf('{') + 1);
+                    payload = payload.substring(0, payload.lastIndexOf('}'));
+                    json = json.replace("#####", payload);
+                    String url = String.format(
+                            "https://shamarlymushaf.firebaseio.com/analytics/%s/events/%s.json",
+                            userInfo.appInstanceId, sdf.format(new Date()));
+                    String res = Utils.sendHttpRequest(url, "PUT", json, headers);
+                    if (res.contains("{")) {
+                        trackersData.setLastSend(new Date(), getApplicationContext());
+                        Log.d("AnalTrack/send", "Successfully sent data: " + json);
+                    } else {
+                        AnalyticData.Queue.enqueueMany(getApplicationContext(), sendData);
+                        Log.d("AnalTrack/send", "Fail sending data: " + json);
+                        break;
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    AnalyticData.Queue.enqueueMany(getApplicationContext(), sendData);
+                    break;
+                }
+            }
+            return Result.success();
         }
     }
 }

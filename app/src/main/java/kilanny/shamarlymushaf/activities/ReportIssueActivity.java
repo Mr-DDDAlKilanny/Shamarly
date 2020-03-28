@@ -3,9 +3,8 @@ package kilanny.shamarlymushaf.activities;
 import android.content.Intent;
 import android.content.res.XmlResourceParser;
 import android.net.Uri;
-import android.support.v7.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.ExpandableListView;
 import android.widget.Toast;
@@ -21,7 +20,6 @@ import java.util.List;
 import kilanny.shamarlymushaf.R;
 import kilanny.shamarlymushaf.adapters.ExpandableListAdapter;
 import kilanny.shamarlymushaf.util.AnalyticsTrackers;
-import kilanny.shamarlymushaf.util.Utils;
 
 public class ReportIssueActivity extends AppCompatActivity {
 

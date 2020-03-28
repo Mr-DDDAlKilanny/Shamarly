@@ -1,61 +1,91 @@
 package kilanny.shamarlymushaf.activities;
 
+import android.Manifest;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
-import android.media.AudioManager;
-import android.media.MediaPlayer;
 import android.os.Build;
-import android.os.CountDownTimer;
-import android.preference.PreferenceManager;
 import android.os.Bundle;
-import android.support.v4.content.res.ResourcesCompat;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
+import android.os.IBinder;
 import android.text.method.ScrollingMovementMethod;
+import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.IOException;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
+import kilanny.shamarlymushaf.R;
 import kilanny.shamarlymushaf.data.Ayah;
 import kilanny.shamarlymushaf.data.QuranData;
-import kilanny.shamarlymushaf.R;
-import kilanny.shamarlymushaf.data.Shared;
+import kilanny.shamarlymushaf.data.SerializableInFile;
+import kilanny.shamarlymushaf.services.PlayReciteService;
 import kilanny.shamarlymushaf.util.AnalyticsTrackers;
 import kilanny.shamarlymushaf.util.Utils;
 
-public class PlayReciteActivity extends AppCompatActivity {
+public class PlayReciteActivity extends AppCompatActivity implements ServiceConnection {
 
-    public static final String AUTO_STOP_PERIOD_MINUTES_EXTRA
-            = "autoStopPeriodMinutes";
-    public static final String REPEAT_STRING_EXTRA = "repeatReciteDescStr";
-
+    private static final int PERMISSION_RQUEST = 987;
+    private static boolean hasLater;
     private ImageButton pauseBtn;
-    private long timerTickMillis;
-    private MediaPlayer player;
-    private SharedPreferences pref;
-    private QuranData quranData;
-    private int fromSurah, fromAyah, toSurah, toAyah;
-    private int currentSurah, currentAyah;
     private boolean isShown;
-    private long lastTimerTickMilliLeft;
-    private CountDownTimer countDownTimer;
-    private boolean paused = false;
+    private PlayReciteService.LocalBinder mBinder;
+    private BroadcastReceiver mServiceEventsBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, @NonNull Intent intent) {
+            if (PlayReciteService.ACTION_BROADCAST_EVENTS.equals(intent.getAction())) {
+                update();
+            }
+        }
+    };
 
-    private HashSet<String> listenRecite;
-    private boolean lastRecitedAyahWasFile = false;
+    private void update() {
+        if (isFinishing() || mBinder == null && !isShown)
+            return;
+        if (mBinder == null || mBinder.getService().isStopped()) {
+            finish(); // service was stopped
+        } else if (mBinder.getService().isLoading()) {
+            showProgress(true);
+            updateButtons();
+        } else if (mBinder.getService().hasError()) {
+            showProgress(false);
+            updateUi();
+            updateButtons();
+        } else if (mBinder.getService().isPaused()) {
+            updateButtons();
+        } else {
+            showProgress(false);
+            updateUi();
+            updateButtons();
+        }
+    }
+
+    private boolean checkServiceNotRunning() {
+        if (!Utils.isServiceRunning(this, PlayReciteService.class)) {
+            Utils.createToast(this, "تم إيقاف تشغيل التلاوات، أعد بدء التطبيق من الأيقونة",
+                    Toast.LENGTH_LONG, Gravity.CENTER).show();
+            finish();
+            return true;
+        }
+        return false;
+    }
 
     @Override
     protected void onResume() {
@@ -68,68 +98,74 @@ public class PlayReciteActivity extends AppCompatActivity {
     protected void onStop() {
         super.onStop();
         isShown = false;
+        unbindService(this);
         AnalyticsTrackers.send(getApplicationContext());
     }
 
     @Override
     protected void onStart() {
         super.onStart();
+        if (checkServiceNotRunning()) return;
         isShown = true;
+        bindService(new Intent(this, PlayReciteService.class), this, BIND_ABOVE_CLIENT);
         AnalyticsTrackers.send(getApplicationContext());
-    }
 
-    @Override
-    public void onBackPressed() {
-        new AlertDialog.Builder(this).setTitle("تأكيد الخروج")
-                .setIcon(android.R.drawable.ic_dialog_alert)
-                .setMessage("هل تريد فعلا إنهاء التلاوة في الخلفية؟")
-                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        PlayReciteActivity.super.onBackPressed();
-                        stopPlayback(false);
-                    }
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        stopPlayback(false);
-    }
-
-    private void stopPlayback(boolean finish) {
-        if (player != null) {
-            if (player.isPlaying()) player.stop();
-            player.release();
-            player = null;
-
-            if (listenRecite != null)
-                AnalyticsTrackers.sendForegroundListenReciteStats(getApplicationContext(),
-                        listenRecite);
+        boolean vis = false;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && ActivityCompat.checkSelfPermission(
+                this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+            vis = true;
+            SerializableInFile<Integer> maqraahResponse = new SerializableInFile<>(
+                    getApplicationContext(), "phonePermiss__st", 0);
+            if (maqraahResponse.getData() == 0 && !hasLater) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("طلب الإذن");
+                builder.setIcon(android.R.drawable.ic_dialog_alert);
+                builder.setMessage("هل تريد أن يقوم التطبيق بإيقاف تشغيل التلاوة تلقائيا عند رن هاتفك بواسطة مكالمة؟ إذا كنت تريد هذه الميزة الرجاء منح التطبيق الصلاحية المطلوبة");
+                builder.setPositiveButton("نعم أريد", (dialog, id) -> {
+                    dialog.cancel();
+                    ActivityCompat.requestPermissions(this,
+                            new String[] {Manifest.permission.READ_PHONE_STATE}, PERMISSION_RQUEST);
+                });
+                builder.setNeutralButton("لاحقا", (dialog, id) -> {
+                    dialog.cancel();
+                    hasLater = true;
+                });
+                builder.setNegativeButton("لا أريد هذه الميزة", (dialog, id) -> {
+                    dialog.cancel();
+                    maqraahResponse.setData(-1, getApplicationContext());
+                });
+                builder.create().show();
+            }
         }
-        if (finish && !isFinishing()) finish();
+        findViewById(R.id.permissionCheckLayout).setVisibility(vis ? View.VISIBLE : View.INVISIBLE);
     }
 
-    private String getSelectedSound() {
-        return MainActivity.getSelectedSound(pref, this);
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_RQUEST &&
+                grantResults.length > 0 &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            if (mBinder != null)
+                mBinder.getService().onGrantedPhoneStatePermission();
+            findViewById(R.id.permissionCheckLayout).setVisibility(View.INVISIBLE);
+        }
     }
 
     private String getSelectedSoundName() {
-        int idx = Utils.indexOf(quranData.reciterValues, getSelectedSound());
+        QuranData quranData = QuranData.getInstance(this);
+        int idx = Utils.indexOf(quranData.reciterValues, mBinder.getService().getSelectedSound());
         if (idx >= 0)
             return quranData.reciterNames[idx];
         return null;
     }
 
     private void updateUi() {
-        updateUi(false, null);
+        updateUi(false);
     }
 
-    private void updateUi(boolean force, String errorMessage) {
-        if (currentSurah == 0 || currentAyah == 0)
+    private void updateUi(boolean force) {
+        if (mBinder == null)
             return;
         TextView sName = (TextView) findViewById(R.id.textViewSurahAyah);
         TextView rName = (TextView) findViewById(R.id.textViewReciter);
@@ -138,12 +174,13 @@ public class PlayReciteActivity extends AppCompatActivity {
             aName.setMovementMethod(new ScrollingMovementMethod());
         TextView eName = (TextView) findViewById(R.id.textViewError);
         if (force || isShown) {
-            sName.setText("سورة " + quranData.surahs[currentSurah - 1].name);
+            QuranData quranData = QuranData.getInstance(this);
+            sName.setText("سورة " + quranData.surahs[mBinder.getService().getCurrentSurah() - 1].name);
             rName.setText("القارئ/ " + getSelectedSoundName());
             ArrayList<Ayah> a = new ArrayList<>();
             Ayah aa = new Ayah();
-            aa.ayah = currentAyah;
-            aa.sura = currentSurah;
+            aa.ayah = mBinder.getService().getCurrentAyah();
+            aa.sura = mBinder.getService().getCurrentSurah();
             a.add(aa);
             String ayah = Utils.getAllAyahText(this, a, quranData);
             if (ayah == null) ayah = "";
@@ -154,176 +191,26 @@ public class PlayReciteActivity extends AppCompatActivity {
             } else ayah = "";
             aName.setText(ayah);
 
-            if (errorMessage != null) {
-                eName.setText(errorMessage);
+            if (mBinder.getService().hasError()) {
+                eName.setText("قد يكون جهازك غير متصل بالشبكة أو أن الخادم لا يستجيب");
                 eName.setVisibility(View.VISIBLE);
             } else eName.setVisibility(View.INVISIBLE);
+
+            final TextView time = findViewById(R.id.textViewTiming);
+            if (mBinder.getService().getLastTimerTickMilliLeft() > 0) {
+                long n = mBinder.getService().getLastTimerTickMilliLeft() / 1000;
+                int day = (int) TimeUnit.SECONDS.toDays(n);
+                long hours = TimeUnit.SECONDS.toHours(n) - (day *24);
+                long minute = TimeUnit.SECONDS.toMinutes(n) - (TimeUnit.SECONDS.toHours(n)* 60);
+                long second = TimeUnit.SECONDS.toSeconds(n) - (TimeUnit.SECONDS.toMinutes(n) *60);
+                time.setText(String.format(Locale.ENGLISH, "%02d:%02d:%02d\n", hours, minute, second));
+            } else time.setText("(بلا)");
         }
     }
 
     private void showProgress(boolean visible) {
-        ProgressBar bar = (ProgressBar) findViewById(R.id.progressBarLoadingRecite);
+        ProgressBar bar = findViewById(R.id.progressBarLoadingRecite);
         bar.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
-    }
-
-    private void prepare() {
-        try {
-            player.prepareAsync();
-        } catch (IllegalStateException ignored) {
-            showProgress(false);
-            stopPlayback(false);
-            updateUi(true, "قد يكون جهازك غير متصل بالشبكة أو أن الخادم لا يستجيب");
-            Toast.makeText(PlayReciteActivity.this,
-                    "لا يمكن تشغيل التلاوة. ربما توجد مشكلة في اتصالك بالإنترنت أو أن الخادم لا يستجيب",
-                    Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void startPlayback() {
-        if (player != null) {
-            if (player.isPlaying()) player.stop();
-            player.release();
-        }
-        player = new MediaPlayer();
-        player.setAudioStreamType(AudioManager.STREAM_MUSIC);
-        final Shared attempt = new Shared();
-        attempt.setData(1);
-        player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-            @Override
-            public void onCompletion(MediaPlayer mp) {
-                try {
-                    if (listenRecite == null)
-                        listenRecite = new HashSet<>();
-                    listenRecite.add(String.format(Locale.US, "{\"r\":\"%s\",\"f\":\"%s\",\"s\":%d,\"a\":%d}",
-                            getSelectedSound(), lastRecitedAyahWasFile + "", currentSurah, currentAyah));
-                    ++currentAyah;
-                    if (toSurah > 0 && toAyah > 0) { // repeat choice
-                        if (currentSurah == toSurah && currentAyah > toAyah) {
-                            currentSurah = fromSurah;
-                            currentAyah = fromAyah;
-                        } else if (currentAyah > quranData.surahs[currentSurah - 1].ayahCount) {
-                            currentAyah = 1;
-                            if (++currentSurah > quranData.surahs.length)
-                                currentSurah = 1;
-                        }
-                    } else if (currentAyah > quranData.surahs[currentSurah - 1].ayahCount) { // no repeat
-                        currentAyah = 1;
-                        if (++currentSurah > quranData.surahs.length) {
-                            if (pref.getBoolean("backToBegin", true)) {
-                                currentSurah = 1;
-                            } else {
-                                stopPlayback(false);
-                                return;
-                            }
-                        }
-                    }
-                    player.reset();
-                    if (paused) {
-                        pauseBtn.setEnabled(true);
-                        return;
-                    }
-                    final String path = Utils.getAyahPath(PlayReciteActivity.this,
-                            getSelectedSound(),
-                            currentSurah, currentAyah, quranData, attempt.getData());
-                    if (path == null || path.startsWith("http") &&
-                            Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
-                        throw new IllegalStateException();
-                    player.setDataSource(path);
-                    Runnable tmpRunnable = new Runnable() {
-                        @Override
-                        public void run() {
-                            if (player == null) //stopPlayback() was called
-                                return;
-                            showProgress(true);
-                            prepare();
-                            lastRecitedAyahWasFile = path.startsWith("/");
-                        }
-                    };
-                    if (currentAyah == 1 && currentSurah > 1 && currentSurah != 9)
-                        MainActivity.playBasmalah(PlayReciteActivity.this,
-                                getSelectedSound(), quranData, tmpRunnable);
-                    else tmpRunnable.run();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    showProgress(false);
-                    stopPlayback(false);
-                    updateUi(true, "قد يكون جهازك غير متصل بالشبكة أو أن الخادم لا يستجيب");
-                    Toast.makeText(PlayReciteActivity.this,
-                            "لا يمكن تشغيل التلاوة. ربما توجد مشكلة في اتصالك بالإنترنت أو أن الخادم لا يستجيب",
-                            Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
-        player.setOnErrorListener(new MediaPlayer.OnErrorListener() {
-            @Override
-            public boolean onError(MediaPlayer mp, int what, int extra) {
-                attempt.increment();
-                if (!paused && attempt.getData() == 2) {
-                    String path = Utils.getAyahPath(PlayReciteActivity.this, getSelectedSound(),
-                            currentSurah, currentAyah, quranData, 2);
-                    if (path != null) {
-                        try {
-                            if (path.startsWith("http") && Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
-                                throw new IllegalStateException();
-                            player.reset();
-                            player.setDataSource(path);
-                            player.prepareAsync();
-                            lastRecitedAyahWasFile = path.startsWith("/");
-                            return true;
-                        } catch (IOException | IllegalStateException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                } else if (paused)
-                    pauseBtn.setEnabled(true);
-                showProgress(false);
-                stopPlayback(false);
-                updateUi(true, "قد يكون جهازك غير متصل بالشبكة أو أن الخادم لا يستجيب");
-                Toast.makeText(PlayReciteActivity.this,
-                        "لا يمكن تشغيل التلاوة. ربما توجد مشكلة في اتصالك بالإنترنت أو أن الخادم لا يستجيب",
-                        Toast.LENGTH_SHORT).show();
-                return true;
-            }
-        });
-        player.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-            @Override
-            public void onPrepared(MediaPlayer mp) {
-                if (player != null && !paused) { //user closed/cancelled before prepare completes
-                    updateUi();
-                    showProgress(false);
-                    player.start();
-                } else if (paused)
-                    pauseBtn.setEnabled(true);
-            }
-        });
-        try {
-            final String path = Utils.getAyahPath(this, getSelectedSound(),
-                    currentSurah, currentAyah, quranData, 1);
-            if (path == null || path.startsWith("http") &&
-                    Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
-                throw new IllegalStateException();
-            player.setDataSource(path);
-            Runnable tmpRunnable = new Runnable() {
-                @Override
-                public void run() {
-                    if (player == null) //stopPlayback() was called
-                        return;
-                    lastRecitedAyahWasFile = path.startsWith("/");
-                    prepare();
-                }
-            };
-            if (currentAyah == 1 && currentSurah > 1 && currentSurah != 9)
-                MainActivity.playBasmalah(this, getSelectedSound(), quranData, tmpRunnable);
-            else tmpRunnable.run();
-        } catch (Exception e) {
-            e.printStackTrace();
-            showProgress(false);
-            stopPlayback(false);
-            updateUi(true, "قد يكون جهازك غير متصل بالشبكة أو أن الخادم لا يستجيب");
-            Toast.makeText(PlayReciteActivity.this,
-                    "لا يمكن تشغيل التلاوة. ربما توجد مشكلة في اتصالك بالإنترنت أو أن الخادم لا يستجيب",
-                    Toast.LENGTH_SHORT).show();
-        }
     }
 
     private Drawable myGetDrawable(int id) {
@@ -334,133 +221,78 @@ public class PlayReciteActivity extends AppCompatActivity {
             return getResources().getDrawable(id);
     }
 
-    private void initAutoCloseTimer() {
-        final TextView time = (TextView) findViewById(R.id.textViewTiming);
-        if (lastTimerTickMilliLeft > 0)
-            countDownTimer = new CountDownTimer(lastTimerTickMilliLeft, 1000) {
-
-                @Override
-                public void onTick(long millisUntilFinished) {
-                    lastTimerTickMilliLeft = millisUntilFinished;
-                    long n = lastTimerTickMilliLeft / 1000;
-                    int day = (int) TimeUnit.SECONDS.toDays(n);
-                    long hours = TimeUnit.SECONDS.toHours(n) - (day *24);
-                    long minute = TimeUnit.SECONDS.toMinutes(n) - (TimeUnit.SECONDS.toHours(n)* 60);
-                    long second = TimeUnit.SECONDS.toSeconds(n) - (TimeUnit.SECONDS.toMinutes(n) *60);
-                    time.setText(String.format(Locale.ENGLISH, "%02d:%02d:%02d\n", hours, minute, second));
-                }
-
-                @Override
-                public void onFinish() {
-                    pauseRecite();
-                    lastTimerTickMilliLeft = timerTickMillis;
-                }
-            }.start();
-        else time.setText("(بلا)");
+    private void pauseRecite() {
+        if (mBinder == null) return;
+        mBinder.getService().onClick(true);
+        updateButtons();
     }
 
-    private void pauseRecite() {
-        if (!paused) {
-            paused = true;
-            if (player != null && player.isPlaying()) {
-                pauseBtn.setEnabled(false);
-                Toast.makeText(PlayReciteActivity.this,
-                        "تم إيقاف التلاوة. انتظر هذه الآية حتى تنتهي",
-                        Toast.LENGTH_LONG).show();
-            } else
-                stopPlayback(false);
-            if (countDownTimer != null)
-                countDownTimer.cancel();
+    private void updateButtons() {
+        if (mBinder == null) return;
+        if (mBinder.getService().isPaused()) {
             pauseBtn.setImageDrawable(myGetDrawable(android.R.drawable.ic_media_play));
         } else {
-            paused = false;
             pauseBtn.setImageDrawable(myGetDrawable(android.R.drawable.ic_media_pause));
-            initAutoCloseTimer();
-            startPlayback();
         }
-        findViewById(R.id.imageButtonNextAyah).setEnabled(paused);
-        findViewById(R.id.imageButtonPrevAyah).setEnabled(paused);
+        findViewById(R.id.imageButtonNextAyah).setEnabled(mBinder.getService().isPaused());
+        findViewById(R.id.imageButtonPrevAyah).setEnabled(mBinder.getService().isPaused());
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_play_recite);
+        if (checkServiceNotRunning()) {
+            mServiceEventsBroadcastReceiver = null;
+            return;
+        }
+        registerReceiver(mServiceEventsBroadcastReceiver,
+                new IntentFilter(PlayReciteService.ACTION_BROADCAST_EVENTS));
         Typeface typeface = Typeface.createFromAsset(getAssets(), "DroidNaskh-Regular.ttf");
         ((TextView) findViewById(R.id.textViewAyahText)).setTypeface(typeface);
-        pref = PreferenceManager.getDefaultSharedPreferences(this);
-        quranData = QuranData.getInstance(this);
         pauseBtn = findViewById(R.id.imageButtonPause);
-        pauseBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                pauseRecite();
-            }
+        pauseBtn.setOnClickListener(v -> pauseRecite());
+        findViewById(R.id.imageButtonStop).setOnClickListener(v -> {
+            if (mBinder == null)
+                return;
+            mBinder.getService().onClick(false);
         });
-        findViewById(R.id.imageButtonStop).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                stopPlayback(true);
-            }
+        findViewById(R.id.imageButtonNextAyah).setOnClickListener(view -> {
+            if (mBinder == null)
+                return;
+            mBinder.getService().nextAyah();
+            updateUi();
         });
-        findViewById(R.id.imageButtonNextAyah).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (++currentAyah > quranData.surahs[currentSurah - 1].ayahCount) {
-                    currentAyah = 1;
-                    if (++currentSurah > quranData.surahs.length)
-                        currentSurah = 1;
-                }
-                updateUi();
-            }
+        findViewById(R.id.imageButtonPrevAyah).setOnClickListener(view -> {
+            if (mBinder == null)
+                return;
+            mBinder.getService().prevAyah();
+            updateUi();
         });
-        findViewById(R.id.imageButtonPrevAyah).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (--currentAyah < 1) {
-                    if (--currentSurah < 1)
-                        currentSurah = quranData.surahs.length;
-                    currentAyah = quranData.surahs[currentSurah - 1].ayahCount;
-                }
-                updateUi();
-            }
-        });
-        Intent intent = getIntent();
-        lastTimerTickMilliLeft = timerTickMillis = 60 * 1000 *
-                intent.getIntExtra(AUTO_STOP_PERIOD_MINUTES_EXTRA, 0);
-        initAutoCloseTimer();
-        String stringExtra = intent.getStringExtra(REPEAT_STRING_EXTRA);
-        if (stringExtra != null) {
-            Pattern p = Pattern.compile("(\\d+):(\\d+)-(\\d+):(\\d+)");
-            Matcher matcher = p.matcher(stringExtra);
-            if (matcher.matches()) {
-                fromSurah = Integer.parseInt(matcher.group(1));
-                fromAyah = Integer.parseInt(matcher.group(2));
-                toSurah = Integer.parseInt(matcher.group(3));
-                toAyah = Integer.parseInt(matcher.group(4));
-            }
-        }
-        if (fromSurah == 0)
-            fromSurah = 1;
-        currentSurah = fromSurah;
-        currentAyah = fromAyah;
-//        if (savedInstanceState != null) {
-//            int currentSurah = savedInstanceState.getInt("currentSurah");
-//            int currentAyah = savedInstanceState.getInt("currentAyah");
-//            if (currentSurah > 0 && currentAyah > 0) {
-//                this.currentSurah = currentSurah;
-//                this.currentAyah = currentAyah;
-//            }
-//        }
-        findViewById(R.id.imageButtonNextAyah).setEnabled(false);
-        findViewById(R.id.imageButtonPrevAyah).setEnabled(false);
-        startPlayback();
+        findViewById(R.id.btnPermissions).setOnClickListener(view ->
+                ActivityCompat.requestPermissions(this,
+                        new String[] {Manifest.permission.READ_PHONE_STATE}, PERMISSION_RQUEST));
     }
 
-//    @Override
-//    protected void onSaveInstanceState(Bundle outState) {
-//        super.onSaveInstanceState(outState);
-//        outState.putInt("currentSurah", currentSurah);
-//        outState.putInt("currentAyah", currentAyah);
-//    }
+    @Override
+    protected void onDestroy() {
+        if (mServiceEventsBroadcastReceiver != null) {
+            unregisterReceiver(mServiceEventsBroadcastReceiver);
+            mServiceEventsBroadcastReceiver = null;
+        }
+        super.onDestroy();
+    }
+
+    @Override
+    public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+        Log.d("onServiceConnected", componentName.getClassName());
+        mBinder = (PlayReciteService.LocalBinder) iBinder;
+        update();
+    }
+
+    @Override
+    public void onServiceDisconnected(ComponentName componentName) {
+        Log.d("onServiceDisconnected", componentName.getClassName());
+        mBinder = null;
+    }
 }

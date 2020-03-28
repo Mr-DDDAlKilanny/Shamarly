@@ -3,11 +3,12 @@ package kilanny.shamarlymushaf.activities;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.app.FragmentManager;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
+import androidx.fragment.app.FragmentManager;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+
 import android.view.View;
 import android.widget.ImageButton;
 
@@ -36,15 +37,11 @@ public class WelcomeActivity extends AppCompatActivity {
                     if (info != null && info[0] != null && !info[0].isEmpty()) {
                         hasCheckedForUpdates = true;
                         if (!info[0].equals(BuildConfig.VERSION_NAME)) {
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    try {
-                                        Utils.showConfirm(WelcomeActivity.this, "إصدار أحدث " + info[0],
-                                                "قم بتحديث التطبيق من المتجر الآن"
-                                                        + "\nمالجديد:\n" + info[1], new DialogInterface.OnClickListener() {
-                                                    @Override
-                                                    public void onClick(DialogInterface dialog, int which) {
+                            runOnUiThread(() -> {
+                                try {
+                                    Utils.showConfirm(WelcomeActivity.this, "إصدار أحدث " + info[0],
+                                            "قم بتحديث التطبيق من المتجر الآن"
+                                                    + "\nمالجديد:\n" + info[1], (dialog, which) -> {
                                                         final String appPackageName = getPackageName(); // getPackageName() from Context or Activity object
                                                         try {
                                                             startActivity(new Intent(Intent.ACTION_VIEW,
@@ -53,11 +50,9 @@ public class WelcomeActivity extends AppCompatActivity {
                                                             startActivity(new Intent(Intent.ACTION_VIEW,
                                                                     Uri.parse("https://play.google.com/store/apps/details?id=" + appPackageName)));
                                                         }
-                                                    }
-                                                }, null);
-                                    } catch (Exception ex) { //activity not shown now
-                                        ex.printStackTrace();
-                                    }
+                                                    }, null);
+                                } catch (Exception ex) { //activity not shown now
+                                    ex.printStackTrace();
                                 }
                             });
                         }
@@ -71,8 +66,16 @@ public class WelcomeActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         checkForUpdates();
-        if (!maqraahAd() && Utils.isConnected(this) != Utils.CONNECTION_STATUS_NOT_CONNECTED) {
-            final SerializableInFile<Integer> appResponse = new SerializableInFile<>(
+        try {
+            java.io.File files[] = android.os.Environment.getExternalStoragePublicDirectory(
+                    android.os.Environment.DIRECTORY_DOWNLOADS).listFiles();
+            android.util.Log.d("files", java.util.Arrays.toString(files));
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        if (!maqraahAd() && Utils.isConnected(this) != Utils.CONNECTION_STATUS_NOT_CONNECTED
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1) {
+            SerializableInFile<Integer> appResponse = new SerializableInFile<>(
                     getApplicationContext(), "app__st", 0);
             Date date = appResponse.getFileLastModifiedDate(getApplicationContext());
             boolean display;
@@ -127,44 +130,37 @@ public class WelcomeActivity extends AppCompatActivity {
                 AlertDialog.Builder builder = new AlertDialog.Builder(WelcomeActivity.this);
                 builder.setTitle("هل تريد المشاركة بصفتك (اختر)");
                 builder.setIcon(android.R.drawable.ic_dialog_alert);
-                builder.setItems(new String[] {"طالب", "معلم (هناك بعض الشروط)"}, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        switch (which) {
-                            case 0:
-                                maqraahResponse.setData(1, getApplicationContext());
-                                Utils.openUrlInChromeOrDefault(getApplicationContext(),
-                                        getString(R.string.maqraah_student_url));
-                                AnalyticsTrackers.sendMaqraahResponse(getApplicationContext(),
-                                        1);
-                                break;
-                            case 1:
-                                maqraahResponse.setData(2, getApplicationContext());
-                                Utils.openUrlInChromeOrDefault(getApplicationContext(),
-                                        getString(R.string.maqraah_teacher_url));
-                                AnalyticsTrackers.sendMaqraahResponse(getApplicationContext(),
-                                        2);
-                                break;
-                        }
+                builder.setItems(new String[] {"طالب", "معلم (هناك بعض الشروط)"}, (dialog1, which) -> {
+                    switch (which) {
+                        case 0:
+                            maqraahResponse.setData(1, getApplicationContext());
+                            Utils.openUrlInChromeOrDefault(getApplicationContext(),
+                                    getString(R.string.maqraah_student_url));
+                            AnalyticsTrackers.sendMaqraahResponse(getApplicationContext(),
+                                    1);
+                            break;
+                        case 1:
+                            maqraahResponse.setData(2, getApplicationContext());
+                            Utils.openUrlInChromeOrDefault(getApplicationContext(),
+                                    getString(R.string.maqraah_teacher_url));
+                            AnalyticsTrackers.sendMaqraahResponse(getApplicationContext(),
+                                    2);
+                            break;
                     }
                 });
                 builder.create().show();
             }
         });
-        builder.setNeutralButton("لاحقا", new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int id) {
-                dialog.cancel();
-                // because not want then -> later
-                maqraahResponse.setData(0, getApplicationContext());
-                hasLaterForMaqraah = true;
-            }
+        builder.setNeutralButton("لاحقا", (dialog, id) -> {
+            dialog.cancel();
+            // because not want then -> later
+            maqraahResponse.setData(0, getApplicationContext());
+            hasLaterForMaqraah = true;
         });
-        builder.setNegativeButton("لا أريد", new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int id) {
-                dialog.cancel();
-                maqraahResponse.setData(-1, getApplicationContext());
-                AnalyticsTrackers.sendMaqraahResponse(getApplicationContext(), -1);
-            }
+        builder.setNegativeButton("لا أريد", (dialog, id) -> {
+            dialog.cancel();
+            maqraahResponse.setData(-1, getApplicationContext());
+            AnalyticsTrackers.sendMaqraahResponse(getApplicationContext(), -1);
         });
         builder.create().show();
     }
@@ -174,26 +170,14 @@ public class WelcomeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_welcome);
         ImageButton btn = (ImageButton) findViewById(R.id.openQuran);
-        btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(WelcomeActivity.this, MainActivity.class));
-            }
-        });
+        btn.setOnClickListener(v ->
+                startActivity(new Intent(WelcomeActivity.this, MainActivity.class)));
         btn = (ImageButton) findViewById(R.id.openSearch);
-        btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(WelcomeActivity.this, GotoActivity.class));
-            }
-        });
+        btn.setOnClickListener(v ->
+                startActivity(new Intent(WelcomeActivity.this, GotoActivity.class)));
         btn = (ImageButton) findViewById(R.id.openSettings);
-        btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(WelcomeActivity.this, SettingsActivity.class));
-            }
-        });
+        btn.setOnClickListener(v ->
+                startActivity(new Intent(WelcomeActivity.this, SettingsActivity.class)));
         btn = (ImageButton) findViewById(R.id.openHelp);
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -202,17 +186,9 @@ public class WelcomeActivity extends AppCompatActivity {
             }
         });
         btn = (ImageButton) findViewById(R.id.reciter_download);
-        btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(WelcomeActivity.this, ReciterListActivity.class));
-            }
-        });
-        findViewById(R.id.sendComments).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(WelcomeActivity.this, ReportIssueActivity.class));
-            }
-        });
+        btn.setOnClickListener(v ->
+                startActivity(new Intent(WelcomeActivity.this, ReciterListActivity.class)));
+        findViewById(R.id.sendComments).setOnClickListener(v ->
+                startActivity(new Intent(WelcomeActivity.this, ReportIssueActivity.class)));
     }
 }
