@@ -98,8 +98,7 @@ public class PlayReciteActivity extends AppCompatActivity implements ServiceConn
     protected void onStop() {
         super.onStop();
         isShown = false;
-        unbindService(this);
-        AnalyticsTrackers.send(getApplicationContext());
+        try { unbindService(this); } catch (IllegalArgumentException ex) { ex.printStackTrace(); }
     }
 
     @Override
@@ -108,7 +107,6 @@ public class PlayReciteActivity extends AppCompatActivity implements ServiceConn
         if (checkServiceNotRunning()) return;
         isShown = true;
         bindService(new Intent(this, PlayReciteService.class), this, BIND_ABOVE_CLIENT);
-        AnalyticsTrackers.send(getApplicationContext());
 
         boolean vis = false;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && ActivityCompat.checkSelfPermission(

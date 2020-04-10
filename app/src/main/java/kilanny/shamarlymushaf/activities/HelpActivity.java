@@ -121,7 +121,6 @@ public class HelpActivity extends FragmentActivity {
         tabs.setShouldExpand(true);
         tabs.setViewPager(pager);
         changeColor(currentColor);
-        AnalyticsTrackers.send(getApplicationContext());
     }
 
     private Drawable.Callback drawableCallback = new Drawable.Callback() {

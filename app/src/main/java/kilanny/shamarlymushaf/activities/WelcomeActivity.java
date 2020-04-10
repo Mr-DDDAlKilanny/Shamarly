@@ -1,16 +1,14 @@
 package kilanny.shamarlymushaf.activities;
 
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import androidx.fragment.app.FragmentManager;
+import android.widget.ImageButton;
+
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-
-import android.view.View;
-import android.widget.ImageButton;
+import androidx.fragment.app.FragmentManager;
 
 import java.util.Date;
 
@@ -19,6 +17,7 @@ import kilanny.shamarlymushaf.R;
 import kilanny.shamarlymushaf.data.SerializableInFile;
 import kilanny.shamarlymushaf.fragments.AdsFragment;
 import kilanny.shamarlymushaf.util.AnalyticsTrackers;
+import kilanny.shamarlymushaf.util.AppExecutors;
 import kilanny.shamarlymushaf.util.Utils;
 
 public class WelcomeActivity extends AppCompatActivity {
@@ -30,35 +29,32 @@ public class WelcomeActivity extends AppCompatActivity {
         if (Utils.isConnected(this) != Utils.CONNECTION_STATUS_NOT_CONNECTED) {
             if (!Utils.haveAvailableMemory(Utils.MIN_THREAD_MEMORY_ALLOCATION * 4))
                 return;
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    final String[] info = Utils.getAppVersionInfo("kilanny.shamarlymushaf");
-                    if (info != null && info[0] != null && !info[0].isEmpty()) {
-                        hasCheckedForUpdates = true;
-                        if (!info[0].equals(BuildConfig.VERSION_NAME)) {
-                            runOnUiThread(() -> {
-                                try {
-                                    Utils.showConfirm(WelcomeActivity.this, "إصدار أحدث " + info[0],
-                                            "قم بتحديث التطبيق من المتجر الآن"
-                                                    + "\nمالجديد:\n" + info[1], (dialog, which) -> {
-                                                        final String appPackageName = getPackageName(); // getPackageName() from Context or Activity object
-                                                        try {
-                                                            startActivity(new Intent(Intent.ACTION_VIEW,
-                                                                    Uri.parse("market://details?id=" + appPackageName)));
-                                                        } catch (android.content.ActivityNotFoundException anfe) {
-                                                            startActivity(new Intent(Intent.ACTION_VIEW,
-                                                                    Uri.parse("https://play.google.com/store/apps/details?id=" + appPackageName)));
-                                                        }
-                                                    }, null);
-                                } catch (Exception ex) { //activity not shown now
-                                    ex.printStackTrace();
-                                }
-                            });
-                        }
+            AppExecutors.getInstance().executeOnCachedExecutor(() -> {
+                final String[] info = Utils.getAppVersionInfo("kilanny.shamarlymushaf");
+                if (info != null && info[0] != null && !info[0].isEmpty()) {
+                    hasCheckedForUpdates = true;
+                    if (!info[0].equals(BuildConfig.VERSION_NAME)) {
+                        runOnUiThread(() -> {
+                            try {
+                                Utils.showConfirm(WelcomeActivity.this, "إصدار أحدث " + info[0],
+                                        "قم بتحديث التطبيق من المتجر الآن"
+                                                + "\nمالجديد:\n" + info[1], (dialog, which) -> {
+                                                    final String appPackageName = getPackageName(); // getPackageName() from Context or Activity object
+                                                    try {
+                                                        startActivity(new Intent(Intent.ACTION_VIEW,
+                                                                Uri.parse("market://details?id=" + appPackageName)));
+                                                    } catch (android.content.ActivityNotFoundException anfe) {
+                                                        startActivity(new Intent(Intent.ACTION_VIEW,
+                                                                Uri.parse("https://play.google.com/store/apps/details?id=" + appPackageName)));
+                                                    }
+                                                }, null);
+                            } catch (Exception ex) { //activity not shown now
+                                ex.printStackTrace();
+                            }
+                        });
                     }
                 }
-            }).start();
+            });
         }
     }
 
@@ -124,32 +120,28 @@ public class WelcomeActivity extends AppCompatActivity {
         builder.setTitle("هل لديك وقت؟");
         builder.setIcon(android.R.drawable.ic_dialog_alert);
         builder.setMessage("انضم الآن لمقرأة الشمرلي (طلاب أو معلمون - للرجال مقرأة منفصلة عن النساء)! يمكنك تصحيح تلاوتك وتعلم أحكام التجويد بواسطة معلمين أكفاء! وإذا كنت ترى في نفسك الأهلية لتعليم الناس التجويد يمكنك أيضا المشاركة كمعلم!");
-        builder.setPositiveButton("نعم أريد", new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int id) {
-                dialog.cancel();
-                AlertDialog.Builder builder = new AlertDialog.Builder(WelcomeActivity.this);
-                builder.setTitle("هل تريد المشاركة بصفتك (اختر)");
-                builder.setIcon(android.R.drawable.ic_dialog_alert);
-                builder.setItems(new String[] {"طالب", "معلم (هناك بعض الشروط)"}, (dialog1, which) -> {
-                    switch (which) {
-                        case 0:
-                            maqraahResponse.setData(1, getApplicationContext());
-                            Utils.openUrlInChromeOrDefault(getApplicationContext(),
-                                    getString(R.string.maqraah_student_url));
-                            AnalyticsTrackers.sendMaqraahResponse(getApplicationContext(),
-                                    1);
-                            break;
-                        case 1:
-                            maqraahResponse.setData(2, getApplicationContext());
-                            Utils.openUrlInChromeOrDefault(getApplicationContext(),
-                                    getString(R.string.maqraah_teacher_url));
-                            AnalyticsTrackers.sendMaqraahResponse(getApplicationContext(),
-                                    2);
-                            break;
-                    }
-                });
-                builder.create().show();
-            }
+        builder.setPositiveButton("نعم أريد", (dialog, id) -> {
+            dialog.cancel();
+            AlertDialog.Builder builder2 = new AlertDialog.Builder(this);
+            builder2.setTitle("هل تريد المشاركة بصفتك (اختر)");
+            builder2.setIcon(android.R.drawable.ic_dialog_alert);
+            builder2.setItems(new String[] {"طالب", "معلم (هناك بعض الشروط)"}, (dialog1, which) -> {
+                switch (which) {
+                    case 0:
+                        maqraahResponse.setData(1, getApplicationContext());
+                        Utils.openUrlInChromeOrDefault(getApplicationContext(),
+                                getString(R.string.maqraah_student_url));
+                        AnalyticsTrackers.getInstance(this).sendMaqraahResponse(1);
+                        break;
+                    case 1:
+                        maqraahResponse.setData(2, getApplicationContext());
+                        Utils.openUrlInChromeOrDefault(getApplicationContext(),
+                                getString(R.string.maqraah_teacher_url));
+                        AnalyticsTrackers.getInstance(this).sendMaqraahResponse(2);
+                        break;
+                }
+            });
+            builder2.create().show();
         });
         builder.setNeutralButton("لاحقا", (dialog, id) -> {
             dialog.cancel();
@@ -160,7 +152,7 @@ public class WelcomeActivity extends AppCompatActivity {
         builder.setNegativeButton("لا أريد", (dialog, id) -> {
             dialog.cancel();
             maqraahResponse.setData(-1, getApplicationContext());
-            AnalyticsTrackers.sendMaqraahResponse(getApplicationContext(), -1);
+            AnalyticsTrackers.getInstance(this).sendMaqraahResponse(-1);
         });
         builder.create().show();
     }
@@ -179,12 +171,8 @@ public class WelcomeActivity extends AppCompatActivity {
         btn.setOnClickListener(v ->
                 startActivity(new Intent(WelcomeActivity.this, SettingsActivity.class)));
         btn = (ImageButton) findViewById(R.id.openHelp);
-        btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(WelcomeActivity.this, HelpActivity.class));
-            }
-        });
+        btn.setOnClickListener(v ->
+                startActivity(new Intent(WelcomeActivity.this, HelpActivity.class)));
         btn = (ImageButton) findViewById(R.id.reciter_download);
         btn.setOnClickListener(v ->
                 startActivity(new Intent(WelcomeActivity.this, ReciterListActivity.class)));

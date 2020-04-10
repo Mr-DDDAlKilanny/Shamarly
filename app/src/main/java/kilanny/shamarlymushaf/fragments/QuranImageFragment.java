@@ -305,7 +305,7 @@ public class QuranImageFragment extends Fragment {
                                         }
                                     }
                                 });
-                                AnalyticsTrackers.sendException(_activity, "QuranPageRead", err);
+                                AnalyticsTrackers.getInstance(_activity).sendException("QuranPageRead", err);
                             }
                             uiHandler.post(new Runnable() {
                                 @Override

@@ -9,6 +9,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 
+import androidx.arch.core.util.Function;
+
 import com.smarteist.autoimageslider.SliderViewAdapter;
 
 import kilanny.shamarlymushaf.R;
@@ -65,12 +67,21 @@ public class AdsSliderAdapter extends SliderViewAdapter<SliderAdapterViewHolder>
     }
 
     @Override
-    public void onBindViewHolder(SliderAdapterViewHolder viewHolder, int position) {
-        viewHolder.textViewDescription.setText(mPrayerAlarm ? texts[position] : texts2[position]);
-        Bitmap bitmap = decodeSampledBitmapFromResource(viewHolder.imageViewBackground.getResources(),
-                mPrayerAlarm ? drawables[position] : drawables2[position], 357, 634);
-        viewHolder.imageViewBackground.setImageBitmap(bitmap);
-        imageViews[position] = viewHolder.imageViewBackground;
+    public void onBindViewHolder(SliderAdapterViewHolder viewHolder, int pos) {
+        Function<Integer, Void> f = (position) -> {
+            viewHolder.textViewDescription.setText(mPrayerAlarm ? texts[position] : texts2[position]);
+            Bitmap bitmap = decodeSampledBitmapFromResource(viewHolder.imageViewBackground.getResources(),
+                    mPrayerAlarm ? drawables[position] : drawables2[position], 357, 634);
+            viewHolder.imageViewBackground.setImageBitmap(bitmap);
+            imageViews[position] = viewHolder.imageViewBackground;
+            return null;
+        };
+        try {
+            f.apply(pos);
+        } catch (IndexOutOfBoundsException ex) { // exception in ViewPager
+            ex.printStackTrace();
+            f.apply(getCount() - 1 - pos);
+        }
     }
 
     public void destroy() {

@@ -1,162 +1,154 @@
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
     <PreferenceCategory
-        android:summary="إعدادات التلاوة والتظليل"
-        android:title="التلاوة والتظليل" >
+        app:summary="إعدادات التلاوة والتظليل"
+        app:title="التلاوة والتظليل">
         <ListPreference
-            android:key="listReciters"
-            android:title="القارئ"
-            android:summary="اختيار القارئ لتشغيل التلاوات"
-            android:entries="@array/reciter_names"
-            android:entryValues="@array/reciter_values"
-            android:defaultValue="@string/defaultReciter" />
+            app:defaultValue="@string/defaultReciter"
+            app:dialogTitle="اختيار القارئ لتشغيل التلاوات"
+            app:title="القارئ للتلاوات"
+            app:entries="@array/reciter_names"
+            app:entryValues="@array/reciter_values"
+            app:key="listReciters"
+            app:useSimpleSummaryProvider="true" />
         <ListPreference
-        android:entries="@array/listOptions"
-        android:entryValues="@array/listValues"
-        android:key="listSelectionColor"
-        android:summary="تحديد لون تظليل الآية المحددة"
-        android:title="لون التظليل"
-        android:defaultValue="@string/yellow" />
-        <CheckBoxPreference
-            android:key="playContinues"
-            android:title="التشغيل المستمر"
-            android:summary="عدم التوقف بعد تشغيل تلاوة الآية المحددة"
-            android:defaultValue="false"
-            />
-        <CheckBoxPreference
-            android:key="backToBegin"
-            android:title="العودة إلى سورة الفاتحة"
-            android:summary="بعد تلاوة سورة الناس لا تقف بل عد إلى الفاتحة"
-            android:defaultValue="true"
-            />
-        </PreferenceCategory>
-    <PreferenceCategory android:title="المصحف" android:summary="إعدادات شاشة المصحف">
+            app:defaultValue="@string/yellow"
+            app:entries="@array/listOptions"
+            app:entryValues="@array/listValues"
+            app:key="listSelectionColor"
+            app:title="لون تظليل الآية المحددة"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:key="playContinues"
+            app:summary="عدم التوقف بعد تشغيل تلاوة الآية المحددة"
+            app:title="التشغيل المستمر" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:key="backToBegin"
+            app:summary="بعد تلاوة سورة الناس لا تقف بل عد إلى الفاتحة"
+            app:title="العودة إلى سورة الفاتحة" />
+    </PreferenceCategory>
+    <PreferenceCategory
+        app:summary="إعدادات شاشة المصحف"
+        app:title="المصحف">
         <ListPreference
-            android:key="boldSize"
-            android:title="مدى غمق الرسم"
-            android:summary="تحديد مدى غمق رسم المصحف"
-            android:entries="@array/boldSizeTitles"
-            android:entryValues="@array/boldSizeValues"
-            android:defaultValue="@string/defaultBoldSize"
-            />
+            app:defaultValue="@string/defaultBoldSize"
+            app:entries="@array/boldSizeTitles"
+            app:entryValues="@array/boldSizeValues"
+            app:key="boldSize"
+            app:title="غمق رسم المصحف"
+            app:dialogTitle="تحديد مدى غمق رسم المصحف"
+            app:useSimpleSummaryProvider="true" />
         <ListPreference
-            android:key="displayPageMode"
-            android:title="خلفية الصفحة"
-            android:summary="تحديد طريقة عرض خلفية المصحف"
-            android:entries="@array/displayPageModeTitles"
-            android:entryValues="@array/displayPageModeValues"
-            android:defaultValue="@string/defaultDisplayPageMode"
-            />
+            app:defaultValue="@string/defaultDisplayPageMode"
+            app:entries="@array/displayPageModeTitles"
+            app:entryValues="@array/displayPageModeValues"
+            app:key="displayPageMode"
+            app:dialogTitle="تحديد طريقة عرض خلفية المصحف"
+            app:title="خلفية الصفحة"
+            app:useSimpleSummaryProvider="true" />
         <ListPreference
-            android:key="pageRotationMode"
-            android:title="اتجاه عرض الصفحة"
-            android:summary="استخدام الوضع الأفقي أو الطولي للعرض"
-            android:entries="@array/pageRotationModeTitles"
-            android:entryValues="@array/pageRotationModeValues"
-            android:defaultValue="@string/defaultPageRotationMode"
-            />
-        <CheckBoxPreference
-            android:key="displayDualPages"
-            android:title="عرض صفحتين معا"
-            android:summary="عرض صفحتين من المصحف معا في الوضع الأفقي"
-            android:defaultValue="false"
-            />
-        <CheckBoxPreference
-            android:key="showPageLeftRightIndicator"
-            android:title="توضيح اتجاه الصفحة"
-            android:summary="عرض ما يميز الصفحة اليمنى عن اليسرى"
-            android:defaultValue="true"
-            />
-        <CheckBoxPreference
-            android:key="showHizbToast"
-            android:title="عرض تنبيه الأحزاب والأجزاء"
-            android:summary="عرض تنبيه سريع عند الوصول لصفحة بها حزب أو جزء"
-            android:defaultValue="true"
-            />
-        <CheckBoxPreference
-            android:key="showRob3Toast"
-            android:title="عرض تنبيه الأرباع"
-            android:summary="عرض تنبيه سريع لربع ونصف وثلاثة أرباع الأحزاب"
-            android:dependency="showHizbToast"
-            android:defaultValue="false"
-            />
+            app:defaultValue="@string/defaultPageRotationMode"
+            app:entries="@array/pageRotationModeTitles"
+            app:entryValues="@array/pageRotationModeValues"
+            app:key="pageRotationMode"
+            app:summary="استخدام الوضع الأفقي أو الطولي للعرض"
+            app:title="اتجاه عرض الصفحة" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:key="displayDualPages"
+            app:summary="عرض صفحتين من المصحف معا في الوضع الأفقي"
+            app:title="عرض صفحتين معا" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:key="showPageLeftRightIndicator"
+            app:summary="عرض ما يميز الصفحة اليمنى عن اليسرى"
+            app:title="توضيح اتجاه الصفحة" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:key="showHizbToast"
+            app:summary="عرض تنبيه سريع عند الوصول لصفحة بها حزب أو جزء"
+            app:title="عرض تنبيه الأحزاب والأجزاء" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:dependency="showHizbToast"
+            app:key="showRob3Toast"
+            app:summary="عرض تنبيه سريع لربع ونصف وثلاثة أرباع الأحزاب"
+            app:title="عرض تنبيه الأرباع" />
         <ListPreference
-            android:key="autoCloseScreenMinutes"
-            android:title="إغلاق الشاشة آليا"
-            android:summary="إغلاق شاشة المصحف بعد عدم النشاط لمدة معينة بالدقائق"
-            android:entries="@array/autoCloseScreenValues"
-            android:entryValues="@array/autoCloseScreenValues"
-            android:defaultValue="@string/defaultAutoCloseScreenValue"  />
-        <CheckBoxPreference
-            android:key="showPageBorders"
-            android:title="عرض إطار للصفحة"
-            android:summary="عرض إطار للصفحة به رقم الصفحة واسم الجزء/السورة"
-            android:defaultValue="false"
-            android:disableDependentsState="true"
-            />
-        <CheckBoxPreference
-            android:key="showPageInfo"
-            android:title="عرض معلومات الصفحة"
-            android:summary="عرض رقم الصفحة واسم السورة ورقم الجزء والحزب في أعلى الصفحة"
-            android:dependency="showPageBorders"
-            android:defaultValue="true" />
-        <CheckBoxPreference
-            android:key="autoHidePageInfo"
-            android:title="إخفاء تلقائي لمعلومات الصفحة"
-            android:summary="إخفاء شريط المعلومات العلوي تلقائيا مع الشريط السفلي"
-            android:dependency="showPageInfo"
-            android:defaultValue="true" />
-        <CheckBoxPreference
-            android:key="manuallyScrollPageInfo"
-            android:title="تحريك يدوي لمعلومات الصفحة"
-            android:summary="إلغاء التحريك الآلي لشريط المعلومات وجعل التحريك يدويا"
-            android:dependency="showPageInfo"
-            android:defaultValue="false"
-            />
+            app:defaultValue="@string/defaultAutoCloseScreenValue"
+            app:entries="@array/autoCloseScreenValues"
+            app:entryValues="@array/autoCloseScreenValues"
+            app:key="autoCloseScreenMinutes"
+            app:summary="إغلاق شاشة المصحف بعد عدم النشاط لمدة معينة بالدقائق"
+            app:title="إغلاق الشاشة آليا" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:disableDependentsState="true"
+            app:key="showPageBorders"
+            app:summary="عرض إطار للصفحة به رقم الصفحة واسم الجزء/السورة"
+            app:title="عرض إطار للصفحة" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:dependency="showPageBorders"
+            app:key="showPageInfo"
+            app:summary="عرض رقم الصفحة واسم السورة ورقم الجزء والحزب في أعلى الصفحة"
+            app:title="عرض معلومات الصفحة" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:dependency="showPageInfo"
+            app:key="autoHidePageInfo"
+            app:summary="إخفاء شريط المعلومات العلوي تلقائيا مع الشريط السفلي"
+            app:title="إخفاء تلقائي لمعلومات الصفحة" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:dependency="showPageInfo"
+            app:key="manuallyScrollPageInfo"
+            app:summary="إلغاء التحريك الآلي لشريط المعلومات وجعل التحريك يدويا"
+            app:title="تحريك يدوي لمعلومات الصفحة" />
         <ListPreference
-            android:dependency="manuallyScrollPageInfo"
-            android:key="defaultPageInfoItem"
-            android:title="معلومة الصفحة الافتراضية"
-            android:summary="تحديد المعلومة الافتراضية لعرضها في البداية"
-            android:entries="@array/pageInfoTitles"
-            android:entryValues="@array/pageInfoValues"
-            android:defaultValue="@string/defaultPageInfo"
-            />
-        </PreferenceCategory>
-    <PreferenceCategory android:title="التفسير" android:summary="إعدادات التفسير">
+            app:defaultValue="@string/defaultPageInfo"
+            app:dependency="manuallyScrollPageInfo"
+            app:entries="@array/pageInfoTitles"
+            app:entryValues="@array/pageInfoValues"
+            app:key="defaultPageInfoItem"
+            app:summary="تحديد المعلومة الافتراضية لعرضها في البداية"
+            app:title="معلومة الصفحة الافتراضية" />
+    </PreferenceCategory>
+    <PreferenceCategory
+        app:summary="إعدادات التفسير"
+        app:title="التفسير">
         <ListPreference
-            android:key="fontSize"
-            android:title="حجم الخط"
-            android:summary="تحديد حجم الخط المستخدم في التفسير"
-            android:entries="@array/fontSizes"
-            android:entryValues="@array/fontSizes"
-            android:defaultValue="20"
-            />
-        <CheckBoxPreference
-            android:key="fontBold"
-            android:title="خط غامق"
-            android:summary="استخدام خط غامق"
-            android:defaultValue="false" />
+            app:defaultValue="20"
+            app:entries="@array/fontSizes"
+            app:entryValues="@array/fontSizes"
+            app:key="fontSize"
+            app:summary="تحديد حجم الخط المستخدم في التفسير"
+            app:title="حجم الخط" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:key="fontBold"
+            app:summary="استخدام خط غامق"
+            app:title="خط غامق" />
         <ListPreference
-            android:key="tafseerTheme"
-            android:title="لون الخلفية والخط"
-            android:summary="تحديد الألوان المستخدمة في عرض شاشة التفسير"
-            android:entries="@array/tafseerThemeTitles"
-            android:entryValues="@array/tafseerThemeValues"
-            android:defaultValue="@string/defaultTafseerTheme"
-            />
-        <CheckBoxPreference
-            android:key="showTafseerNavigation"
-            android:title="عرض أزرار الانتقال السريع"
-            android:summary="عرض أزرار تصفح الآيات السابقة واللاحقة في شاشة التفسير"
-            android:defaultValue="true"
-            />
+            app:defaultValue="@string/defaultTafseerTheme"
+            app:entries="@array/tafseerThemeTitles"
+            app:entryValues="@array/tafseerThemeValues"
+            app:key="tafseerTheme"
+            app:summary="تحديد الألوان المستخدمة في عرض شاشة التفسير"
+            app:title="لون الخلفية والخط" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:key="showTafseerNavigation"
+            app:summary="عرض أزرار تصفح الآيات السابقة واللاحقة في شاشة التفسير"
+            app:title="عرض أزرار الانتقال السريع" />
     </PreferenceCategory>
 
     <!-- This preference simply launches an intent when selected. Use this UI sparingly, per
          design guidelines. -->
-    <!--<Preference android:title="Click me">
+    <!--<Preference app:title="Click me">
 
-        <intent android:action="android.settings.SYNC_SETTINGS" />
+        <intent app:action="android.settings.SYNC_SETTINGS" />
     </Preference>-->
 
 </PreferenceScreen>

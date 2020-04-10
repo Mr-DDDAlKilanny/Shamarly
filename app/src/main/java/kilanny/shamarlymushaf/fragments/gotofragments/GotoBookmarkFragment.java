@@ -1,12 +1,15 @@
 package kilanny.shamarlymushaf.fragments.gotofragments;
 
 import android.os.Bundle;
+
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.ImageView;
 import android.widget.ListView;
 
 import kilanny.shamarlymushaf.adapters.FullScreenImageAdapter;
@@ -29,7 +32,7 @@ public class GotoBookmarkFragment extends GotoFragment {
     }
 
     private void load() {
-        final ListView l4 = (ListView) mView.findViewById(R.id.listViewBookmarks);
+        final ListView l4 = mView.findViewById(R.id.listViewBookmarks);
         int num = setting.page;
         if (setting.lastWasDualPage)
             num *= 2;
@@ -46,21 +49,28 @@ public class GotoBookmarkFragment extends GotoFragment {
             book[i + inc] = "سورة " + quranData.findSurahAtPage(Integer.parseInt(name)).name
                     + "، صفحة: " + name;
         }
-        l4.setAdapter(new ArrayAdapter<>(getActivity(),
-                android.R.layout.simple_list_item_1, android.R.id.text1,
-                book));
-        l4.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        l4.setAdapter(new ArrayAdapter<String>(getActivity(),
+                R.layout.list_item_bookmark, android.R.id.text1,
+                book) {
+            @NonNull
             @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                String itemValue = (String) l4.getItemAtPosition(position);
-                int page;
-                try {
-                    page = Integer.parseInt(itemValue.substring(itemValue.lastIndexOf(":") + 2));
-                } catch (NumberFormatException ignored) {
-                    page = quranData.surahs[0].page;
-                }
-                showMainActivity(page);
+            public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                ImageView imageView = view.findViewById(R.id.imgIcon);
+                imageView.setImageResource(inc > 0 && position == 0 ? R.drawable.baseline_update_24
+                        : R.drawable.baseline_star_black_24);
+                return view;
             }
+        });
+        l4.setOnItemClickListener((parent, view, position, id) -> {
+            String itemValue = (String) l4.getItemAtPosition(position);
+            int page;
+            try {
+                page = Integer.parseInt(itemValue.substring(itemValue.lastIndexOf(":") + 2));
+            } catch (NumberFormatException ignored) {
+                page = quranData.surahs[0].page;
+            }
+            showMainActivity(page);
         });
     }
 

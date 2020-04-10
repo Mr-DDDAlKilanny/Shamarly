@@ -1,6 +1,20 @@
-<fragment xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools" android:id="@+id/reciter_list"
-    android:name="kilanny.shamarlymushaf.fragments.ReciterListFragment" android:layout_width="match_parent"
-    android:layout_height="match_parent" android:layout_marginLeft="16dp"
-    android:layout_marginRight="16dp" tools:context="kilanny.shamarlymushaf.activities.ReciterListActivity"
-    tools:layout="@android:layout/list_content" />
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context=".activities.ReciterListActivity"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <fragment android:id="@+id/reciter_list"
+        android:name="kilanny.shamarlymushaf.fragments.ReciterListFragment" android:layout_width="match_parent"
+        android:layout_height="match_parent" android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_above="@id/txtSlowWarning"
+        tools:layout="@android:layout/list_content" />
+    <TextView
+        android:text="تحذير: يتم استخدام الذاكرة خارج التطبيق لتحميل التلاوات، فضلا غير الإعدادات من القائمة أعلاه إلى ذاكرة التطبيق لجعل التحميل أسرع"
+        android:id="@+id/txtSlowWarning"
+        android:layout_alignParentBottom="true"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+</RelativeLayout>

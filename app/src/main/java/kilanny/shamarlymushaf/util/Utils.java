@@ -12,6 +12,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.media.MediaPlayer;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
@@ -19,6 +20,7 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
 import android.os.RecoverySystem;
+import android.provider.DocumentsContract;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
@@ -31,6 +33,11 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.documentfile.provider.DocumentFile;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
 
 import org.htmlcleaner.CleanerProperties;
 import org.htmlcleaner.HtmlCleaner;
@@ -52,6 +59,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.io.Serializable;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
@@ -84,8 +92,11 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
+import kilanny.shamarlymushaf.BuildConfig;
 import kilanny.shamarlymushaf.R;
 import kilanny.shamarlymushaf.data.Ayah;
+import kilanny.shamarlymushaf.data.AyahFile;
+import kilanny.shamarlymushaf.data.DownloadedAyat;
 import kilanny.shamarlymushaf.data.QuranData;
 import kilanny.shamarlymushaf.data.Setting;
 import kilanny.shamarlymushaf.data.Shared;
@@ -218,29 +229,83 @@ public class Utils {
                 Environment.MEDIA_MOUNTED_READ_ONLY.equals(state);
     }
 
-    @NonNull
-    public static File getSurahDir(Context context, String reciter, int surah) {
-        Setting s = Setting.getInstance(context);
-        if (s.saveSoundsDirectory == null) return null;
-        File dir = new File(s.saveSoundsDirectory, "recites/" + reciter
-                + "/" + surah);
-        return dir;
+    @Nullable
+    public static DocumentFile findOrCreateDir(DocumentFile parent, String name, boolean createIfNotExists) {
+        DocumentFile file = parent.findFile(name);
+        if (file == null && createIfNotExists)
+            file = parent.createDirectory(name);
+        return file;
     }
 
-    public static File getAyahFile(Context context, String reciter, int surah, int ayah,
+    /**
+     * @return Either File or DocumentFile (or null)
+     */
+    @Nullable
+    public static Object getSurahDir(Context context, String reciter, int surah,
+                                     boolean createDirsIfNotExists) {
+        Setting s = Setting.getInstance(context);
+        Boolean isUri = isSaveSoundsUri(context);
+        if (isUri == null) return null;
+        if (!isUri) {
+            return new File(s.saveSoundsDirectory, "recites/" + reciter
+                    + "/" + surah);
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Uri uri = Uri.parse(s.saveSoundsDirectory);
+            DocumentFile root = DocumentFile.fromTreeUri(context, uri);
+            if (root == null) return null; // moved or deleted ?
+            DocumentFile recites = findOrCreateDir(root, "recites", createDirsIfNotExists);
+            if (recites == null) return null; // could not create dir at selected path
+            DocumentFile reciterFile = findOrCreateDir(recites, reciter, createDirsIfNotExists);
+            if (reciterFile == null) return null;
+            String _sura = String.format(Locale.ENGLISH, "%d", surah);
+            return findOrCreateDir(reciterFile, _sura, createDirsIfNotExists);
+        } else {
+            throw new RuntimeException("how did code reach this?");
+        }
+    }
+
+    @Nullable
+    public static Boolean isSaveSoundsUri(Context context) {
+        Setting s = Setting.getInstance(context);
+        if (s.saveSoundsDirectory == null) return null;
+        //return DocumentFile.isDocumentUri(context, Uri.parse(s.saveSoundsDirectory));
+        boolean res = s.saveSoundsDirectory.startsWith("content://");
+        if (!res) {
+            File file = new File(s.saveSoundsDirectory);
+            if (!file.exists() || !file.isDirectory())
+                return null;
+        } else {
+            DocumentFile documentFile = DocumentFile.fromTreeUri(context, Uri.parse(s.saveSoundsDirectory));
+            if (documentFile == null || !documentFile.exists() || !documentFile.isDirectory())
+                return null;
+        }
+        return res;
+    }
+
+    public static Object getAyahFile(Context context, String reciter, int surah, int ayah,
                                    boolean createDirIfNotExists) {
-        File dir = getSurahDir(context, reciter, surah);
+        Object dir = getSurahDir(context, reciter, surah, true);
         if (dir == null) return null;
-        if (createDirIfNotExists && !dir.exists())
-            dir.mkdirs();
-        return new File(dir, "" + ayah);
+        if (dir instanceof File) {
+            File file = (File) dir;
+            if (createDirIfNotExists && !file.exists())
+                file.mkdirs();
+            return new File(file, "" + ayah);
+        } else {
+            DocumentFile documentFile = (DocumentFile) dir;
+            String _ayah = String.format(Locale.ENGLISH, "%d", ayah);
+            return new AyahFile(documentFile, _ayah);
+        }
     }
 
     /**
      * Used for less memory usage, less object instantiation
      */
-    public static File getAyahFile(int ayah, File surahDir) {
-        return new File(surahDir, ayah + "");
+    public static Object getAyahFile(int ayah, Object surahDir) {
+        if (surahDir instanceof File)
+            return new File((File) surahDir, ayah + "");
+        String _ayah = String.format(Locale.ENGLISH, "%d", ayah);
+        return new AyahFile((DocumentFile) surahDir, _ayah);
     }
 
     public static int indexOf(String[] array, String value) {
@@ -250,26 +315,57 @@ public class Utils {
         return -1;
     }
 
-    public static String getAyahUrl(String reciter, int surah, int ayah, QuranData data, int numAttempt) {
+    public static Uri getAyahUrl(String reciter, int surah, int ayah, QuranData data, int numAttempt) {
         if (reciter == null)
             return null;
         if (numAttempt == 1) {
             if (!reciter.startsWith("null"))
-                return String.format(Locale.ENGLISH, "http://www.everyayah.com/data/%s/%03d%03d.mp3",
-                        reciter, surah, ayah);
+                return Uri.parse(String.format(Locale.ENGLISH,
+                        "http://www.everyayah.com/data/%s/%03d%03d.mp3",
+                        reciter, surah, ayah));
         }
         int idx = indexOf(data.reciterValues, reciter); //should never be == -1
         String alt = data.reciterValues_alt[idx];
         if (alt.startsWith("null"))
             return null;
-        return String.format(Locale.ENGLISH, alt.replace("%%", "%"), surah, ayah);
+        return Uri.parse(String.format(Locale.ENGLISH, alt.replace("%%", "%"),
+                surah, ayah));
     }
 
-    public static String getAyahPath(Context context, String reciter, int surah, int ayah, QuranData data, int numAttempt) {
-        File f = getAyahFile(context, reciter, surah, ayah, false);
-        if (f != null && f.exists())
-            return f.getAbsolutePath();
-        return getAyahUrl(reciter, surah, ayah, data, numAttempt);
+    public static Uri getAyahPath(Context context, String reciter, int surah, int ayah,
+                                     QuranData data, int numAttempt) {
+        DownloadedAyat downloadedAyat = DownloadedAyat.getInstance(context);
+        boolean needSave = false;
+        try {
+            Object f = getAyahFile(context, reciter, surah, ayah, false);
+            if (f instanceof File) {
+                File file = (File) f;
+                if (file.exists()) {
+                    if (!downloadedAyat.get(reciter, surah, ayah)) {
+                        downloadedAyat.set(reciter, surah, ayah, true);
+                        needSave = true;
+                    }
+                    return Uri.parse(file.toURI().toString());
+                }
+            } else {
+                AyahFile ayahFile = (AyahFile) f;
+                if (ayahFile != null) {
+                    DocumentFile documentFile = ayahFile.get();
+                    if (documentFile != null) {
+                        if (!downloadedAyat.get(reciter, surah, ayah)) {
+                            downloadedAyat.set(reciter, surah, ayah, true);
+                            needSave = true;
+                        }
+                        return documentFile.getUri();
+                    }
+                }
+            }
+            downloadedAyat.set(reciter, surah, ayah, false);
+            return getAyahUrl(reciter, surah, ayah, data, numAttempt);
+        } finally {
+            if (needSave)
+                downloadedAyat.save(context);
+        }
     }
 
     private static int downloadTafaseerDbHelper(RecoverySystem.ProgressListener progressListener,
@@ -398,50 +494,102 @@ public class Utils {
         zip.close();
     }
 
-    public static int findReciteZipItemByFileName(@NonNull Context context, @NonNull File zipFile) {
+    public static int findReciteZipItemByFileName(@NonNull Context context, @NonNull String fileName) {
         String name;
-        if (zipFile.getName().contains("muhammad_siddiq_al-minshawi_teacher"))
+        if (fileName.contains("muhammad_siddiq_al-minshawi_teacher"))
             name = "null_1";
         else
-            name = zipFile.getName().substring(0, zipFile.getName().lastIndexOf('.'));
+            name = fileName.substring(0, fileName.lastIndexOf('.'));
         String[] r = context.getResources().getStringArray(R.array.reciter_values);
         for (int i = 0; i < r.length; ++i) if (name.contains(r[i])) return i;
         return -1;
     }
 
-    public static boolean extractReciteZipFile(@NonNull Context context, @NonNull File zipFile) throws IOException {
-        int reciteIdx = findReciteZipItemByFileName(context, zipFile);
+    public static boolean extractReciteZipFile(@NonNull Context context, @NonNull File zipFile,
+                                               RecoverySystem.ProgressListener listener) throws IOException {
+        FileInputStream fis = new FileInputStream(zipFile);
+        boolean res = extractReciteZipFile(context, zipFile.getName(), fis, listener);
+        fis.close();
+        return res;
+    }
+
+    public static boolean extractReciteZipFile(@NonNull Context context,
+                                               String fileName,
+                                               @NonNull InputStream inputStream,
+                                               RecoverySystem.ProgressListener listener) throws IOException {
+        int reciteIdx = findReciteZipItemByFileName(context, fileName);
         if (reciteIdx == -1) return false;
         byte[] buffer = new byte[1024];
         String[] r = context.getResources().getStringArray(R.array.reciter_values);
-        FileInputStream fis = new FileInputStream(zipFile);
-        ZipInputStream zis = new ZipInputStream(fis);
+        ZipInputStream zis = new ZipInputStream(inputStream);
         ZipEntry ze = zis.getNextEntry();
         Pattern pattern = Pattern.compile("^(\\d{3})(\\d{3}).mp3$");
-        while (ze != null){
-            Matcher matcher = pattern.matcher(ze.getName());
-            if (matcher.matches()) {
-                int surah = Integer.parseInt(matcher.group(1));
-                int ayah = Integer.parseInt(matcher.group(2));
-                File surahDir = getSurahDir(context, r[reciteIdx], surah);
-                if (!surahDir.exists()) surahDir.mkdirs();
-                File ayahFile = getAyahFile(ayah, surahDir);
-                if (!ayahFile.exists()) {
-                    Log.d("extractSurahZip", "Unzipping to " + ayahFile.getAbsolutePath());
-                    FileOutputStream fos = new FileOutputStream(ayahFile);
-                    int len;
-                    while ((len = zis.read(buffer)) > 0) {
-                        fos.write(buffer, 0, len);
+        Object ayahFile = null;
+        DownloadedAyat downloadedAyat = DownloadedAyat.getInstance(context);
+        int curSura = -1;
+        try {
+            while (ze != null) {
+                Matcher matcher = pattern.matcher(ze.getName());
+                if (matcher.matches()) {
+                    int surah = Integer.parseInt(matcher.group(1));
+                    if (surah != curSura) {
+                        curSura = surah;
+                        listener.onProgress(curSura);
                     }
-                    fos.close();
+                    int ayah = Integer.parseInt(matcher.group(2));
+                    Object surahDir = getSurahDir(context, r[reciteIdx], surah, true);
+                    if (surahDir instanceof File) {
+                        File file = (File) surahDir;
+                        if (!file.exists()) file.mkdirs();
+                    }
+                    ayahFile = getAyahFile(ayah, surahDir);
+                    boolean exists;
+                    if (ayahFile instanceof File) {
+                        File file = (File) ayahFile;
+                        exists = file.exists();
+                    } else {
+                        AyahFile ayahFile1 = (AyahFile) ayahFile;
+                        exists = ayahFile1.get() != null;
+                    }
+                    if (!exists) {
+                        //Log.d("extractSurahZip", "Unzipping to " + ayahFile.getAbsolutePath());
+                        OutputStream fos;
+                        if (ayahFile instanceof File) {
+                            fos = new FileOutputStream((File) ayahFile);
+                        } else {
+                            fos = context.getContentResolver().openOutputStream(
+                                    ((AyahFile) ayahFile).getOrCreate().getUri());
+                        }
+                        int len;
+                        while ((len = zis.read(buffer)) > 0) {
+                            fos.write(buffer, 0, len);
+                        }
+                        fos.close();
+                    }
+                    downloadedAyat.set(r[reciteIdx], surah, ayah, true);
                 }
+                zis.closeEntry();
+                ze = zis.getNextEntry();
             }
             zis.closeEntry();
-            ze = zis.getNextEntry();
+            zis.close();
+            downloadedAyat.save(context);
+        } catch (Exception ex) {
+            downloadedAyat.save(context);
+            if (ayahFile != null) {
+                try {
+                    if (ayahFile instanceof File) {
+                        ((File) ayahFile).delete();
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        DocumentsContract.deleteDocument(context.getContentResolver(),
+                                ((AyahFile) ayahFile).getOrCreate().getUri());
+                    }
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+            }
+            throw ex;
         }
-        zis.closeEntry();
-        zis.close();
-        fis.close();
         return true;
     }
 
@@ -491,13 +639,13 @@ public class Utils {
         return dialog;
     }
 
-    private static int downloadFile(byte[] buffer, String fromUrl, File saveTo) {
+    private static int downloadFile(byte[] buffer, Uri fromUrl, OutputStream output) {
         if (fromUrl == null)
             return DOWNLOAD_MALFORMED_URL;
         URL url;
         boolean conn = true;
         try {
-            url = new URL(fromUrl);
+            url = new URL(fromUrl.toString());
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestProperty("connection", "close");
             connection.connect();
@@ -513,7 +661,6 @@ public class Utils {
             // download the file
             InputStream input = connection.getInputStream();
             conn = false;
-            FileOutputStream output = new FileOutputStream(saveTo);
             int count;
             long total = 0;
             while ((count = input.read(buffer)) != -1) {
@@ -521,7 +668,6 @@ public class Utils {
                 total += count;
             }
             input.close();
-            output.close();
             connection.disconnect();
             return fileLength <= 0 || total == fileLength ?
                     DOWNLOAD_OK : DOWNLOAD_SERVER_INVALID_RESPONSE;
@@ -543,54 +689,146 @@ public class Utils {
         }
     }
 
-    public static int downloadAyah(Context context, String reciter, int surah, int ayah,
-                                   byte[] buffer, File surahDir, QuranData data) {
+    private static int _downloadAyah(Context context, Uri ayahUri,
+                                     byte[] buffer, Object ayahFile) throws IOException {
         DownloadQuota q = DownloadQuota.getInstance(context);
         if (!q.canDownloadNow()) return DOWNLOAD_QUOTA_EXCEEDED;
         int res = -1;
-        File file = getAyahFile(ayah, surahDir);
-        if (file.exists())
+        boolean exists;
+        if (ayahFile instanceof File) {
+            File file = (File) ayahFile;
+            exists = file.exists();
+        } else {
+            AyahFile ayahFile1 = (AyahFile) ayahFile;
+            exists = ayahFile1.get() != null;
+        }
+        if (exists)
             return DOWNLOAD_OK;
         try {
-            res = downloadFile(buffer, getAyahUrl(reciter, surah, ayah, data, 1), file);
-            if (res == DOWNLOAD_OK) return res;
-            else if (file.exists()) // download failed
-                file.delete();
-            String next = getAyahUrl(reciter, surah, ayah, data, 2);
-            if (next == null) return res;
-            res = downloadFile(buffer, next, file);
-            if (res != DOWNLOAD_OK && file.exists()) // download failed
-                file.delete();
+            OutputStream fos;
+            if (ayahFile instanceof File) {
+                fos = new FileOutputStream((File) ayahFile);
+            } else {
+                fos = context.getContentResolver().openOutputStream(
+                        ((AyahFile) ayahFile).getOrCreate().getUri());
+            }
+            res = downloadFile(buffer, ayahUri, fos);
+            fos.close();
             return res;
         } finally {
             if (res == DOWNLOAD_OK) {
-                q.incrementBytes(file.length());
+                long length;
+                if (ayahFile instanceof File) {
+                    length = ((File) ayahFile).length();
+                } else {
+                    length = ((AyahFile) ayahFile).get().length();
+                }
+                q.incrementBytes(length);
                 q.save(context);
             }
         }
     }
 
-    private static File[] listAyahs(Context context, String reciter, int surah) {
-        File file = getSurahDir(context, reciter, surah);
-        if (file == null || !file.exists())
-            return null;
-        return file.listFiles(new FilenameFilter() {
-            @Override
-            public boolean accept(File file, String s) {
+    private static void deleteIfFailed(Context context, int status, Object ayahFile) {
+        if (status != DOWNLOAD_OK) { // download failed
+            if (ayahFile instanceof File) {
+                File file = (File) ayahFile;
+                if (file.exists()) file.delete();
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                AyahFile ayahFile1 = (AyahFile) ayahFile;
+                DocumentFile documentFile = ayahFile1.get();
+                if (documentFile != null) {
+                    try {
+                        DocumentsContract.deleteDocument(context.getContentResolver(),
+                                documentFile.getUri());
+                    } catch (FileNotFoundException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
+
+    public static int downloadAyah(Context context, String reciter, int surah, int ayah,
+                                   byte[] buffer, Object surahDir, QuranData data) {
+        DownloadQuota q = DownloadQuota.getInstance(context);
+        if (!q.canDownloadNow()) return DOWNLOAD_QUOTA_EXCEEDED;
+        int res;
+        Object ayahFile = getAyahFile(ayah, surahDir);
+        boolean exists;
+        if (ayahFile instanceof File) {
+            File file = (File) ayahFile;
+            exists = file.exists();
+        } else {
+            AyahFile ayahFile1 = (AyahFile) ayahFile;
+            exists = ayahFile1.get() != null;
+        }
+        DownloadedAyat downloadedAyat = DownloadedAyat.getInstance(context);
+        if (exists) {
+            if (!downloadedAyat.get(reciter, surah, ayah)) {
+                downloadedAyat.set(reciter, surah, ayah, true);
+                downloadedAyat.save(context);
+            }
+            return DOWNLOAD_OK;
+        }
+        try {
+            res = _downloadAyah(context, getAyahUrl(reciter, surah, ayah, data, 1),
+                    buffer, ayahFile);
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            res = DOWNLOAD_IO_EXCEPTION;
+        }
+        if (res == DOWNLOAD_OK) {
+            downloadedAyat.set(reciter, surah, ayah, true);
+            downloadedAyat.save(context);
+            return res;
+        } else deleteIfFailed(context, res, ayahFile);
+        Uri next = getAyahUrl(reciter, surah, ayah, data, 2);
+        if (next == null) return res;
+        try {
+            res = _downloadAyah(context, getAyahUrl(reciter, surah, ayah, data, 1),
+                    buffer, ayahFile);
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            res = DOWNLOAD_IO_EXCEPTION;
+        }
+        downloadedAyat.set(reciter, surah, ayah, res == DOWNLOAD_OK);
+        downloadedAyat.save(context);
+        if (res == DOWNLOAD_OK) return res;
+        else deleteIfFailed(context, res, ayahFile);
+        return res;
+    }
+
+    private static Object[] listAyahs(Context context, String reciter, int surah) {
+        Object surahDir = getSurahDir(context, reciter, surah, false);
+        if (surahDir == null) return null;
+        if (surahDir instanceof File) {
+            File file = (File) surahDir;
+            if (!file.exists())
+                return null;
+            return file.listFiles((file1, s) -> {
                 for (int i = 0; i < s.length(); ++i)
                     if (!Character.isDigit(s.charAt(i))) return false;
                 return true;
-            }
-        });
+            });
+        } else {
+            DocumentFile documentFile = (DocumentFile) surahDir;
+            return documentFile.listFiles();
+        }
     }
 
     public static ConcurrentLinkedQueue<Integer> getNotDownloaded(Context context,
                           String reciter, int surah, boolean buffer[], QuranData data) {
         Arrays.fill(buffer, false);
-        File files[] = listAyahs(context, reciter, surah);
+        Object files[] = listAyahs(context, reciter, surah);
         if (files != null) {
-            for (File f : files) {
-                buffer[Integer.parseInt(f.getName())] = true;
+            for (Object f : files) {
+                String name;
+                if (f instanceof File)
+                    name = ((File) f).getName();
+                else
+                    name = ((DocumentFile) f).getName();
+                buffer[Integer.parseInt(name)] = true;
             }
         }
         ConcurrentLinkedQueue<Integer> q = new ConcurrentLinkedQueue<>();
@@ -601,14 +839,109 @@ public class Utils {
     }
 
     public static int getNumDownloaded(Context context, String reciter, int surah) {
-        File[] arr = listAyahs(context, reciter, surah);
-        return arr == null ? 0 : arr.length;
+        Boolean saveSoundsUri = isSaveSoundsUri(context);
+        if (saveSoundsUri == null) return 0;
+        if (!saveSoundsUri) {
+            Object[] arr = listAyahs(context, reciter, surah);
+            return arr == null ? 0 : arr.length;
+        } else {
+            int count = 0;
+            DownloadedAyat downloadedAyat = DownloadedAyat.getInstance(context);
+            for (int j = 0; j < downloadedAyat.getSuraLength(reciter, surah); ++j) {
+                if (downloadedAyat.get(reciter, surah, j + (surah == 1 ? 0 : 1)))
+                    ++count;
+            }
+            return count;
+        }
+    }
+
+    public static void refreshNumDownloaded(Context context, String reciter,
+                                            RecoverySystem.ProgressListener listener,
+                                            Runnable onDone) {
+        new AsyncTask<Void, Integer, Void>() {
+
+            @Override
+            protected Void doInBackground(Void... voids) {
+                Boolean saveSoundsUri = isSaveSoundsUri(context);
+                if (saveSoundsUri == null) return null;
+                DownloadedAyat downloadedAyat = DownloadedAyat.getInstance(context);
+                for (int surah = 1; surah <= 114; ++surah) {
+                    Object[] arr = listAyahs(context, reciter, surah);
+                    for (int ayah = 0; ayah < downloadedAyat.getSuraLength(reciter, surah); ++ayah) {
+                        downloadedAyat.set(reciter, surah, ayah + (surah == 1 ? 0 : 1), false);
+                    }
+                    if (arr != null) {
+                        for (Object ayahFile : arr) {
+                            int ayah = -1;
+                            if (ayahFile instanceof File) {
+                                File file = (File) ayahFile;
+                                ayah = Integer.parseInt(file.getName());
+                            } else if (ayahFile != null) {
+                                DocumentFile documentFile = (DocumentFile) ayahFile;
+                                ayah = Integer.parseInt(documentFile.getName());
+                            }
+                            if (ayah >= 0) {
+                                downloadedAyat.set(reciter, surah, ayah, true);
+                            }
+                        }
+                    }
+                    publishProgress(surah);
+                }
+                downloadedAyat.save(context);
+                AnalyticsTrackers.getInstance(context).sendRefreshDownloads(saveSoundsUri);
+                return null;
+            }
+
+            @Override
+            protected void onProgressUpdate(Integer... values) {
+                super.onProgressUpdate(values);
+                listener.onProgress(values[0]);
+            }
+
+            @Override
+            protected void onPostExecute(Void aVoid) {
+                super.onPostExecute(aVoid);
+                onDone.run();
+            }
+        }.execute();
+    }
+
+    public static void refreshNumDownloaded(Context context, String reciter, Runnable onDone) {
+        showConfirm(context, "تحديث الملفات",
+                "متأكد أنك تريد تحديث الملفات التي تم تحميلها؟ قد تستغرق هذه العملية وقتا"
+                , (dialog, which) -> {
+                    final ProgressDialog show = new ProgressDialog(context);
+                    show.setTitle("تحديث الملفات");
+                    show.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+                    show.setIndeterminate(false);
+                    show.setCancelable(false);
+                    show.setMax(114);
+                    show.setProgress(0);
+                    show.show();
+                    refreshNumDownloaded(context, reciter, show::setProgress, () -> {
+                        show.dismiss();
+                        onDone.run();
+                    });
+                }, (dialog, which) -> {});
     }
 
     public static int downloadPage(Context context, int idx, String pageUrl, byte[] buffer) {
         File file = getPageFile(context, idx);
         if (pageExists(context, idx)) return DOWNLOAD_OK;
-        int res = downloadFile(buffer, pageUrl, file);
+        FileOutputStream fos;
+        try {
+            fos = new FileOutputStream(file);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            return DOWNLOAD_IO_EXCEPTION;
+        }
+        int res = downloadFile(buffer, Uri.parse(pageUrl), fos);
+        try {
+            fos.close();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            res = DOWNLOAD_IO_EXCEPTION;
+        }
         if (res != DOWNLOAD_OK) {
             if (file.exists())
                 file.delete();
@@ -731,18 +1064,21 @@ public class Utils {
                                         final QuranData data) {
         final ConcurrentLinkedQueue<Integer> q =
                 Utils.getNotDownloaded(context, reciter, surah, buffer2, data);
-        final File surahDir = getSurahDir(context, reciter, surah);
+        final Object surahDir = getSurahDir(context, reciter, surah, true);
         if (surahDir == null)
             throw new IllegalStateException("User has not selected download dir");
-        if (!surahDir.exists())
-            surahDir.mkdirs();
+        if (surahDir instanceof File) {
+            File file = (File) surahDir;
+            if (!file.exists())
+                file.mkdirs();
+        }
         final Shared progress = new Shared();
         progress.setData(data.surahs[surah - 1].ayahCount + (surah == 1 ? 1 : 0) - q.size());
         byte[] buf = new byte[1024];
         //Basmalah if not downloaded
         int err = DOWNLOAD_OK;
         downloadAyah(context, reciter, 1, 1, buf,
-                getSurahDir(context, reciter, 1), data);
+                getSurahDir(context, reciter, 1, true), data);
         while (err == DOWNLOAD_OK && cancel.canContinue()) {
             Integer per = q.poll();
             if (per == null) break;
@@ -793,12 +1129,24 @@ public class Utils {
     }
 
     public static boolean deleteSurah(Context context, String reciter, int surah) {
-        File[] files = listAyahs(context, reciter, surah);
+        Object[] files = listAyahs(context, reciter, surah);
         if (files == null) return true;
         boolean res = true;
-        for (File f : files) {
-            res &= f.delete();
+        DownloadedAyat downloadedAyat = DownloadedAyat.getInstance(context);
+        for (Object f : files) {
+            int ayah;
+            if (f instanceof File) {
+                File file = (File) f;
+                ayah = Integer.parseInt(file.getName());
+                res &= file.delete();
+            } else {
+                DocumentFile file = (DocumentFile) f;
+                ayah = Integer.parseInt(file.getName());
+                res &= file.delete();
+            }
+            downloadedAyat.set(reciter, surah, ayah, false);
         }
+        downloadedAyat.save(context);
         return res;
     }
 
@@ -898,22 +1246,10 @@ public class Utils {
                 boolean[] buffer = new boolean[290];
                 for (int i = 1; !isCancelled() && error.getData() == DOWNLOAD_OK && i <= 114; ++i) {
                     final int surah = i;
-                    myDownloadSurah(context, reciter, i, new RecoverySystem.ProgressListener() {
-                        @Override
-                        public void onProgress(int progress) {
-                            publishProgress(surah, progress);
-                        }
-                    }, new DownloadTaskCompleteListener() {
-                        @Override
-                        public void taskCompleted(int result) {
-                            error.setData(result);
-                        }
-                    }, new CancelOperationListener() {
-                        @Override
-                        public boolean canContinue() {
-                            return !isCancelled();
-                        }
-                    }, buffer, data);
+                    myDownloadSurah(context, reciter, i,
+                            progress1 -> publishProgress(surah, progress1),
+                            error::setData,
+                            () -> !isCancelled(), buffer, data);
                 }
                 return isCancelled() ? DOWNLOAD_USER_CANCEL : error.getData();
             }
@@ -963,8 +1299,10 @@ public class Utils {
         }
         XPath xPath = XPathFactory.newInstance().newXPath();
         try {
-            String res = ((NodeList) xPath.evaluate("/quran/sura[@index=\"" + sura
-                            + "\"]/aya[@index=\"" + ayah + "\"]",
+            String expr = String.format(Locale.ENGLISH,
+                    "/quran/sura[@index=\"%d\"]/aya[@index=\"%d\"]",
+                    sura, ayah);
+            String res = ((NodeList) xPath.evaluate(expr,
                     doc.getDocumentElement(), XPathConstants.NODESET))
                     .item(0).getAttributes().getNamedItem("text").getTextContent();
             return res;
@@ -997,8 +1335,12 @@ public class Utils {
             QuranImageView.sortMutliSelectList(list);
             int prevSurah = -1;
             for (Ayah a : list) {
-                String res = ((NodeList) xPath.evaluate("/quran/sura[@index=\"" + a.sura
-                                + "\"]/aya[@index=\"" + a.ayah + "\"]",
+                if (a.ayah < 1 || a.sura < 1 || a.sura > 114
+                        || a.ayah > quranData.surahs[a.sura - 1].ayahCount) continue;
+                String expr = String.format(Locale.ENGLISH,
+                        "/quran/sura[@index=\"%d\"]/aya[@index=\"%d\"]",
+                        a.sura, a.ayah);
+                String res = ((NodeList) xPath.evaluate(expr,
                         doc.getDocumentElement(), XPathConstants.NODESET))
                         .item(0).getAttributes().getNamedItem("text").getTextContent();
                 if (prevSurah != a.sura) {
@@ -1219,6 +1561,68 @@ public class Utils {
             intent.setPackage(null);
             context.startActivity(intent);
         }
+    }
+
+    public static boolean isGooglePlayServicesAvailable(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            try {
+                int errorCode = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context);
+                switch (errorCode) {
+                    case ConnectionResult.SUCCESS:
+                        Log.d("isGmsAvailable", "SUCCESS");
+                        // Google Play Services installed and up to date
+                        return true;
+                    case ConnectionResult.SERVICE_MISSING:
+                        Log.d("isGmsAvailable", "MISSING");
+                        // Google Play services is missing on this device.
+                        break;
+                    case ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED:
+                        Log.d("isGmsAvailable", "VERSION_UPDATE_REQUIRED");
+                        // The installed version of Google Play services is out of date.
+                        break;
+                    case ConnectionResult.SERVICE_DISABLED:
+                        Log.d("isGmsAvailable", "DISABLED");
+                        // The installed version of Google Play services has been disabled on this device.
+                        break;
+                    case ConnectionResult.SERVICE_INVALID:
+                        Log.d("isGmsAvailable", "INVALID");
+                        // The version of the Google Play services installed on this device is not authentic.
+                        break;
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+        return false;
+    }
+
+    public static String getDeviceInfo(Context context) {
+        long vmHead = -1, recomendHeap = -1, totalMem = -1,
+                freeMemory = -1, processors = -1;
+        try {
+            freeMemory = Runtime.getRuntime().freeMemory();
+            processors = Runtime.getRuntime().availableProcessors();
+            vmHead = Runtime.getRuntime().maxMemory();
+            totalMem = Runtime.getRuntime().totalMemory();
+            ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            if (am != null) {
+                recomendHeap = am.getMemoryClass();
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return String.format(Locale.ENGLISH,
+                "kilanny.shamarlymushaf.App [Version: %s, code: %d]\nOS Version: %s\nAPI Level: %d\nDevice: %s\nModel: %s\nProduct: %s\n" +
+                        "Recommended Heap: %d\nFree Memory: %d\nProcessor Count: %d\nVM Heap size: %d\n" +
+                        "Total Memory: %d",
+                BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE,
+                System.getProperty("os.version"), // OS version
+                Build.VERSION.SDK_INT,      // API Level
+                Build.DEVICE,           // Device
+                Build.MODEL,            // Model
+                Build.PRODUCT,          // Product,
+                recomendHeap, freeMemory, processors, vmHead, totalMem
+        );
     }
 }
 

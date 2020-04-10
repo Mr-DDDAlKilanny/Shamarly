@@ -12,7 +12,6 @@ import android.app.ProgressDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
@@ -31,21 +30,16 @@ import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.Shader;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
-import android.os.RecoverySystem;
 import android.preference.PreferenceManager;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.FragmentActivity;
-import androidx.core.content.FileProvider;
-import androidx.core.content.res.ResourcesCompat;
-import androidx.viewpager.widget.ViewPager;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Display;
@@ -59,7 +53,6 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -68,6 +61,15 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.DrawableRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.widget.AppCompatDrawableManager;
+import androidx.core.content.FileProvider;
+import androidx.core.content.res.ResourcesCompat;
+import androidx.fragment.app.FragmentActivity;
+import androidx.viewpager.widget.ViewPager;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -75,13 +77,10 @@ import java.io.RandomAccessFile;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -103,8 +102,8 @@ import kilanny.shamarlymushaf.data.Shared;
 import kilanny.shamarlymushaf.data.TafseerDbManager;
 import kilanny.shamarlymushaf.services.PlayReciteService;
 import kilanny.shamarlymushaf.util.AnalyticsTrackers;
+import kilanny.shamarlymushaf.util.AppExecutors;
 import kilanny.shamarlymushaf.util.ArabicNumbers;
-import kilanny.shamarlymushaf.util.CancelOperationListener;
 import kilanny.shamarlymushaf.util.MyOutOfMemoryException;
 import kilanny.shamarlymushaf.util.SystemUiHider;
 import kilanny.shamarlymushaf.util.Utils;
@@ -187,8 +186,8 @@ public class MainActivity extends FragmentActivity {
     private static final int yellowColor = Color.rgb(255, 255, 225);
     public static final String SHOW_PAGE_MESSAGE = "kilanny.shamarlymushaf.activities.MainActivity.showPage";
     public static final String SHOW_AYAH_MESSAGE = "kilanny.shamarlymushaf.activities.MainActivity.showPage#withAyah";
-    private final ExecutorService executorService = Executors.newCachedThreadPool();
-    private static ExecutorService imageProcExecutor;
+
+
     public FullScreenImageAdapter adapter;
     private ViewPager viewPager;
     private Setting setting;
@@ -216,10 +215,9 @@ public class MainActivity extends FragmentActivity {
     private final Lock readBordersLock = new ReentrantLock(true);
 
     //google analytics fields
-    private HashSet<Integer> pagesViewed;
-    private Date startDate;
+    private Date tafseerPageStartDate, quranPageStartDate;
+    private int lastTafId, lastTafSura, lastTafAyah, lastPage;
     private String sessionId;
-    private HashSet<String> listenRecite, viewTafseer;
     private static boolean lastRecitedAyahWasFile = false;
     private final Timer autoCloseTimer = new Timer("autoCloseScreen");
     private final Shared idleUseCounter = new Shared();
@@ -229,40 +227,25 @@ public class MainActivity extends FragmentActivity {
     protected void onStop() {
         super.onStop();
         stopPlayback();
-        if (pagesViewed != null) {
-            final long diff = new Date().getTime() - startDate.getTime();
-            if (diff >= 60 * 1000 || listenRecite != null || viewTafseer != null) {
-                executorService.submit(new Runnable() {
-                    @Override
-                    public void run() {
-                        Context context = getApplicationContext();
-                        AnalyticsTrackers.sendPageReadStats(context, sessionId, pagesViewed, diff);
-                        if (listenRecite != null)
-                            AnalyticsTrackers.sendListenReciteStats(context, sessionId, listenRecite);
-                        if (viewTafseer != null)
-                            AnalyticsTrackers.sendTafseerStats(context, sessionId, viewTafseer);
-                        listenRecite = null;
-                        pagesViewed = null;
-                        startDate = null;
-                        sessionId = null;
-                        executorService.shutdown();
-                    }
-                });
-            } else
-                executorService.shutdown();
-            AnalyticsTrackers.send(getApplicationContext());
-        }
+
         DbManager.dispose();
         autoCloseTimer.cancel();
         if (adapter != null) {
             adapter.recycle();
             adapter = null;
         }
-        if (imageProcExecutor != null) {
-            imageProcExecutor.shutdownNow();
-            imageProcExecutor = null;
-        }
         finish(); // prevent re-use the activity after stopping it (causes exceptions)
+    }
+
+    private void sendTafseer() {
+        if (tafseerPageStartDate != null) {
+            final long diff = new Date().getTime() - tafseerPageStartDate.getTime();
+            if (diff >= 5 * 1000) {
+                AnalyticsTrackers.getInstance(this).sendTafseerStats(sessionId,
+                        lastTafId, lastTafSura, lastTafAyah);
+            }
+            tafseerPageStartDate = null;
+        }
     }
 
     @Override
@@ -278,6 +261,7 @@ public class MainActivity extends FragmentActivity {
     @Override
     protected void onPause() {
         if (tafseerDialog != null && tafseerDialog.isShowing()) {
+            sendTafseer();
             tafseerDialog.dismiss();
             tafseerDialog = null;
         }
@@ -381,15 +365,13 @@ public class MainActivity extends FragmentActivity {
         };
         final GestureDetector tapGestureDetector = new GestureDetector(this, listener);
         adapter.setInstantiateQuranImageViewListener(new FullScreenImageAdapter.OnInstantiateQuranImageViewListener() {
+            @SuppressLint("ClickableViewAccessibility")
             @Override
             public void onInstantiate(final WeakReference<QuranImageView> image, View parent) {
-                image.get().setOnTouchListener(new View.OnTouchListener() {
-                    @Override
-                    public boolean onTouch(View v, MotionEvent event) {
-                        listener.currentImageView = image;
-                        tapGestureDetector.onTouchEvent(event);
-                        return false;
-                    }
+                image.get().setOnTouchListener((v, event) -> {
+                    listener.currentImageView = image;
+                    tapGestureDetector.onTouchEvent(event);
+                    return false;
                 });
                 if (image.get().currentPage != null)
                     Log.d("onInstantiate", "at page " + image.get().currentPage.page);
@@ -517,26 +499,17 @@ public class MainActivity extends FragmentActivity {
                         .setListener(null);
             }
         });
-        Runnable delayDone = new Runnable() {
-            @Override
-            public void run() {
-                //no need to check HONEYCOMB_MR2 (3.2), app min is android 4.0
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        pageInfo.animate()
-                                .translationY(-pageInfo.getHeight())
-                                .setDuration(duration)
-                                .setListener(new AnimatorListenerAdapter() {
-                                    @Override
-                                    public void onAnimationEnd(Animator animation) {
-                                        super.onAnimationEnd(animation);
-                                        pageInfo.setVisibility(View.GONE);
-                                    }
-                                });
-                    }
-                });
-            }
+        Runnable delayDone = () -> {
+            runOnUiThread(() -> pageInfo.animate()
+                    .translationY(-pageInfo.getHeight())
+                    .setDuration(duration)
+                    .setListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+                            super.onAnimationEnd(animation);
+                            pageInfo.setVisibility(View.GONE);
+                        }
+                    }));
         };
         mHideHandler.postDelayed(delayDone, AUTO_HIDE_DELAY_MILLIS * 2);
     }
@@ -652,18 +625,22 @@ public class MainActivity extends FragmentActivity {
             stopPlayback();
         else autoSwipPage = false;
         setting.page = adapter.getCount() - position; // correct also for dual mode
-        if (sessionId == null) {
-            pagesViewed = new HashSet<>();
-            startDate = new Date();
+        if (sessionId == null)
             sessionId = Utils.newUid();
-        }
+
         int p = setting.page * (setting.lastWasDualPage ? 2 : 1);
+        if (quranPageStartDate != null) {
+            final long diff = new Date().getTime() - quranPageStartDate.getTime();
+            if (diff >= 60 * 1000)
+                AnalyticsTrackers.getInstance(this).sendPageReadStats(sessionId, lastPage, (int) diff);
+        }
+        lastPage = p;
+        quranPageStartDate = new Date();
         if (currentKhatmahName != null) {
             Khatmah khatmah = setting.getKhatmahByName(currentKhatmahName);
             khatmah.page = p;
             khatmah.lastReadDate = new Date();
         }
-        pagesViewed.add(p);
         setBookmarkMenuItem(setting.isBookmarked(p));
         setting.save(MainActivity.this);
         if (last != null && last.get() != null && last.get().myBitmap != null &&
@@ -758,7 +735,7 @@ public class MainActivity extends FragmentActivity {
         }
         final QuranImageView image = result.image;
         if (image.myBitmap == null) {
-            AnalyticsTrackers.sendFatalError(MainActivity.this, "MainActivit.displayRepeatDlg",
+            AnalyticsTrackers.getInstance(this).sendFatalError("displayReciteInBackgroundDlg",
                     "image.myBitmap == null (recycled ??)");
             Toast.makeText(this, "حدث خطأ ما.", Toast.LENGTH_LONG).show();
             return;
@@ -840,8 +817,7 @@ public class MainActivity extends FragmentActivity {
                     return;
                 }
             } else if (image.currentPage != null && image.currentPage.ayahs != null) {
-                Ayah a = image.currentPage.ayahs.get(result.selectionIndex >= 0 ?
-                        result.selectionIndex : 0);
+                Ayah a = image.currentPage.ayahs.get(Math.max(result.selectionIndex, 0));
                 sf = a.sura; f = a.ayah;
             } else {
                 sf = 1;
@@ -859,23 +835,43 @@ public class MainActivity extends FragmentActivity {
         dialog.show();
     }
 
+    @SuppressLint("RestrictedApi")
+    private void setButtonBackground(Button btn, @DrawableRes int resId) {
+        Drawable v = AppCompatDrawableManager.get().getDrawable(this, resId);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN)
+            btn.setBackgroundDrawable(v);
+        else
+            btn.setBackground(v);
+    }
+
     private void setBookmarkMenuItem(boolean add) {
-        if (add) {
-            findViewById(R.id.bookmarkBtn)
-                    .setBackgroundResource(android.R.drawable.star_big_on);
-        }
-        else {
-            findViewById(R.id.bookmarkBtn)
-                    .setBackgroundResource(android.R.drawable.star_big_off);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Button btn = findViewById(R.id.bookmarkBtn);
+            setButtonBackground(btn, add ? R.drawable.baseline_star_48
+                    : R.drawable.baseline_star_outline_48);
+        } else {
+            if (add) {
+                findViewById(R.id.bookmarkBtn)
+                        .setBackgroundResource(android.R.drawable.star_big_on);
+            }
+            else {
+                findViewById(R.id.bookmarkBtn)
+                        .setBackgroundResource(android.R.drawable.star_big_off);
+            }
         }
     }
 
     private void togglePlayButton(boolean playing) {
-        Button btn = (Button) findViewById(R.id.listen);
-        if (playing)
-            btn.setBackgroundResource(android.R.drawable.ic_media_pause);
-        else
-            btn.setBackgroundResource(android.R.drawable.ic_media_play);
+        Button btn = findViewById(R.id.listen);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            setButtonBackground(btn, playing ? R.drawable.baseline_pause_circle_outline_48 :
+                    R.drawable.baseline_play_circle_outline_48);
+        } else {
+            if (playing)
+                btn.setBackgroundResource(android.R.drawable.ic_media_pause);
+            else
+                btn.setBackgroundResource(android.R.drawable.ic_media_play);
+        }
     }
 
     private String getSelectedSound() {
@@ -883,8 +879,7 @@ public class MainActivity extends FragmentActivity {
     }
 
     public static String getSelectedSound(SharedPreferences pref, Context context) {
-        return pref.getString("listReciters",
-                context.getString(R.string.defaultReciter));
+        return pref.getString("listReciters", context.getString(R.string.defaultReciter));
     }
 
     public static void playBasmalah(final Context context, final String selectedSound,
@@ -894,58 +889,49 @@ public class MainActivity extends FragmentActivity {
         attempt.setData(1);
         MediaPlayer player1 = null;
         try {
-            String path = Utils.getAyahPath(context, selectedSound, 1, 1, quranData,
+            Uri path = Utils.getAyahPath(context, selectedSound, 1, 1, quranData,
                     attempt.getData());
-            if (path == null || path.startsWith("http") && Utils.isConnected(context) == Utils.CONNECTION_STATUS_NOT_CONNECTED) {
+            if (path == null || path.toString().startsWith("http") && Utils.isConnected(context)
+                    == Utils.CONNECTION_STATUS_NOT_CONNECTED) {
                 finishCallback.run();
                 return;
             }
             final MediaPlayer player = new MediaPlayer();
             player1 = player;
-            player.setDataSource(path);
-            player.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-                @Override
-                public void onPrepared(MediaPlayer mp) {
-                    player.start();
-                }
+            player.setDataSource(context, path);
+            player.setOnPreparedListener(mp -> player.start());
+            player.setOnCompletionListener(mp -> {
+                player.release();
+                finishCallback.run();
             });
-            player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                @Override
-                public void onCompletion(MediaPlayer mp) {
-                    player.release();
-                    finishCallback.run();
-                }
-            });
-            player.setOnErrorListener(new MediaPlayer.OnErrorListener() {
-                @Override
-                public boolean onError(MediaPlayer mp, int what, int extra) {
-                    attempt.increment();
-                    int num = attempt.getData();
-                    if (num == 2) {
-                        String path = Utils.getAyahPath(context, selectedSound, 1, 1,
-                                quranData, num);
-                        if (path == null || path.startsWith("http") && Utils.isConnected(context) == Utils.CONNECTION_STATUS_NOT_CONNECTED) {
-                            player.release();
-                            finishCallback.run();
-                            return true;
-                        }
-                        try {
-                            player.reset();
-                            player.setDataSource(path);
-                            player.prepareAsync();
-                            lastRecitedAyahWasFile = path.startsWith("/");
-                        } catch (IOException | IllegalStateException e) {
-                            e.printStackTrace();
-                            player.release();
-                            finishCallback.run();
-                        }
-                    } else finishCallback.run();
-                    return true;
-                }
+            player.setOnErrorListener((mp, what, extra) -> {
+                attempt.increment();
+                int num = attempt.getData();
+                if (num == 2) {
+                    Uri path1 = Utils.getAyahPath(context, selectedSound, 1, 1,
+                            quranData, num);
+                    if (path1 == null || path1.toString().startsWith("http")
+                            && Utils.isConnected(context) == Utils.CONNECTION_STATUS_NOT_CONNECTED) {
+                        player.release();
+                        finishCallback.run();
+                        return true;
+                    }
+                    try {
+                        player.reset();
+                        player.setDataSource(context, path1);
+                        player.prepareAsync();
+                        lastRecitedAyahWasFile = !path1.toString().startsWith("http");
+                    } catch (IOException | IllegalStateException e) {
+                        e.printStackTrace();
+                        player.release();
+                        finishCallback.run();
+                    }
+                } else finishCallback.run();
+                return true;
             });
             player.setAudioStreamType(AudioManager.STREAM_MUSIC);
             player.prepareAsync();
-            lastRecitedAyahWasFile = path.startsWith("/");
+            lastRecitedAyahWasFile = !path.toString().startsWith("http");
         } catch (IOException | IllegalStateException e) {
             e.printStackTrace();
             if (player1 != null)
@@ -1045,10 +1031,8 @@ public class MainActivity extends FragmentActivity {
             }
             player = new MediaPlayer();
             player.setOnCompletionListener(mp -> {
-                if (listenRecite == null)
-                    listenRecite = new HashSet<>();
-                listenRecite.add(String.format(Locale.US, "{\"r\":\"%s\",\"f\":\"%s\",\"s\":%d,\"a\":%d}",
-                        getSelectedSound(), lastRecitedAyahWasFile + "", sura, ayah));
+                AnalyticsTrackers.getInstance(this).sendListenReciteStats(sessionId,
+                        getSelectedSound(), sura, ayah, lastRecitedAyahWasFile, false);
                 if (!allPagePlay) {
                     stopPlayback();
                 } else {
@@ -1143,14 +1127,14 @@ public class MainActivity extends FragmentActivity {
                             return;
                         try {
                             player.reset();
-                            String path = Utils.getAyahPath(MainActivity.this,
+                            Uri path = Utils.getAyahPath(MainActivity.this,
                                     getSelectedSound(), sura, ayah, quranData, attempt.getData());
-                            if (path == null || path.startsWith("http") &&
+                            if (path == null || path.toString().startsWith("http") &&
                                     Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
                                 throw new IllegalStateException();
-                            player.setDataSource(path);
+                            player.setDataSource(this, path);
                             player.prepareAsync();
-                            lastRecitedAyahWasFile = path.startsWith("/");
+                            lastRecitedAyahWasFile = !path.toString().startsWith("http");
                         } catch (IOException | IllegalStateException e) {
                             e.printStackTrace();
                             bar.setVisibility(View.GONE);
@@ -1177,16 +1161,18 @@ public class MainActivity extends FragmentActivity {
             player.setOnErrorListener((mp, what, extra) -> {
                 attempt.increment();
                 if (attempt.getData() == 2) {
-                    String path = Utils.getAyahPath(MainActivity.this, getSelectedSound(),
+                    Uri path = Utils.getAyahPath(MainActivity.this, getSelectedSound(),
                             sura, ayah, quranData, 2);
                     if (path != null) {
                         try {
-                            if (path.startsWith("http") && Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
+                            if (path.toString().startsWith("http") &&
+                                    Utils.isConnected(getApplicationContext())
+                                            == Utils.CONNECTION_STATUS_NOT_CONNECTED)
                                 throw new IllegalStateException();
                             player.reset();
-                            player.setDataSource(path);
+                            player.setDataSource(this, path);
                             player.prepareAsync();
-                            lastRecitedAyahWasFile = path.startsWith("/");
+                            lastRecitedAyahWasFile = !path.toString().startsWith("http");
                             return true;
                         } catch (IOException | IllegalStateException e) {
                             e.printStackTrace();
@@ -1205,13 +1191,14 @@ public class MainActivity extends FragmentActivity {
                 if (player == null) //stopPlayback() was called
                     return;
                 try {
-                    String path = Utils.getAyahPath(MainActivity.this, getSelectedSound(),
+                    Uri path = Utils.getAyahPath(MainActivity.this, getSelectedSound(),
                             sura = a.sura, ayah = a.ayah, quranData, 1);
-                    if (path == null || path.startsWith("http") &&
+                    if (path == null || path.toString().startsWith("http") &&
                             Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
                         throw new IllegalStateException();
-                    player.setDataSource(path);
+                    player.setDataSource(this, path);
                     player.prepareAsync();
+                    lastRecitedAyahWasFile = !path.toString().startsWith("http");
                 } catch (IOException | IllegalStateException ignored) {
                     stopPlayback();
                     Toast.makeText(MainActivity.this,
@@ -1273,21 +1260,22 @@ public class MainActivity extends FragmentActivity {
     }
 
     private void initButtons() {
-        Button btn = (Button) findViewById(R.id.bookmarkBtn);
-        btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (adapter.isNotAllDownloaded() || setting.page <= 1) {
-                    Toast.makeText(MainActivity.this, "يستخدم هذا الزر لإضافة الصفحة الحالية للمفضلة",
-                            Toast.LENGTH_LONG).show();
-                    return;
-                }
-                setBookmarkMenuItem(setting.toggleBookmark(setting.page * (setting.lastWasDualPage ? 2 : 1)));
-                setting.save(MainActivity.this);
+        Button btn = findViewById(R.id.bookmarkBtn);
+        setBookmarkMenuItem(false);
+        btn.setOnClickListener(v -> {
+            if (adapter.isNotAllDownloaded() || setting.page <= 1) {
+                Toast.makeText(MainActivity.this, "يستخدم هذا الزر لإضافة الصفحة الحالية للمفضلة",
+                        Toast.LENGTH_LONG).show();
+                return;
             }
+            setBookmarkMenuItem(setting.toggleBookmark(setting.page * (setting.lastWasDualPage ? 2 : 1)));
+            setting.save(MainActivity.this);
         });
         final int minPage = isDualPage() ? 1 : 2;
-        findViewById(R.id.listenBackground).setOnClickListener(v -> {
+        btn = findViewById(R.id.listenBackground);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+            setButtonBackground(btn, R.drawable.baseline_radio_48);
+        btn.setOnClickListener(v -> {
             if (adapter.isNotAllDownloaded() || setting.page < minPage) {
                 Toast.makeText(MainActivity.this, "يستخدم هذا الزر لاستماع التلاوة مع توفير البطارية",
                         Toast.LENGTH_LONG).show();
@@ -1300,7 +1288,8 @@ public class MainActivity extends FragmentActivity {
             }
             displayReciteInBackgroundDlg();
         });
-        btn = (Button) findViewById(R.id.listen);
+        btn = findViewById(R.id.listen);
+        togglePlayButton(false);
         btn.setOnClickListener(v -> {
             if (adapter.isNotAllDownloaded() || setting.page < minPage) {
                 Toast.makeText(MainActivity.this, "يستخدم هذا الزر لتشغيل التلاوة",
@@ -1314,164 +1303,142 @@ public class MainActivity extends FragmentActivity {
             }
             playRecite(-1, -1, -1, -1);
         });
-        btn = (Button) findViewById(R.id.tafseer);
-        btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                final FindPageSelectionResult result = getCurrentPageSelected();
-                if (result == null) {
-                    Toast.makeText(MainActivity.this, "يستخدم هذا الزر لعرض تفسير آية",
-                            Toast.LENGTH_LONG).show();
+        btn = findViewById(R.id.tafseer);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+            setButtonBackground(btn, R.drawable.baseline_menu_book_48);
+        btn.setOnClickListener(v -> {
+            final FindPageSelectionResult result = getCurrentPageSelected();
+            if (result == null) {
+                Toast.makeText(MainActivity.this, "يستخدم هذا الزر لعرض تفسير آية",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+            final int sel = result.selectionIndex;
+            if (sel < 0) {
+                Toast.makeText(MainActivity.this, "حدد آية لتفسيرها، بالضغط عليها مطولا",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+            final QuranImageView image = result.image;
+            AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+            builder.setTitle("اختر التفسير");
+            String tmp[] = null;
+            ListItem[] tmp1 = null;
+            TafseerDbManager db1 = null;
+            final File file = Utils.getTafaseerDbFile(MainActivity.this);
+            boolean dbExists = file.exists();
+            if (dbExists) {
+                try {
+                    db1 = TafseerDbManager.getInstance(MainActivity.this);
+                    tmp1 = db1.getAvailableTafaseer().toArray(new ListItem[0]);
+                    tmp = new String[tmp1.length + 2];
+                    tmp[0] = "التفسير الميسر";
+                    tmp[tmp.length - 1] = "حذف التفاسير";
+                    for (int i = 0; i < tmp1.length; ++i)
+                        tmp[i + 1] = tmp1[i].name;
+                } catch (Exception ex) {
+                    Utils.showConfirm(MainActivity.this, "خطأ",
+                            "حدث خطأ أثناء محاولة الوصول لملف التفاسير. أعد تشغيل الجهاز",
+                            "حذف التفاسير", "لا تحذف الآن",
+                            (dialog, which) -> {
+                                file.delete();
+                                Utils.showAlert(MainActivity.this,
+                                        "خطأ في الملف",
+                                        "تم حذف ملف التفاسير. أعد تحميله مرة أخرى",
+                                        null);
+                            }, null);
                     return;
                 }
-                final int sel = result.selectionIndex;
-                if (sel < 0) {
-                    Toast.makeText(MainActivity.this, "حدد آية لتفسيرها، بالضغط عليها مطولا",
-                            Toast.LENGTH_LONG).show();
-                    return;
-                }
-                final QuranImageView image = result.image;
-                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                builder.setTitle("اختر التفسير");
-                String tmp[] = null;
-                ListItem[] tmp1 = null;
-                TafseerDbManager db1 = null;
-                final File file = Utils.getTafaseerDbFile(MainActivity.this);
-                boolean dbExists = file.exists();
-                if (dbExists) {
-                    try {
-                        db1 = TafseerDbManager.getInstance(MainActivity.this);
-                        tmp1 = db1.getAvailableTafaseer().toArray(new ListItem[0]);
-                        tmp = new String[tmp1.length + 2];
-                        tmp[0] = "التفسير الميسر";
-                        tmp[tmp.length - 1] = "حذف التفاسير";
-                        for (int i = 0; i < tmp1.length; ++i)
-                            tmp[i + 1] = tmp1[i].name;
-                    } catch (Exception ex) {
-                        Utils.showConfirm(MainActivity.this, "خطأ",
-                                "حدث خطأ أثناء محاولة الوصول لملف التفاسير. أعد تشغيل الجهاز",
-                                "حذف التفاسير", "لا تحذف الآن",
-                                new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        file.delete();
-                                        Utils.showAlert(MainActivity.this,
-                                                "خطأ في الملف",
-                                                "تم حذف ملف التفاسير. أعد تحميله مرة أخرى",
-                                                null);
+            }
+            if (!dbExists) {
+                tmp = new String[]{"التفسير الميسر", "تحميل 8 تفاسير أخرى (140 ميغا)"};
+            }
+            final String items[] = tmp;
+            final TafseerDbManager db = db1;
+            final ListItem[] tafseers = tmp1;
+            builder.setItems(items,
+                    (dialog, which) -> {
+                        if (which == 0) {
+                            displayTafseer(-1, db, tafseers, sel,
+                                    image.currentPage.ayahs);
+                        } else if (items.length == 2) {
+                            final ProgressDialog show = new ProgressDialog(MainActivity.this);
+                            show.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+                            show.setIndeterminate(false);
+                            show.setTitle("تحميل التفاسير الإضافية");
+                            show.setMessage("يتم تحميل 8 تفاسير إضافية: الطبرى والقرطبى وابن كثير والتحرير لابن عاشور والسعدى والبغوى والإعراب لدعاس والوسيط");
+                            show.setMax(100);
+                            show.setProgress(0);
+                            show.show();
+                            AnalyticsTrackers.getInstance(this).sendDownloadTafaseerStart();
+                            final AsyncTask<Void, Integer, Integer> execute = new AsyncTask<Void, Integer, Integer>() {
+
+                                @Override
+                                protected Integer doInBackground(Void... params) {
+                                    return Utils.downloadTafaseerDb(MainActivity.this,
+                                            this::publishProgress, () -> !isCancelled());
+                                }
+
+                                @Override
+                                protected void onProgressUpdate(Integer... values) {
+                                    //super.onProgressUpdate(values);
+                                    if (show.isShowing() && !isFinishing())
+                                        show.setProgress(values[0]);
+                                }
+
+                                @Override
+                                protected void onPostExecute(Integer integer) {
+                                    if (!show.isShowing() || isFinishing())
+                                        return;
+                                    show.dismiss();
+                                    if (integer == Utils.DOWNLOAD_FILE_NOT_FOUND ||
+                                            integer == Utils.DOWNLOAD_IO_EXCEPTION)
+                                        showError("فشل التحميل. تأكد من وجود مساحة كافية بالجهاز");
+                                    else if (integer != Utils.DOWNLOAD_OK &&
+                                            integer != Utils.DOWNLOAD_USER_CANCEL)
+                                        showError("فشل التحميل. تأكد من اتصالك بالشبكة");
+                                    else if (integer == Utils.DOWNLOAD_OK) {
+                                        Utils.showAlert(MainActivity.this, "تحميل التفاسير",
+                                                "تم تحميل التفاسير بنجاح", null);
+                                        AnalyticsTrackers.getInstance(MainActivity.this)
+                                                .sendDownloadTafaseerSuccess();
                                     }
+                                }
+                            }.execute();
+                            show.setOnCancelListener(dialog1 -> execute.cancel(true));
+                        } else if (which - 1 < tafseers.length) {
+                            displayTafseer(which, db, tafseers,
+                                    sel, image.currentPage.ayahs);
+                        } else
+                            Utils.showConfirm(this, "حذف التفاسير",
+                                    "حذف التفسير المحملة وتحرير 140 ميغا والإبقاء فقط على التفسير الميسر؟", (dialog12, which1) -> {
+                                Utils.getTafaseerDbFile(this).delete();
+                                AnalyticsTrackers.getInstance(this).sendDeleteTafaseer();
                                 }, null);
-                        return;
-                    }
-                }
-                if (!dbExists) {
-                    tmp = new String[]{"التفسير الميسر", "تحميل 8 تفاسير أخرى (140 ميغا)"};
-                }
-                final String items[] = tmp;
-                final TafseerDbManager db = db1;
-                final ListItem[] tafseers = tmp1;
-                builder.setItems(items,
-                        new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                if (which == 0) {
-                                    displayTafseer(-1, db, tafseers, sel,
-                                            image.currentPage.ayahs);
-                                } else if (items.length == 2) {
-                                    final ProgressDialog show = new ProgressDialog(MainActivity.this);
-                                    show.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-                                    show.setIndeterminate(false);
-                                    show.setTitle("تحميل التفاسير الإضافية");
-                                    show.setMessage("يتم تحميل 8 تفاسير إضافية: الطبرى والقرطبى وابن كثير والتحرير لابن عاشور والسعدى والبغوى والإعراب لدعاس والوسيط");
-                                    show.setMax(100);
-                                    show.setProgress(0);
-                                    show.show();
-                                    final AsyncTask<Void, Integer, Integer> execute = new AsyncTask<Void, Integer, Integer>() {
-
-                                        @Override
-                                        protected Integer doInBackground(Void... params) {
-                                            return Utils.downloadTafaseerDb(MainActivity.this,
-                                                    new RecoverySystem.ProgressListener() {
-                                                        @Override
-                                                        public void onProgress(int progress) {
-                                                            publishProgress(progress);
-                                                        }
-                                                    }, new CancelOperationListener() {
-                                                        @Override
-                                                        public boolean canContinue() {
-                                                            return !isCancelled();
-                                                        }
-                                                    });
-                                        }
-
-                                        @Override
-                                        protected void onProgressUpdate(Integer... values) {
-                                            //super.onProgressUpdate(values);
-                                            if (show.isShowing() && !isFinishing())
-                                                show.setProgress(values[0]);
-                                        }
-
-                                        @Override
-                                        protected void onPostExecute(Integer integer) {
-                                            if (!show.isShowing() || isFinishing())
-                                                return;
-                                            show.dismiss();
-                                            if (integer == Utils.DOWNLOAD_FILE_NOT_FOUND ||
-                                                    integer == Utils.DOWNLOAD_IO_EXCEPTION)
-                                                showError("فشل التحميل. تأكد من وجود مساحة كافية بالجهاز");
-                                            else if (integer != Utils.DOWNLOAD_OK &&
-                                                    integer != Utils.DOWNLOAD_USER_CANCEL)
-                                                showError("فشل التحميل. تأكد من اتصالك بالشبكة");
-                                            else if (integer == Utils.DOWNLOAD_OK)
-                                                Utils.showAlert(MainActivity.this, "تحميل التفاسير",
-                                                        "تم تحميل التفاسير بنجاح", null);
-                                        }
-                                    }.execute();
-                                    show.setOnCancelListener(new DialogInterface.OnCancelListener() {
-                                        @Override
-                                        public void onCancel(DialogInterface dialog) {
-                                            execute.cancel(true);
-                                        }
-                                    });
-                                } else if (which - 1 < tafseers.length) {
-                                    displayTafseer(which, db, tafseers,
-                                            sel, image.currentPage.ayahs);
-                                } else
-                                    Utils.showConfirm(MainActivity.this, "حذف التفاسير",
-                                            "حذف التفسير المحملة وتحرير 140 ميغا والإبقاء فقط على التفسير الميسر؟", new DialogInterface.OnClickListener() {
-                                                @Override
-                                                public void onClick(DialogInterface dialog, int which) {
-                                                    Utils.getTafaseerDbFile(MainActivity.this).delete();
-                                                }
-                                            }, null);
-                            }
-                        });
-                builder.show();
-            }
+                    });
+            builder.show();
         });
-        btn = (Button) findViewById(R.id.repeat);
-        btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (adapter.isNotAllDownloaded()) {
-                    Toast.makeText(MainActivity.this, "يستخدم هذا الزر لتكرار تلاوة الآيات",
-                            Toast.LENGTH_LONG).show();
-                    return;
-                }
-                displayRepeatDlg();
+        btn = findViewById(R.id.repeat);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+            setButtonBackground(btn, R.drawable.baseline_repeat_48);
+        btn.setOnClickListener(v -> {
+            if (adapter.isNotAllDownloaded()) {
+                Toast.makeText(MainActivity.this, "يستخدم هذا الزر لتكرار تلاوة الآيات",
+                        Toast.LENGTH_LONG).show();
+                return;
             }
+            displayRepeatDlg();
         });
-        btn = (Button) findViewById(R.id.shareAyat);
-        btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (adapter.isNotAllDownloaded() || setting.page <= 1) {
-                    Toast.makeText(MainActivity.this, "يستخدم هذا الزر لمشاركة الآيات",
-                            Toast.LENGTH_LONG).show();
-                    return;
-                }
-                displayShareDlg();
+        btn = findViewById(R.id.shareAyat);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+            setButtonBackground(btn, R.drawable.baseline_share_48);
+        btn.setOnClickListener(v -> {
+            if (adapter.isNotAllDownloaded() || setting.page <= 1) {
+                Toast.makeText(MainActivity.this, "يستخدم هذا الزر لمشاركة الآيات",
+                        Toast.LENGTH_LONG).show();
+                return;
             }
+            displayShareDlg();
         });
     }
 
@@ -1480,14 +1447,15 @@ public class MainActivity extends FragmentActivity {
                                           TextView tafseerTxt, TextView tafseerTitle) {
         Ayah a = all.get(currentAyahTafseerIdx = idx);
         String txt;
-        if (viewTafseer == null)
-            viewTafseer = new HashSet<>();
         if (id == -1)
             txt = db.getTafseer(a.sura, a.ayah);
         else
             txt = db2.getTafseer(id, a.sura, a.ayah);
-        viewTafseer.add(String.format(Locale.US, "{\"t\":%d,\"s\":%d,\"a\":%d}",
-                id, a.sura, a.ayah));
+        sendTafseer();
+        tafseerPageStartDate = new Date();
+        lastTafId = id;
+        lastTafSura = a.sura;
+        lastTafAyah = a.ayah;
         tafseerTxt.setText(txt);
         tafseerTitle.setText("سورة " + quranData.surahs[a.sura - 1].name + ": " + a.ayah);
     }
@@ -1532,27 +1500,21 @@ public class MainActivity extends FragmentActivity {
             tafseerDialog.findViewById(R.id.btnTafseerPrev).setVisibility(View.GONE);
             tafseerDialog.findViewById(R.id.spinnerTafseer).setVisibility(View.GONE);
         }
-        tafseerDialog.findViewById(R.id.btnTafseerNext).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                idleUseCounter.setData(0);
-                if (currentAyahTafseerIdx + 1 < all.size()) {
-                    displayAyahTafseerHelper(db2,
-                            (Integer) items[currentSelectedTafseer].value,
-                            items[currentSelectedTafseer].name, all, currentAyahTafseerIdx + 1,
-                            textView, titleTextView);
-                }
+        tafseerDialog.findViewById(R.id.btnTafseerNext).setOnClickListener(v -> {
+            idleUseCounter.setData(0);
+            if (currentAyahTafseerIdx + 1 < all.size()) {
+                displayAyahTafseerHelper(db2,
+                        (Integer) items[currentSelectedTafseer].value,
+                        items[currentSelectedTafseer].name, all, currentAyahTafseerIdx + 1,
+                        textView, titleTextView);
             }
         });
-        tafseerDialog.findViewById(R.id.btnTafseerPrev).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                idleUseCounter.setData(0);
-                if (currentAyahTafseerIdx - 1 >= 0) {
-                    displayAyahTafseerHelper(db2, (Integer) items[currentSelectedTafseer].value,
-                            items[currentSelectedTafseer].name, all, currentAyahTafseerIdx - 1,
-                            textView, titleTextView);
-                }
+        tafseerDialog.findViewById(R.id.btnTafseerPrev).setOnClickListener(v -> {
+            idleUseCounter.setData(0);
+            if (currentAyahTafseerIdx - 1 >= 0) {
+                displayAyahTafseerHelper(db2, (Integer) items[currentSelectedTafseer].value,
+                        items[currentSelectedTafseer].name, all, currentAyahTafseerIdx - 1,
+                        textView, titleTextView);
             }
         });
         Spinner s = (Spinner) tafseerDialog.findViewById(R.id.spinnerTafseer);
@@ -1578,6 +1540,7 @@ public class MainActivity extends FragmentActivity {
             }
         });
         tafseerDialog.setTitle("عرض التفسير");
+        tafseerDialog.setOnDismissListener(dialog -> sendTafseer());
         tafseerDialog.show();
     }
 
@@ -1597,7 +1560,7 @@ public class MainActivity extends FragmentActivity {
         }
         QuranImageView image = result.image;
         if (image.myBitmap == null) {
-            AnalyticsTrackers.sendFatalError(MainActivity.this, "MainActivit.displayRepeatDlg",
+            AnalyticsTrackers.getInstance(this).sendFatalError("displayRepeatDlg",
                     "image.myBitmap == null (recycled ??)");
             Toast.makeText(this, "حدث خطأ ما.", Toast.LENGTH_LONG).show();
             return;
@@ -1611,43 +1574,39 @@ public class MainActivity extends FragmentActivity {
             from.setText(Math.max(1, image.currentPage.ayahs.get(0).ayah) + "");
             to.setText(Math.max(1, image.currentPage.ayahs.get(image.currentPage.ayahs.size() - 1).ayah) + "");
         }
-        dialog.findViewById(R.id.buttonStartRecite).setOnClickListener(new View.OnClickListener() {
-
-            @Override
-            public void onClick(View v) {
-                String ff = from.getText().toString();
-                String tt = to.getText().toString();
-                if (spinner1.getSelectedItemPosition() < 1
-                        || spinner2.getSelectedItemPosition() < 1
-                        || ff.isEmpty() || tt.isEmpty()) {
-                    showError("الرجاء تعبئة جميع الحقول");
-                    return;
-                }
-                int f, t;
-                try {
-                    f = Integer.parseInt(ff);
-                    t = Integer.parseInt(tt);
-                } catch (Exception ex) {
-                    showError("الأرقام غير صحيحة");
-                    return;
-                }
-                if (f <= 0 || t <= 0) {
-                    showError("رقم الآية يبدء من 1 فما فوق");
-                    return;
-                }
-                int sf = (int) ((ListItem) spinner1.getSelectedItem()).value;
-                int st = (int) ((ListItem) spinner2.getSelectedItem()).value;
-                f = Math.min(f, quranData.surahs[sf - 1].ayahCount);
-                t = Math.min(t, quranData.surahs[st - 1].ayahCount);
-                if ((sf > st || sf == st && f > t)
-                        && !pref.getBoolean("backToBegin", true)) {
-                    showError("البداية يجب أن لا تكون أعلى من النهاية. فعل خيار البدء من الفاتحة للاستمرار");
-                    return;
-                }
-                stopPlayback();
-                playRecite(sf, f, st, t);
-                dialog.dismiss();
+        dialog.findViewById(R.id.buttonStartRecite).setOnClickListener(v -> {
+            String ff = from.getText().toString();
+            String tt = to.getText().toString();
+            if (spinner1.getSelectedItemPosition() < 1
+                    || spinner2.getSelectedItemPosition() < 1
+                    || ff.isEmpty() || tt.isEmpty()) {
+                showError("الرجاء تعبئة جميع الحقول");
+                return;
             }
+            int f, t;
+            try {
+                f = Integer.parseInt(ff);
+                t = Integer.parseInt(tt);
+            } catch (Exception ex) {
+                showError("الأرقام غير صحيحة");
+                return;
+            }
+            if (f <= 0 || t <= 0) {
+                showError("رقم الآية يبدء من 1 فما فوق");
+                return;
+            }
+            int sf = (int) ((ListItem) spinner1.getSelectedItem()).value;
+            int st = (int) ((ListItem) spinner2.getSelectedItem()).value;
+            f = Math.min(f, quranData.surahs[sf - 1].ayahCount);
+            t = Math.min(t, quranData.surahs[st - 1].ayahCount);
+            if ((sf > st || sf == st && f > t)
+                    && !pref.getBoolean("backToBegin", true)) {
+                showError("البداية يجب أن لا تكون أعلى من النهاية. فعل خيار البدء من الفاتحة للاستمرار");
+                return;
+            }
+            stopPlayback();
+            playRecite(sf, f, st, t);
+            dialog.dismiss();
         });
 
         dialog.setTitle("تكرار التلاوة");
@@ -1718,7 +1677,7 @@ public class MainActivity extends FragmentActivity {
             } catch (Exception ex) {
                 Toast.makeText(MainActivity.this, "حدث خطأ أثناء محاولة حفظ الصورة",
                         Toast.LENGTH_LONG).show();
-                AnalyticsTrackers.sendException(MainActivity.this, "shareDlgSaveImg", ex);
+                AnalyticsTrackers.getInstance(this).sendException("shareDlgSaveImg", ex);
                 return;
             }
             Intent share = new Intent(Intent.ACTION_SEND);
@@ -1782,15 +1741,12 @@ public class MainActivity extends FragmentActivity {
         else {
             Utils.showSelectionDlg(this, "مشاركة آية أو أكثر",
                     new String[] {"من الصفحة اليمنى", "من الصفحة اليسرى"}, true,
-                    new DialogInterface.OnClickListener() {
-                    @Override
-                public void onClick(DialogInterface dialog, int which) {
+                    (dialog, which) -> {
                         QuranImageView page = getCurrentPage(which == 0);
                         if (page == null || page.currentPage == null || page.currentPage.ayahs == null)
                             return;
                         displayShareDlg(page);
-                }
-            }, null);
+                }, null);
         }
     }
 
@@ -1825,14 +1781,11 @@ public class MainActivity extends FragmentActivity {
                 idleUseCounter.increment();
                 if (period <= idleUseCounter.getData()) {
                     autoCloseTimer.cancel();
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(MainActivity.this,
-                                    "انتهت مهلة عدم الاستخدام. تم إغلاق الشاشة آليا لتوفير البطارية",
-                                    Toast.LENGTH_LONG).show();
-                            if (!isFinishing()) finish();
-                        }
+                    runOnUiThread(() -> {
+                        Toast.makeText(MainActivity.this,
+                                "انتهت مهلة عدم الاستخدام. تم إغلاق الشاشة آليا لتوفير البطارية",
+                                Toast.LENGTH_LONG).show();
+                        if (!isFinishing()) finish();
                     });
                 }
             }
@@ -1846,26 +1799,16 @@ public class MainActivity extends FragmentActivity {
             Toast.makeText(this,
                     "فشل بدء التطبيق. لا يمكن الكتابة في ذاكرة الجهاز",
                     Toast.LENGTH_LONG).show();
-            executorService.submit(new Runnable() {
-                @Override
-                public void run() {
-                    AnalyticsTrackers.sendFatalError(getApplicationContext(),
-                            "MainActivity.onCreate", "getDatabaseDir() == null");
-                }
-            });
+            AnalyticsTrackers.getInstance(this).sendFatalError("MainActivity.onCreate",
+                    "getDatabaseDir() == null");
             finish();
             return;
         }
         notDownloaded = Utils.getNonExistPagesFromFile(this);
         if (notDownloaded == null) {
             Toast.makeText(this, "فشل بدء التطبيق. أغلق التطبيق ثم افتحه ثانية", Toast.LENGTH_LONG).show();
-            executorService.submit(new Runnable() {
-                @Override
-                public void run() {
-                    AnalyticsTrackers.sendFatalError(getApplicationContext(), "MainActivity.onCreate",
-                            "serializable == null");
-                }
-            });
+            AnalyticsTrackers.getInstance(this).sendFatalError("MainActivity.onCreate",
+                    "serializable == null");
             finish();
             return;
         }
@@ -1913,13 +1856,7 @@ public class MainActivity extends FragmentActivity {
             if (bar != null) bar.hide();
         } catch (final Exception ex) { //views maybe null?
             ex.printStackTrace();
-            executorService.submit(new Runnable() {
-                @Override
-                public void run() {
-                    AnalyticsTrackers.sendFatalError(getApplicationContext(), "Main.onCreate()",
-                            ex.getMessage());
-                }
-            });
+            AnalyticsTrackers.getInstance(this).sendException("Main.onCreate()", ex);
             Toast.makeText(this, "فشل بدء التطبيق.\n" + ex.getMessage(),
                     Toast.LENGTH_LONG).show();
             finish();
@@ -1970,12 +1907,7 @@ public class MainActivity extends FragmentActivity {
         if (adapter != null && adapter.isNotAllDownloaded()) {
             Utils.showConfirm(this, "تحميل المصحف",
                     "مرحبا بك في تطبيق مصحف الشمرلي.\n نحتاج أولا قبل بدء استخدام التطبيق لتحميل المصحف على جهازك، وذلك حتى يمكنك استخدام التطبيق دون اتصال فيما بعد. البدء بالتحميل الآن؟",
-                    new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            downloadAll();
-                        }
-                    }, null);
+                    (dialog, which) -> downloadAll(), null);
         }
     }
 
@@ -2106,9 +2038,6 @@ public class MainActivity extends FragmentActivity {
     private static void imageProcessing(final int k, final Bitmap tmp,
                                  int displayMode, boolean night) {
         int nThreads = Utils.getCpuCoreCount(true);
-        if (imageProcExecutor == null) {
-            imageProcExecutor = Executors.newFixedThreadPool(nThreads);
-        }
         final Shared shared = new Shared();
         final Lock lock = new ReentrantLock(true);
         final Lock lock2 = new ReentrantLock(true);
@@ -2122,28 +2051,25 @@ public class MainActivity extends FragmentActivity {
             for (int idx = 0; idx < nThreads; ++idx) {
                 final int myStart = threadWork * idx,
                         myEnd = idx == nThreads - 1 ? height : (idx + 1) * threadWork;
-                imageProcExecutor.execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        for (int i = myStart; i < myEnd; ++i) {
-                            lock2.lock();
-                            tmp.getPixels(dilationBuffer[i], 0, width, 0, i, width, 1);
-                            lock2.unlock();
-                            for (int j = 0; j < width; ++j) {
-                                if (dilationBuffer[i][j] == -1)
-                                    dilationBuffer[i][j] = background;
-                                else
-                                    dilationBuffer[i][j] = font;
-                            }
-                            lock2.lock();
-                            tmp.setPixels(dilationBuffer[i], 0, width, 0, i, width, 1);
-                            lock2.unlock();
+                AppExecutors.getInstance().executeOnCpuCoresExecutor((Runnable) () -> {
+                    for (int i = myStart; i < myEnd; ++i) {
+                        lock2.lock();
+                        tmp.getPixels(dilationBuffer[i], 0, width, 0, i, width, 1);
+                        lock2.unlock();
+                        for (int j = 0; j < width; ++j) {
+                            if (dilationBuffer[i][j] == -1)
+                                dilationBuffer[i][j] = background;
+                            else
+                                dilationBuffer[i][j] = font;
                         }
-                        lock.lock();
-                        shared.increment();
-                        condition.signal();
-                        lock.unlock();
+                        lock2.lock();
+                        tmp.setPixels(dilationBuffer[i], 0, width, 0, i, width, 1);
+                        lock2.unlock();
                     }
+                    lock.lock();
+                    shared.increment();
+                    condition.signal();
+                    lock.unlock();
                 });
             }
             lock.lock();
@@ -2167,25 +2093,22 @@ public class MainActivity extends FragmentActivity {
         for (int idx = 0; idx < nThreads; ++idx) {
             final int myStart = threadWork * idx,
                     myEnd = idx == nThreads - 1 ? height : (idx + 1) * threadWork;
-            imageProcExecutor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    for (int i = myStart; i < myEnd; ++i) {
-                        lock2.lock();
-                        tmp.getPixels(dilationBuffer[i], 0, width, 0, i, width, 1);
-                        lock2.unlock();
-                        for (int j = 0; j < width; ++j) {
-                            if (dilationBuffer[i][j] == -1 || dilationBuffer[i][j] == 1)
-                                dilationBuffer[i][j] = 0;
-                            else
-                                dilationBuffer[i][j] = 1;
-                        }
+            AppExecutors.getInstance().executeOnCpuCoresExecutor(() -> {
+                for (int i = myStart; i < myEnd; ++i) {
+                    lock2.lock();
+                    tmp.getPixels(dilationBuffer[i], 0, width, 0, i, width, 1);
+                    lock2.unlock();
+                    for (int j = 0; j < width; ++j) {
+                        if (dilationBuffer[i][j] == -1 || dilationBuffer[i][j] == 1)
+                            dilationBuffer[i][j] = 0;
+                        else
+                            dilationBuffer[i][j] = 1;
                     }
-                    lock.lock();
-                    shared.increment();
-                    condition.signal();
-                    lock.unlock();
                 }
+                lock.lock();
+                shared.increment();
+                condition.signal();
+                lock.unlock();
             });
         }
         lock.lock();
@@ -2211,24 +2134,21 @@ public class MainActivity extends FragmentActivity {
         for (int idx = 0; idx < nThreads; ++idx) {
             final int myStart = threadWork * idx,
                     myEnd = idx == nThreads - 1 ? height : (idx + 1) * threadWork;
-            imageProcExecutor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    for (int i = myStart; i < myEnd; ++i) {
-                        for (int j = 0; j < width; ++j)
-                            if (dilationBuffer[i][j] <= k)
-                                dilationBuffer[i][j] = font;
-                            else
-                                dilationBuffer[i][j] = background;
-                        lock2.lock();
-                        tmp.setPixels(dilationBuffer[i], 0, width, 0, i, width, 1);
-                        lock2.unlock();
-                    }
-                    lock.lock();
-                    shared.increment();
-                    condition.signal();
-                    lock.unlock();
+            AppExecutors.getInstance().executeOnCpuCoresExecutor(() -> {
+                for (int i = myStart; i < myEnd; ++i) {
+                    for (int j = 0; j < width; ++j)
+                        if (dilationBuffer[i][j] <= k)
+                            dilationBuffer[i][j] = font;
+                        else
+                            dilationBuffer[i][j] = background;
+                    lock2.lock();
+                    tmp.setPixels(dilationBuffer[i], 0, width, 0, i, width, 1);
+                    lock2.unlock();
                 }
+                lock.lock();
+                shared.increment();
+                condition.signal();
+                lock.unlock();
             });
         }
         lock.lock();
@@ -2312,7 +2232,7 @@ Page number (561, 1528, 75, 38)
             return pageBackground;
         } catch (Exception e) {
             e.printStackTrace();
-            AnalyticsTrackers.sendException(this, "readBorders()", e);
+            AnalyticsTrackers.getInstance(this).sendException("readBorders()", e);
             return null;
         } finally {
             readBordersLock.unlock();
@@ -2420,20 +2340,18 @@ Page number (561, 1528, 75, 38)
                             : PorterDuff.Mode.DARKEN));
                     paint.setStyle(Paint.Style.FILL_AND_STROKE);
                     final int offset = 75;
+                    int color = night ? Color.BLACK :
+                            displayMode == 0 ? yellowColor : Color.WHITE;
                     if (!isLeftPage) {
-                        int first = night ? Color.BLACK :
-                                displayMode == 0 ? yellowColor : Color.WHITE,
-                                second = Color.GRAY;
+                        int second = Color.GRAY;
                         paint.setShader(new LinearGradient(offset, 0, 0, 0,
-                                first, second, Shader.TileMode.MIRROR));
+                                color, second, Shader.TileMode.MIRROR));
                         c.drawRect(bitmap.getWidth() - offset, 0,
                                 bitmap.getWidth(), bitmap.getHeight(), paint);
                     } else {
-                        int first = Color.GRAY,
-                                second = night ? Color.BLACK :
-                                        displayMode == 0 ? yellowColor : Color.WHITE;
+                        int first = Color.GRAY;
                         paint.setShader(new LinearGradient(0, 0, offset, 0,
-                                first, second, Shader.TileMode.MIRROR));
+                                first, color, Shader.TileMode.MIRROR));
                         c.drawRect(0, 0, offset, bitmap.getHeight(), paint);
                     }
                 }
@@ -2461,45 +2379,52 @@ Page number (561, 1528, 75, 38)
         final AsyncTask<Void, Integer, String[]> execute = new AsyncTask<Void, Integer, String[]>() {
             @Override
             protected String[] doInBackground(Void... params) {
-                Thread[] threads = new Thread[4];
+                final int nThreads = 4;
+                final Shared shared = new Shared();
+                final Lock lock = new ReentrantLock(true);
+                final Condition condition = lock.newCondition();
+                shared.setData(0);
                 final Shared progress = new Shared();
-                final Utils.DownloadStatusArray error = new Utils.DownloadStatusArray(threads.length);
+                final Utils.DownloadStatusArray error = new Utils.DownloadStatusArray(nThreads);
                 progress.setData(MAX_PAGE - notDownloaded.size());
-                for (int th = 0; th < threads.length; ++th) {
+                for (int th = 0; th < nThreads; ++th) {
                     final int myIdx = th;
-                    threads[th] = new Thread(new Runnable() {
-
-                        @Override
-                        public void run() {
-                            byte[] buf = new byte[1024];
-                            while (!isCancelled() && error.isAnyOk()) {
-                                Integer per = notDownloaded.poll();
-                                if (per == null) break;
-                                boolean yes = false;
-                                for (String url : downloadUrls) {
-                                    String path = String.format(Locale.ENGLISH, url, per);
-                                    int result = Utils.downloadPage(MainActivity.this,
-                                            per, path, buf);
-                                    error.status[myIdx].setData(result);
-                                    if (result == Utils.DOWNLOAD_OK) {
-                                        progress.increment();
-                                        publishProgress(progress.getData());
-                                        yes = true;
-                                        break;
-                                    }
+                    AppExecutors.getInstance().executeOnCachedExecutor(() -> {
+                        byte[] buf = new byte[1024];
+                        while (!isCancelled() && error.isAnyOk()) {
+                            Integer per = notDownloaded.poll();
+                            if (per == null) break;
+                            boolean yes = false;
+                            for (String url : downloadUrls) {
+                                String path = String.format(Locale.ENGLISH, url, per);
+                                int result = Utils.downloadPage(MainActivity.this,
+                                        per, path, buf);
+                                error.status[myIdx].setData(result);
+                                if (result == Utils.DOWNLOAD_OK) {
+                                    progress.increment();
+                                    publishProgress(progress.getData());
+                                    yes = true;
+                                    break;
                                 }
-                                if (!yes) notDownloaded.add(per);
                             }
+                            if (!yes) notDownloaded.add(per);
                         }
+                        lock.lock();
+                        shared.increment();
+                        condition.signal();
+                        lock.unlock();
                     });
                 }
-                for (Thread thread : threads) thread.start();
-                for (Thread thread : threads)
+                lock.lock();
+                while (shared.getData() < nThreads) {
                     try {
-                        thread.join();
+                        condition.await();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
+                        break;
                     }
+                }
+                lock.unlock();
                 Utils.saveNonExistPagesToFile(getApplicationContext(), notDownloaded);
                 int err = error.getFirstError();
                 if (err == Utils.DOWNLOAD_MALFORMED_URL
@@ -2534,34 +2459,23 @@ Page number (561, 1528, 75, 38)
                 //super.onPostExecute(strings);
                 if (!isFinishing() && show.isShowing()) {
                     show.dismiss();
-                    Utils.showAlert(MainActivity.this, strings[0], strings[1], new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            if (!strings[1].contains("نجاح")) {
-                                MainActivity.this.finish();
-                            }
+                    Utils.showAlert(MainActivity.this, strings[0], strings[1], (dialog, which) -> {
+                        if (!strings[1].contains("نجاح")) {
+                            MainActivity.this.finish();
                         }
                     });
                     if (strings[1] != null && strings[1].contains("نجاح")) {
                         initViewPagerAdapter();
-                        AnalyticsTrackers.sendDownloadPages(MainActivity.this);
+                        AnalyticsTrackers.getInstance(getApplicationContext()).sendDownloadPages();
                     }
                 }
             }
         }.execute();
-        show.setOnCancelListener(new DialogInterface.OnCancelListener() {
-            @Override
-            public void onCancel(DialogInterface dialog) {
-                execute.cancel(true);
-            }
-        });
+        show.setOnCancelListener(dialog -> execute.cancel(true));
         //user close activity?
-        show.setOnDismissListener(new DialogInterface.OnDismissListener() {
-            @Override
-            public void onDismiss(DialogInterface dialog) {
-                if (!execute.isCancelled())
-                    execute.cancel(true);
-            }
+        show.setOnDismissListener(dialog -> {
+            if (!execute.isCancelled())
+                execute.cancel(true);
         });
     }
 }

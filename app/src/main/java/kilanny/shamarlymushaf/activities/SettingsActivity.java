@@ -1,12 +1,11 @@
 package kilanny.shamarlymushaf.activities;
 
-import android.content.DialogInterface;
 import android.os.Bundle;
-import android.preference.CheckBoxPreference;
-import android.preference.ListPreference;
-import android.preference.Preference;
-import android.preference.PreferenceActivity;
-import android.preference.PreferenceFragment;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.preference.ListPreference;
+import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.SwitchPreferenceCompat;
 
 import kilanny.shamarlymushaf.R;
 import kilanny.shamarlymushaf.util.Utils;
@@ -14,43 +13,30 @@ import kilanny.shamarlymushaf.util.Utils;
 /**
  * Created by Yasser on 10/02/2015.
  */
-public class SettingsActivity extends PreferenceActivity {
+public class SettingsActivity extends AppCompatActivity {
 
-    public static class MyPreferenceFragment extends PreferenceFragment {
+    public static class MyPreferenceFragment extends PreferenceFragmentCompat {
         @Override
-        public void onCreate(Bundle savedInstanceState) {
-            super.onCreate(savedInstanceState);
-            addPreferencesFromResource(R.xml.prefs);
-            final CheckBoxPreference checkboxPref = (CheckBoxPreference) findPreference("displayDualPages");
-            final ListPreference list = (ListPreference) findPreference("pageRotationMode");
-            checkboxPref.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-                public boolean onPreferenceChange(Preference preference, Object newValue) {
-                    if (newValue instanceof Boolean) {
-                        if ((Boolean) newValue && !list.getValue().equals("2")) {
-                            Utils.showConfirm(getActivity(), "تنبيه", "يعمل هذا الإعداد فقط عندما يكون عرض الصفحة أفقي دائما. تفعيل وضع الصفحة الأفقي الدائم الآن؟", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    list.setValue("2");
-                                }
-                            }, new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    checkboxPref.setChecked(false);
-                                }
-                            });
-                        }
+        public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
+            setPreferencesFromResource(R.xml.prefs, rootKey);
+            final SwitchPreferenceCompat checkboxPref = findPreference("displayDualPages");
+            final ListPreference list = findPreference("pageRotationMode");
+            checkboxPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                if (newValue instanceof Boolean) {
+                    if ((Boolean) newValue && !list.getValue().equals("2")) {
+                        Utils.showConfirm(getActivity(), "تنبيه", "يعمل هذا الإعداد فقط عندما يكون عرض الصفحة أفقي دائما. تفعيل وضع الصفحة الأفقي الدائم الآن؟",
+                                (dialog, which) -> list.setValue("2"),
+                                (dialog, which) -> checkboxPref.setChecked(false));
                     }
-                    return true;
                 }
+                return true;
             });
-            list.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-                public boolean onPreferenceChange(Preference preference, Object newValue) {
-                    if (newValue != null && newValue instanceof String) {
-                        if (!newValue.equals("2"))
-                            checkboxPref.setChecked(false);
-                    }
-                    return true;
+            list.setOnPreferenceChangeListener((preference, newValue) -> {
+                if (newValue instanceof String) {
+                    if (!newValue.equals("2"))
+                        checkboxPref.setChecked(false);
                 }
+                return true;
             });
         }
     }
@@ -58,7 +44,7 @@ public class SettingsActivity extends PreferenceActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getFragmentManager()
+        getSupportFragmentManager()
                 .beginTransaction()
                 .replace(android.R.id.content, new MyPreferenceFragment())
                 .commit();

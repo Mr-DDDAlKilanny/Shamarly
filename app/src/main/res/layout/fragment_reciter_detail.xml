@@ -5,25 +5,35 @@
     android:layout_height="match_parent" android:padding="16dp" android:textIsSelectable="true"
     tools:context="kilanny.shamarlymushaf.fragments.ReciterDetailFragment" />
 -->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    tools:context="kilanny.shamarlymushaf.fragments.ReciterDetailFragment"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <ListView xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:tools="http://schemas.android.com/tools"
-        tools:context="kilanny.shamarlymushaf.fragments.ReciterDetailFragment"
-        android:id="@+id/listview_reciter_detail"
+    <RelativeLayout
+        android:id="@+id/listLayout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent">
+        <ListView
+            android:layout_above="@id/txtRefreshTip"
+            android:id="@+id/listview_reciter_detail"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+        <TextView
+            android:text="إذا لم تظهر التلاوات التي قمت بتحميلها، يرجى الضغط على تحديث الملفات من القائمة العلوية"
+            android:textSize="17sp"
+            android:id="@+id/txtRefreshTip"
+            android:layout_alignParentBottom="true"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </RelativeLayout>
     <ProgressBar
         android:id="@+id/progressBarLoading"
         style="?android:attr/progressBarStyleLarge"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_gravity="center_vertical|center_horizontal"
+        android:layout_centerInParent="true"
         android:visibility="gone"
         android:indeterminateDrawable="@drawable/progress" />
 
-</FrameLayout>
+</RelativeLayout>

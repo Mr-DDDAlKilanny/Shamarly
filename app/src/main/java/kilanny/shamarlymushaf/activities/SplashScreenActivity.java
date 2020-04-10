@@ -63,14 +63,10 @@ public class SplashScreenActivity extends Activity {
             protected Throwable doInBackground(Void... params) {
                 try {
                     Utils.getNonExistPages(SplashScreenActivity.this, FullScreenImageAdapter.MAX_PAGE,
-                            new RecoverySystem.ProgressListener() {
-                                @Override
-                                public void onProgress(int progress) {
-                                    publishProgress(progress);
-                                }
-                            }, numThreads);
+                            (progress) -> publishProgress(progress), numThreads);
                 } catch (Throwable throwable) {
-                    AnalyticsTrackers.sendException(SplashScreenActivity.this, "getNonExistPages", throwable);
+                    AnalyticsTrackers.getInstance(SplashScreenActivity.this).sendException(
+                            "getNonExistPages", throwable);
                     return throwable;
                 }
                 return null;

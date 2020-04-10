@@ -20,6 +20,7 @@ import java.util.List;
 import kilanny.shamarlymushaf.R;
 import kilanny.shamarlymushaf.adapters.ExpandableListAdapter;
 import kilanny.shamarlymushaf.util.AnalyticsTrackers;
+import kilanny.shamarlymushaf.util.Utils;
 
 public class ReportIssueActivity extends AppCompatActivity {
 
@@ -38,23 +39,19 @@ public class ReportIssueActivity extends AppCompatActivity {
         listAdapter = new ExpandableListAdapter(this, listDataHeader, listDataChild);
         expListView.setAdapter(listAdapter);
 
-        findViewById(R.id.btnReportIssue).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                AnalyticsTrackers.send(getApplicationContext());
-                Intent emailIntent = new Intent(Intent.ACTION_SEND);
-                emailIntent.setDataAndType(Uri.parse("mailto:"), "text/plain");
-                try {
-                    emailIntent.putExtra(Intent.EXTRA_EMAIL,
-                            new String[] {"ibrahimalkilanny@gmail.com"});
-                    emailIntent.putExtra(Intent.EXTRA_TEXT,
-                            "السلام عليكم ورحمة الله\n\n\n***\nمعلومات الجهاز الخاص بي:\n"
-                                    + AnalyticsTrackers.getDeviceInfo(ReportIssueActivity.this));
-                    startActivity(Intent.createChooser(emailIntent, "إرسال إيميل"));
-                } catch (android.content.ActivityNotFoundException ex) {
-                    Toast.makeText(ReportIssueActivity.this,
-                            "لا يوجد مزود بريد إلكتروني.", Toast.LENGTH_LONG).show();
-                }
+        findViewById(R.id.btnReportIssue).setOnClickListener(v -> {
+            Intent emailIntent = new Intent(Intent.ACTION_SEND);
+            emailIntent.setDataAndType(Uri.parse("mailto:"), "text/plain");
+            try {
+                emailIntent.putExtra(Intent.EXTRA_EMAIL,
+                        new String[] {"ibrahimalkilanny@gmail.com"});
+                emailIntent.putExtra(Intent.EXTRA_TEXT,
+                        "السلام عليكم ورحمة الله\n\n\n***\nمعلومات الجهاز الخاص بي:\n"
+                                + Utils.getDeviceInfo(this));
+                startActivity(Intent.createChooser(emailIntent, "إرسال إيميل"));
+            } catch (android.content.ActivityNotFoundException ex) {
+                Toast.makeText(ReportIssueActivity.this,
+                        "لا يوجد مزود بريد إلكتروني.", Toast.LENGTH_LONG).show();
             }
         });
     }

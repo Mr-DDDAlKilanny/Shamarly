@@ -2,38 +2,48 @@ package kilanny.shamarlymushaf.activities;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.WindowManager;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NavUtils;
 import androidx.core.content.ContextCompat;
+import androidx.documentfile.provider.DocumentFile;
 
 import com.obsez.android.lib.filechooser.ChooserDialog;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
 
 import kilanny.shamarlymushaf.R;
+import kilanny.shamarlymushaf.data.DownloadedAyat;
 import kilanny.shamarlymushaf.data.QuranData;
 import kilanny.shamarlymushaf.data.SerializableInFile;
 import kilanny.shamarlymushaf.data.Setting;
 import kilanny.shamarlymushaf.fragments.ReciterDetailFragment;
 import kilanny.shamarlymushaf.fragments.ReciterListFragment;
 import kilanny.shamarlymushaf.util.AnalyticsTrackers;
-import kilanny.shamarlymushaf.util.DownloadAllProgressChangeListener;
-import kilanny.shamarlymushaf.util.DownloadTaskCompleteListener;
+import kilanny.shamarlymushaf.util.AppExecutors;
 import kilanny.shamarlymushaf.util.Utils;
 
 
@@ -60,9 +70,13 @@ public class ReciterListActivity extends AppCompatActivity
         DialogInterface.OnClickListener {
 
     public static final int WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 1;
+    private static final int SELECT_DIR_REQUEST_CODE = 54321;
 
     private ReciterDetailFragment fragment;
     private AsyncTask downloadAll;
+    private ArrayList<String> allReciters;
+    private int updateAllIndex;
+    private ProgressDialog updateAllProgDlg;
     private boolean itemChanged = false;
 
     /**
@@ -75,23 +89,47 @@ public class ReciterListActivity extends AppCompatActivity
 
     private boolean forceDialogSelection;
 
-    private void chooseDir(boolean force) {
+    private void chooseDir(boolean force, boolean forceSaf) {
         forceDialogSelection = force;
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            Utils.showAlert(this, "تحميل التلاوات",
-                    "فضلا اضغط موافق، ثم اختر الحافظة التي سيتم التحميل فيها",
-                    (dialog, which) -> new ChooserDialog(ReciterListActivity.this)
-                            .withFilter(true, false)
-                            .withStringResources("اختيار حافظة التحميل", "اختيار", "إلغاء")
-                            .withStartFile(force ? null : setting.saveSoundsDirectory)
-                            .withOnCancelListener(ReciterListActivity.this)
-                            .withChosenListener(ReciterListActivity.this)
-                            .withNegativeButtonListener(ReciterListActivity.this)
-                            .build()
-                            .show());
-        } else {
-            setting.saveSoundsDirectory = getExternalFilesDir(null).getAbsolutePath();
-        }
+        Boolean saveSoundsUri = Utils.isSaveSoundsUri(this);
+        Utils.showConfirm(this, "تحميل التلاوات",
+                "فضلا اضغط موافق، ثم اختر الحافظة التي سيتم التحميل فيها",
+                "موافق", "ليس الآن",
+                (dialog, which) -> {
+                    if ((!forceSaf && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q)
+                            || Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+                        new ChooserDialog(ReciterListActivity.this)
+                                .withFilter(true, false)
+                                .withStringResources("اختيار حافظة التحميل", "اختيار", "إلغاء")
+                                .withStartFile(force || saveSoundsUri == null || saveSoundsUri ?
+                                        null : setting.saveSoundsDirectory)
+                                .withOnCancelListener(ReciterListActivity.this)
+                                .withChosenListener(ReciterListActivity.this)
+                                .withNegativeButtonListener(ReciterListActivity.this)
+                                .build()
+                                .show();
+                    } else {
+                        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                                //| DocumentsContract.Document.FLAG_DIR_SUPPORTS_CREATE
+                                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+                        //intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, uriToLoad);
+                        startActivityForResult(intent, SELECT_DIR_REQUEST_CODE);
+                    }
+        }, (dialog, which) -> {
+            if (force) {
+                Utils.showConfirm(this, "حافظة التحميل", "لا بد من اختيار حافظة للتحميل. اختيار الآن؟",
+                        "اختيار", "خروج",
+                        (dialog1, which1) -> chooseDir(force, forceSaf), (dialog1, which1) -> finish());
+            }
+        });
+    }
+
+    private void updateSlowWarning() {
+        Boolean saveSoundsUri = Utils.isSaveSoundsUri(this);
+        findViewById(R.id.txtSlowWarning).setVisibility(saveSoundsUri != null && saveSoundsUri ?
+                View.VISIBLE : View.GONE);
     }
 
     @Override
@@ -105,6 +143,7 @@ public class ReciterListActivity extends AppCompatActivity
             finish();
             return;
         }
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         // Show the Up button in the action bar.
         ActionBar bar = getSupportActionBar();
         if (bar != null) bar.setDisplayHomeAsUpEnabled(true);
@@ -124,6 +163,102 @@ public class ReciterListActivity extends AppCompatActivity
         }
 
         initWithPermissionCheck(true);
+    }
+
+    private void handleInvalidDirSelected() {
+        Toast.makeText(this, "عفوا، لم تقم باختيار حافظة صالحة للتحميل",
+                Toast.LENGTH_LONG).show();
+        chooseDir(Utils.isSaveSoundsUri(this) == null, true);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP &&
+                requestCode == SELECT_DIR_REQUEST_CODE) {
+            if (resultCode == RESULT_OK && data != null) {
+                Uri uri = data.getData();
+                if (uri != null) {
+                    AlertDialog progressDialog = Utils.showIndeterminateProgressDialog(this,
+                            "يتم اختبار الحافظة التي اخترتها...");
+                    AppExecutors.getInstance().executeOnCachedExecutor(() -> {
+                        boolean valid = false;
+                        DocumentFile tree = DocumentFile.fromTreeUri(this, uri);
+                        if (tree != null) {
+                            DocumentFile recites = tree.findFile("recites");
+                            DocumentFile[] documentFiles = null;
+                            if (recites == null)
+                                recites = tree.createDirectory("recites");
+                            else
+                                documentFiles = recites.listFiles();
+                            if (recites != null) {
+                                valid = true;
+                                getContentResolver().takePersistableUriPermission(uri,
+                                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                                setting.saveSoundsDirectory = uri.toString();
+                                setting.save(this);
+                                AnalyticsTrackers.getInstance(this).sendChooceDir(true);
+
+                                DownloadedAyat.getInstance(this).reset(this);
+                                DocumentFile[] children = documentFiles;
+                                runOnUiThread(() -> {
+                                    updateSlowWarning();
+                                    progressDialog.dismiss();
+                                    if (children != null && children.length > 0)
+                                        refreshAllDownloads(children);
+                                });
+                            }
+                        }
+                        if (!valid)
+                            runOnUiThread(() -> {
+                                progressDialog.dismiss();
+                                handleInvalidDirSelected();
+                            });
+                    });
+                }
+            } else
+                handleInvalidDirSelected();
+        }
+    }
+
+    private void refreshAllDownloads(DocumentFile[] dirs) {
+        String[] allReciters = getResources().getStringArray(R.array.reciter_values);
+        this.allReciters = new ArrayList<>();
+        for (DocumentFile documentFile : dirs) {
+            for (String recite : allReciters) {
+                if (documentFile.getName() != null && documentFile.getName().equals(recite)
+                        && documentFile.isDirectory()) {
+                    this.allReciters.add(recite);
+                    break;
+                }
+            }
+        }
+        if (this.allReciters.isEmpty()) return;
+        Utils.showConfirm(this, "تحديث الملفات",
+                "الحافظة التي اخترتها قد يكون فيها تلاوات، هل تريد تحديث الملفات التي تم تحميلها؟ ينصح بشدة بتحديث الملفات الآن، لكن قد تستغرق هذه العملية وقتا"
+                , (dialog, which) -> {
+                    updateAllProgDlg = new ProgressDialog(this);
+                    updateAllProgDlg.setTitle("تحديث الملفات");
+                    updateAllProgDlg.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+                    updateAllProgDlg.setIndeterminate(false);
+                    updateAllProgDlg.setCancelable(false);
+                    updateAllProgDlg.setMax(114);
+                    updateAllProgDlg.setProgress(0);
+                    updateAllProgDlg.show();
+                    updateAllIndex = 0;
+                    _refreshAllDownloads();
+                }, (dialog, which) -> {});
+    }
+
+    private void _refreshAllDownloads() {
+        updateAllProgDlg.setTitle("تحديث الملفات: " + (updateAllIndex + 1) + " من " + allReciters.size());
+        Utils.refreshNumDownloaded(this, allReciters.get(updateAllIndex), updateAllProgDlg::setProgress, () -> {
+            if (++updateAllIndex == allReciters.size()) {
+                updateAllProgDlg.dismiss();
+            } else
+                _refreshAllDownloads();
+        });
     }
 
     private void initWithPermissionCheck(boolean shouldShowExplainDlg) {
@@ -154,11 +289,62 @@ public class ReciterListActivity extends AppCompatActivity
         return true;
     }
 
+    private void initAndroidQ(Runnable ifNot) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            new AlertDialog.Builder(this)
+                    .setCancelable(false)
+                    .setTitle("تحميل التلاوات")
+                    .setMessage("يمكن تحميل التلاوات إما في ذاكرة التطبيق (أسرع وموصى به) أو في خارج ذاكرة التطبيق في كارت الذاكرة مثلا (تحذير: يحعل التحميل بطيء جدا ولذا فهو غير موصى به)")
+                    .setPositiveButton("تحميل في ذاكرة التطبيق (سريع وموصى به)", (dialog, which) -> {
+                        setting.saveSoundsDirectory = getExternalFilesDir(null).getAbsolutePath();
+                        setting.save(this);
+                        AnalyticsTrackers.getInstance(this).sendChooceDir(false);
+                        updateSlowWarning();
+                    })
+                    .setNegativeButton("تحميل في ذاكرة أخرى (بطيء)", (dialog, which) -> ifNot.run())
+                    .show();
+        } else ifNot.run();
+    }
+
+    private boolean testPreAndroidQAccess(boolean force) {
+        Boolean saveSoundsUri = Utils.isSaveSoundsUri(this);
+        if (saveSoundsUri != null && !saveSoundsUri) {
+            try {
+                File file = new File(setting.saveSoundsDirectory, "tmp.tmp");
+                FileOutputStream fileOutputStream = new FileOutputStream(file);
+                fileOutputStream.write("hello".getBytes());
+                fileOutputStream.close();
+                file.delete();
+                return true;
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+                new AlertDialog.Builder(this)
+                        .setCancelable(false)
+                        .setTitle("تحميل التلاوات")
+                        .setMessage("عفوا، الحافظة التي اخترتها لا يمكن الوصول إليها، يمكن تحميل التلاوات إما في ذاكرة التطبيق (أسرع وموصى به) أو في خارج ذاكرة التطبيق في كارت الذاكرة مثلا (تحذير: يحعل التحميل بطيء جدا ولذا فهو غير موصى به)")
+                        .setPositiveButton("تحميل في ذاكرة التطبيق (سريع وموصى به)", (dialog, which) -> {
+                            setting.saveSoundsDirectory = getExternalFilesDir(null).getAbsolutePath();
+                            setting.save(this);
+                            AnalyticsTrackers.getInstance(this).sendChooceDir(false);
+                            updateSlowWarning();
+                        })
+                        .setNegativeButton("تحميل في ذاكرة أخرى (بطيء)",
+                                (dialog, which) -> chooseDir(force, true))
+                        .show();
+                return false;
+            } catch (IOException e) {
+                e.printStackTrace(); //maybe no space?
+            }
+        }
+        return true;
+    }
+
     private void init() {
         setting = Setting.getInstance(this);
-        if (setting.saveSoundsDirectory == null || !new File(setting.saveSoundsDirectory).exists())
-            chooseDir(true);
-        else {
+        if (Utils.isSaveSoundsUri(this) == null) {
+            initAndroidQ(() -> chooseDir(true, false));
+        } else if (testPreAndroidQAccess(true)) {
+            updateSlowWarning();
             SerializableInFile<Integer> appResponse = new SerializableInFile<>(
                     getApplicationContext(), "down__st", 0);
             if (appResponse.getData() == 0) {
@@ -201,9 +387,8 @@ public class ReciterListActivity extends AppCompatActivity
         if (findViewById(R.id.reciter_detail_container) == null) {
             menu.getItem(0).setVisible(false);
             menu.getItem(1).setVisible(false);
+            menu.getItem(4).setVisible(false);
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-            menu.getItem(2).setVisible(false);
         return true;
     }
 
@@ -241,7 +426,7 @@ public class ReciterListActivity extends AppCompatActivity
             return true;
         }
         if (item.getItemId() == R.id.chooseDownloadDir) {
-            chooseDir(false);
+            initAndroidQ(() -> chooseDir(false, false));
         } else if (item.getItemId() == R.id.unlimitedDownload) {
             startActivity(new Intent(this, ExternalRecitesDownloadActivity.class));
         } else if (fragment != null) { //make sure user has selected a reciter
@@ -255,7 +440,7 @@ public class ReciterListActivity extends AppCompatActivity
                                 "يتم إيقاف التحميل...", Toast.LENGTH_SHORT).show();
                         return true;
                     }
-                    if (Utils.getSurahDir(this, myReciter, 1) == null) {
+                    if (Utils.isSaveSoundsUri(this) == null) {
                         Toast.makeText(this,
                                 "فضلا اختر حافظة تحميل التلاوات أولا",
                                 Toast.LENGTH_LONG).show();
@@ -267,37 +452,28 @@ public class ReciterListActivity extends AppCompatActivity
                             "يتم التحميل...", Toast.LENGTH_SHORT).show();
                     fragment.setCurrentDownloadSurah(1);
                     final HashSet<Integer> integers = new HashSet<>();
-                    downloadAll = Utils.downloadAll(this, myReciter, new DownloadAllProgressChangeListener() {
-                        @Override
-                        public void onProgressChange(int surah, int ayah) {
-                            fragment.setSurahProgress(surah, ayah, true);
-                            integers.add(surah);
+                    downloadAll = Utils.downloadAll(this, myReciter, (surah, ayah) -> {
+                        fragment.setSurahProgress(surah, ayah, true);
+                        if (integers.add(surah))
+                            AnalyticsTrackers.getInstance(this).sendDownloadRecites(myReciter, surah);
+                    }, result -> {
+                        String msg = null;
+                        fragment.setCanDoSingleOperation(true);
+                        downloadAll = null;
+                        switch (result) {
+                            case Utils.DOWNLOAD_USER_CANCEL:
+                                break;
+                            case Utils.DOWNLOAD_OK:
+                                msg = "تم تحميل جميع التلاوات بنجاح";
+                                break;
+                            default:
+                                msg = result == Utils.DOWNLOAD_QUOTA_EXCEEDED ?
+                                        "تم بلوغ الكمية القصوى للتحميل لهذا اليوم. نرجوا المحاولة غدا أو استخدام التحميل اللامحدود"
+                                        : "فشل التحميل. تأكد من اتصالك بالشبكة ووجود مساحة كافية بجهازك";
                         }
-                    }, new DownloadTaskCompleteListener() {
-                        @Override
-                        public void taskCompleted(int result) {
-                            String msg = null;
-                            fragment.setCanDoSingleOperation(true);
-                            downloadAll = null;
-                            switch (result) {
-                                case Utils.DOWNLOAD_USER_CANCEL:
-                                    break;
-                                case Utils.DOWNLOAD_OK:
-                                    msg = "تم تحميل جميع التلاوات بنجاح";
-                                    break;
-                                default:
-                                    msg = result == Utils.DOWNLOAD_QUOTA_EXCEEDED ?
-                                            "تم بلوغ الكمية القصوى للتحميل لهذا اليوم. نرجوا المحاولة غدا"
-                                            : "فشل التحميل. تأكد من اتصالك بالشبكة ووجود مساحة كافية بجهازك";
-                            }
-                            if (!integers.isEmpty())
-                                AnalyticsTrackers
-                                        .sendDownloadRecites(ReciterListActivity.this,
-                                                myReciter, integers);
-                            fragment.setCurrentDownloadSurah(ReciterDetailFragment.CURRENT_SURAH_NONE);
-                            if (msg != null)
-                                Utils.showAlert(ReciterListActivity.this, "تحميل جميع التلاوات", msg, null);
-                        }
+                        fragment.setCurrentDownloadSurah(ReciterDetailFragment.CURRENT_SURAH_NONE);
+                        if (msg != null)
+                            Utils.showAlert(ReciterListActivity.this, "تحميل جميع التلاوات", msg, null);
                     }, QuranData.getInstance(this));
                     return true;
                 case R.id.deleteAll:
@@ -315,6 +491,10 @@ public class ReciterListActivity extends AppCompatActivity
                                         "تم حذف جميع التلاوات لهذا القارئ",
                                         Toast.LENGTH_LONG).show();
                             });
+                    return true;
+                case R.id.refreshRecites:
+                    if (downloadAll != null) return true;
+                    Utils.refreshNumDownloaded(this, fragment.mItem, fragment::reload);
                     return true;
             }
         }
@@ -360,6 +540,9 @@ public class ReciterListActivity extends AppCompatActivity
     public void onChoosePath(String dir, File dirFile) {
         setting.saveSoundsDirectory = dir;
         setting.save(this);
+        if (!testPreAndroidQAccess(forceDialogSelection))
+            updateSlowWarning();
+        AnalyticsTrackers.getInstance(this).sendChooceDir(false);
     }
 
     @Override
@@ -367,7 +550,7 @@ public class ReciterListActivity extends AppCompatActivity
         if (forceDialogSelection) {
             Utils.showConfirm(this, "اختيار الحافظة",
                     "لا بد من اختيار حافظة للتحميل. اختيار الآن؟",
-                    (dialog, which) -> chooseDir(true),
+                    (dialog, which) -> chooseDir(true, false),
                     (dialog, which) -> {
                         NavUtils.navigateUpFromSameTask(ReciterListActivity.this);
                         finish();

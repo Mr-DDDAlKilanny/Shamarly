@@ -1,8 +1,6 @@
 package kilanny.shamarlymushaf.activities;
 
-import android.content.DialogInterface;
 import android.os.AsyncTask;
-import android.os.RecoverySystem;
 import androidx.appcompat.app.ActionBar;
 import android.content.Intent;
 import android.os.Bundle;
@@ -11,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.WindowManager;
 import android.widget.Toast;
 
 import java.util.HashSet;
@@ -20,8 +19,6 @@ import kilanny.shamarlymushaf.data.QuranData;
 import kilanny.shamarlymushaf.R;
 import kilanny.shamarlymushaf.fragments.ReciterDetailFragment;
 import kilanny.shamarlymushaf.fragments.ReciterListFragment;
-import kilanny.shamarlymushaf.util.DownloadAllProgressChangeListener;
-import kilanny.shamarlymushaf.util.DownloadTaskCompleteListener;
 import kilanny.shamarlymushaf.util.Utils;
 
 /**
@@ -51,6 +48,7 @@ public class ReciterDetailActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_reciter_detail);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         // Show the Up button in the action bar.
         ActionBar bar = getSupportActionBar();
@@ -100,12 +98,9 @@ public class ReciterDetailActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         if (downloadAll != null && !downloadAll.isCancelled()) {
-            Utils.showConfirm(this, "تأكيد", "إيقاف التحميل الجاري؟", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    //downloadAll will be cancelled by onStop()
-                    ReciterDetailActivity.super.onBackPressed();
-                }
+            Utils.showConfirm(this, "تأكيد", "إيقاف التحميل الجاري؟", (dialog, which) -> {
+                //downloadAll will be cancelled by onStop()
+                ReciterDetailActivity.super.onBackPressed();
             }, null);
         } else super.onBackPressed();
     }
@@ -133,7 +128,7 @@ public class ReciterDetailActivity extends AppCompatActivity {
                             "يتم إيقاف التحميل...", Toast.LENGTH_SHORT).show();
                     return true;
                 }
-                if (Utils.getSurahDir(this, myReciter, 1) == null) {
+                if (Utils.isSaveSoundsUri(this) == null) {
                     Toast.makeText(this,
                             "فضلا اختر حافظة تحميل التلاوات أولا",
                             Toast.LENGTH_LONG).show();
@@ -145,57 +140,47 @@ public class ReciterDetailActivity extends AppCompatActivity {
                         "يتم التحميل...", Toast.LENGTH_SHORT).show();
                 fragment.setCurrentDownloadSurah(1);
                 final HashSet<Integer> integers = new HashSet<>();
-                downloadAll = Utils.downloadAll(this, myReciter, new DownloadAllProgressChangeListener() {
-                    @Override
-                    public void onProgressChange(int surah, int ayah) {
-                        fragment.setSurahProgress(surah, ayah, true);
-                        integers.add(surah);
+                downloadAll = Utils.downloadAll(this, myReciter, (surah, ayah) -> {
+                    fragment.setSurahProgress(surah, ayah, true);
+                    if (integers.add(surah))
+                        AnalyticsTrackers.getInstance(this).sendDownloadRecites(myReciter, surah);
+                }, result -> {
+                    String msg = null;
+                    fragment.setCanDoSingleOperation(true);
+                    downloadAll = null;
+                    switch (result) {
+                        case Utils.DOWNLOAD_USER_CANCEL:
+                            break;
+                        case Utils.DOWNLOAD_OK:
+                            msg = "تم تحميل جميع التلاوات بنجاح";
+                            break;
+                        default:
+                            msg = result == Utils.DOWNLOAD_QUOTA_EXCEEDED ?
+                                    "تم بلوغ الكمية القصوى للتحميل لهذا اليوم. نرجوا المحاولة غدا، أو اختر تحميل لا محدود من القائمة"
+                                    : "فشل التحميل. تأكد من اتصالك بالشبكة ووجود مساحة كافية بجهازك";
                     }
-                }, new DownloadTaskCompleteListener() {
-                    @Override
-                    public void taskCompleted(int result) {
-                        String msg = null;
-                        fragment.setCanDoSingleOperation(true);
-                        downloadAll = null;
-                        switch (result) {
-                            case Utils.DOWNLOAD_USER_CANCEL:
-                                break;
-                            case Utils.DOWNLOAD_OK:
-                                msg = "تم تحميل جميع التلاوات بنجاح";
-                                break;
-                            default:
-                                msg = result == Utils.DOWNLOAD_QUOTA_EXCEEDED ?
-                                        "تم بلوغ الكمية القصوى للتحميل لهذا اليوم. نرجوا المحاولة غدا"
-                                        : "فشل التحميل. تأكد من اتصالك بالشبكة ووجود مساحة كافية بجهازك";
-                        }
-                        if (!integers.isEmpty())
-                            AnalyticsTrackers.sendDownloadRecites(ReciterDetailActivity.this,
-                                    myReciter, integers);
-                        fragment.setCurrentDownloadSurah(ReciterDetailFragment.CURRENT_SURAH_NONE);
-                        if (msg != null)
-                            Utils.showAlert(ReciterDetailActivity.this, "تحميل جميع التلاوات", msg, null);
-                    }
+                    fragment.setCurrentDownloadSurah(ReciterDetailFragment.CURRENT_SURAH_NONE);
+                    if (msg != null)
+                        Utils.showAlert(ReciterDetailActivity.this, "تحميل جميع التلاوات", msg, null);
                 }, QuranData.getInstance(this));
                 return true;
             case R.id.deleteAll:
                 if (downloadAll != null) return true;
                 fragment.cancelActiveOperations();
                 fragment.setCanDoSingleOperation(false);
-                Utils.deleteAll(this, myReciter, new RecoverySystem.ProgressListener() {
-                    @Override
-                    public void onProgress(int progress) {
-                        fragment.setSurahProgress(progress, 0, false);
-                    }
-                }, new Runnable() {
-                    @Override
-                    public void run() {
-                        fragment.setCanDoSingleOperation(true);
-                        Toast.makeText(ReciterDetailActivity.this,
-                                "تم حذف جميع التلاوات لهذا القارئ",
-                                Toast.LENGTH_LONG).show();
-                    }
+                Utils.deleteAll(this, myReciter,
+                        progress -> fragment.setSurahProgress(progress, 0, false), () -> {
+                    fragment.setCanDoSingleOperation(true);
+                    Toast.makeText(ReciterDetailActivity.this,
+                            "تم حذف جميع التلاوات لهذا القارئ",
+                            Toast.LENGTH_LONG).show();
+                    AnalyticsTrackers.getInstance(this).sendDeleteRecites(myReciter);
                 });
                 return true;
+            case R.id.refreshRecites:
+                if (downloadAll != null) return true;
+                Utils.refreshNumDownloaded(this, myReciter, fragment::reload);
+                break;
         }
         return super.onOptionsItemSelected(item);
     }

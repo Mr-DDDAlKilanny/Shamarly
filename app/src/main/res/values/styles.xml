@@ -45,4 +45,9 @@
         </item>
         <item name="colorAccent">#FFAB40</item>
     </style>
+
+    <style name="AlertDialogTheme" parent="Theme.MaterialComponents.Light.Dialog.Alert">
+    </style>
+    <style name="Base.Theme.MaterialComponents.App" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+    </style>
 </resources>

@@ -55,7 +55,7 @@ public class TafseerAppWidget extends AppWidgetProvider {
         // Instruct the widget manager to update the widget
         appWidgetManager.updateAppWidget(appWidgetId, views);
         appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widgetListTexts);
-        AnalyticsTrackers.sendWidgetRefresh(context, viewModel.sura, viewModel.ayah);
+        AnalyticsTrackers.getInstance(context).sendWidgetRefresh(viewModel.sura, viewModel.ayah);
     }
 
     private static PendingIntent getPendingSelfIntent(Context context, String action,
@@ -133,13 +133,13 @@ public class TafseerAppWidget extends AppWidgetProvider {
     @Override
     public void onEnabled(Context context) {
         // Enter relevant functionality for when the first widget is created
-        AnalyticsTrackers.sendWidgetEnabled(context, true);
+        AnalyticsTrackers.getInstance(context).sendWidgetEnabled(true);
     }
 
     @Override
     public void onDisabled(Context context) {
         // Enter relevant functionality for when the last widget is disabled
-        AnalyticsTrackers.sendWidgetEnabled(context, false);
+        AnalyticsTrackers.getInstance(context).sendWidgetEnabled(false);
     }
 }
 

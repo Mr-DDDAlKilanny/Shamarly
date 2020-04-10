@@ -15,6 +15,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
 import android.os.CountDownTimer;
@@ -84,8 +85,8 @@ public class PlayReciteService extends Service {
     private PowerManager.WakeLock mWakeLock;
     private boolean mPaused, mIsPausing, mHasError, mIsLoading, mIsStopped, mImmediatePause;
 
-    private HashSet<String> listenRecite;
     private boolean lastRecitedAyahWasFile = false;
+    private String sessionId;
 
     public PlayReciteService() {
     }
@@ -205,11 +206,6 @@ public class PlayReciteService extends Service {
                 mMediaPlayer.stop();
             mMediaPlayer.release();
             mMediaPlayer = null;
-
-            if (listenRecite != null) {
-                AnalyticsTrackers.sendForegroundListenReciteStats(getApplicationContext(),
-                        getSelectedSound(), listenRecite);
-            }
         }
         if (finish) {
             mIsStopped = true;
@@ -296,10 +292,8 @@ public class PlayReciteService extends Service {
         mMediaPlayer.setOnCompletionListener(mp -> {
             try {
                 QuranData quranData = QuranData.getInstance(this);
-                if (listenRecite == null)
-                    listenRecite = new HashSet<>();
-                listenRecite.add(String.format(Locale.US, "{\"f\":\"%s\",\"s\":%d,\"a\":%d}",
-                        lastRecitedAyahWasFile + "", mSurah, mAyah));
+                AnalyticsTrackers.getInstance(this).sendListenReciteStats(sessionId,
+                        getSelectedSound(), mSurah, mAyah, lastRecitedAyahWasFile, true);
                 ++mAyah;
                 if (mToSurah > 0 && mToAyah > 0) { // repeat choice
                     if (mSurah == mToSurah && mAyah > mToAyah) {
@@ -326,19 +320,19 @@ public class PlayReciteService extends Service {
                     mIsPausing = false;
                     return;
                 }
-                final String path = Utils.getAyahPath(this,
+                final Uri path = Utils.getAyahPath(this,
                         getSelectedSound(),
                         mSurah, mAyah, quranData, attempt.getData());
-                if (path == null || path.startsWith("http") &&
+                if (path == null || path.toString().startsWith("http") &&
                         Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
                     throw new IllegalStateException();
-                mMediaPlayer.setDataSource(path);
+                mMediaPlayer.setDataSource(this, path);
                 Runnable tmpRunnable = () -> {
                     if (mMediaPlayer == null) //stopPlayback() was called
                         return;
                     showProgress(true);
                     prepare();
-                    lastRecitedAyahWasFile = path.startsWith("/");
+                    lastRecitedAyahWasFile = !path.toString().startsWith("http");
                 };
                 if (mAyah == 1 && mSurah > 1 && mSurah != 9)
                     MainActivity.playBasmalah(this,
@@ -358,17 +352,17 @@ public class PlayReciteService extends Service {
             attempt.increment();
             if (!mPaused && attempt.getData() == 2) {
                 QuranData quranData = QuranData.getInstance(this);
-                String path = Utils.getAyahPath(this, getSelectedSound(),
+                Uri path = Utils.getAyahPath(this, getSelectedSound(),
                         mSurah, mAyah, quranData, 2);
                 if (path != null) {
                     try {
-                        if (path.startsWith("http")
+                        if (path.toString().startsWith("http")
                                 && Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
                             throw new IllegalStateException();
                         mMediaPlayer.reset();
-                        mMediaPlayer.setDataSource(path);
+                        mMediaPlayer.setDataSource(this, path);
                         mMediaPlayer.prepareAsync();
-                        lastRecitedAyahWasFile = path.startsWith("/");
+                        lastRecitedAyahWasFile = !path.toString().startsWith("http");
                         return true;
                     } catch (IOException | IllegalStateException e) {
                         e.printStackTrace();
@@ -395,16 +389,16 @@ public class PlayReciteService extends Service {
         });
         try {
             QuranData quranData = QuranData.getInstance(this);
-            final String path = Utils.getAyahPath(this, getSelectedSound(),
+            final Uri path = Utils.getAyahPath(this, getSelectedSound(),
                     mSurah, mAyah, quranData, 1);
-            if (path == null || path.startsWith("http") &&
+            if (path == null || path.toString().startsWith("http") &&
                     Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
                 throw new IllegalStateException();
-            mMediaPlayer.setDataSource(path);
+            mMediaPlayer.setDataSource(this, path);
             Runnable tmpRunnable = () -> {
                 if (mMediaPlayer == null) //stopPlayback() was called
                     return;
-                lastRecitedAyahWasFile = path.startsWith("/");
+                lastRecitedAyahWasFile = !path.toString().startsWith("http");;
                 prepare();
             };
             if (mAyah == 1 && mSurah > 1 && mSurah != 9)
@@ -531,7 +525,8 @@ public class PlayReciteService extends Service {
 
     private boolean canListenPhoneState() {
         return getSystemService(Context.TELEPHONY_SERVICE) != null &&
-                (Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
+                //(Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
+                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
                         == PackageManager.PERMISSION_GRANTED);
     }
@@ -558,6 +553,7 @@ public class PlayReciteService extends Service {
             mFromSurah = 1;
         mSurah = mFromSurah;
         mAyah = mFromAyah;
+        sessionId = Utils.newUid();
 
         mNotificationMgr = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         startForeground(NOTIFICATION_ID, initNotification(quranData.surahs[mSurah - 1].name,
