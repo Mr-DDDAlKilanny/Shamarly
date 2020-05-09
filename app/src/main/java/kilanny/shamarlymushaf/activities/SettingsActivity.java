@@ -1,5 +1,6 @@
 package kilanny.shamarlymushaf.activities;
 
+import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -38,15 +39,19 @@ public class SettingsActivity extends AppCompatActivity {
                 }
                 return true;
             });
+            findPreference("alarms").setOnPreferenceClickListener(preference -> {
+                startActivity(new Intent(getContext(), AlarmsActivity.class));
+                return true;
+            });
         }
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+        super.onCreate(null);
         getSupportFragmentManager()
                 .beginTransaction()
                 .replace(android.R.id.content, new MyPreferenceFragment())
-                .commit();
+                .commitAllowingStateLoss();
     }
 }

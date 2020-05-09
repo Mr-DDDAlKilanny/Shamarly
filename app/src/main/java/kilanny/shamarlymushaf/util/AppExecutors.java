@@ -1,7 +1,10 @@
 package kilanny.shamarlymushaf.util;
 
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public final class AppExecutors {
 
@@ -13,19 +16,13 @@ public final class AppExecutors {
         return instance;
     }
 
-    private final Executor mCachedExecutor, mCpuCoresExecutor;
+    private final Executor mCachedExecutor;
 
-    public void executeOnCachedExecutor(Runnable runnable) {
+    public synchronized void executeOnCachedExecutor(Runnable runnable) {
         mCachedExecutor.execute(runnable);
-    }
-
-    public void executeOnCpuCoresExecutor(Runnable runnable) {
-        mCpuCoresExecutor.execute(runnable);
     }
 
     private AppExecutors() {
         mCachedExecutor = Executors.newCachedThreadPool();
-        int nThreads = Utils.getCpuCoreCount(true);
-        mCpuCoresExecutor = Executors.newFixedThreadPool(nThreads);
     }
 }

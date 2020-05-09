@@ -17,4 +17,5 @@
 #}
 -printusage <user.dir>/usage.txt
 -printconfiguration <user.dir>/full-r8-config.txt
--printmapping <user.dir>/mapping.txt
+#-printmapping <user.dir>/mapping.txt
+-dontobfuscate

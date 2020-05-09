@@ -5,4 +5,20 @@
     <color name="color_preloader_end">#000000</color>
     <color name="background_tab_pressed">#6633B5E5</color>
     <color tools:override="true" name="button_material_dark">#ff5a595b</color>
+
+    <!-- THEME DEFAULT -->
+    <color name="green_primary">#4CAF50</color>
+    <color name="green_primary_dark">#1B5E20</color>
+    <color name="green_accent">#B9F6CA</color>
+    <color name="separator">#EFEFEF</color>
+
+    <!-- THEME TEAL -->
+    <color name="teal_primary">#009688</color>
+    <color name="teal_primary_dark">#00796B</color>
+    <color name="teal_primary_light">#B2DFDB</color>
+    <color name="teal_accent">#4CAF50</color>
+    <color name="teal_primary_text">#212121</color>
+    <color name="teal_secondary_text">#727272</color>
+    <color name="teal_icons">#FFFFFF</color>
+    <color name="teal_separator">#4DB6B6B6</color>
 </resources>

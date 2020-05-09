@@ -2,6 +2,7 @@ package kilanny.shamarlymushaf.fragments;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -16,6 +17,7 @@ import android.widget.Toast;
 
 import androidx.documentfile.provider.DocumentFile;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentActivity;
 
 import java.io.File;
 
@@ -122,9 +124,10 @@ public class ReciterDetailFragment extends Fragment {
         mView.findViewById(R.id.progressBarLoading).setVisibility(View.VISIBLE);
         mView.findViewById(R.id.listLayout).setVisibility(View.GONE);
         AppExecutors.getInstance().executeOnCachedExecutor(() -> {
-            DownloadedAyat.getInstance(getContext());
+            Context context = getContext();
+            if (context == null) return;
             for (int i = 0; i < 114; ++i) {
-                adapter.getItem(i).downloadedAyah = Utils.getNumDownloaded(getActivity(), mItem, i + 1);
+                adapter.getItem(i).downloadedAyah = Utils.getNumDownloaded(context, mItem, i + 1);
                 arr[i].downloadedAyah = adapter.getItem(i).downloadedAyah;
             }
             Activity activity = getActivity();
@@ -209,13 +212,15 @@ public class ReciterDetailFragment extends Fragment {
                                 prog -> setSurahProgress(position + 1, prog, true),
                                 result -> {
                                     prevTask = null;
+                                    FragmentActivity activity = getActivity();
+                                    if (activity == null) return;
                                     if (result != Utils.DOWNLOAD_OK && result != Utils.DOWNLOAD_USER_CANCEL) {
                                         String text = result == Utils.DOWNLOAD_QUOTA_EXCEEDED ?
                                                 "تم بلوغ الكمية القصوى للتحميل لهذا اليوم. نرجوا المحاولة غدا أو استخدام التحميل اللامحدود"
                                                 : "فشل التحميل. تأكد من اتصالك بالشبكة ووجود مساحة كافية بجهازك";
-                                        Toast.makeText(getActivity(), text, Toast.LENGTH_LONG).show();
+                                        Toast.makeText(activity, text, Toast.LENGTH_LONG).show();
                                     } else if (result == Utils.DOWNLOAD_OK) {
-                                        AnalyticsTrackers.getInstance(getContext())
+                                        AnalyticsTrackers.getInstance(activity)
                                                 .sendDownloadRecites(mItem, position + 1);
                                     }
                                     setCurrentDownloadSurah(CURRENT_SURAH_NONE);

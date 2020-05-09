@@ -2,6 +2,10 @@
     <PreferenceCategory
         app:summary="إعدادات التلاوة والتظليل"
         app:title="التلاوة والتظليل">
+        <Preference
+            app:key="alarms"
+            app:title="تنبيهات ورد القرآن الكريم"
+            app:summary="إعداد تذكير لتلاوة ورد يومي" />
         <ListPreference
             app:defaultValue="@string/defaultReciter"
             app:dialogTitle="اختيار القارئ لتشغيل التلاوات"
@@ -10,6 +14,11 @@
             app:entryValues="@array/reciter_values"
             app:key="listReciters"
             app:useSimpleSummaryProvider="true" />
+<!--        <SwitchPreferenceCompat-->
+<!--            app:title="زر الإعدادات السريع"-->
+<!--            app:summary="عرض زر لتغيير الإعدادات في شاشة المصحف"-->
+<!--            app:key="showSettingButton"-->
+<!--            app:defaultValue="false" />-->
         <ListPreference
             app:defaultValue="@string/yellow"
             app:entries="@array/listOptions"

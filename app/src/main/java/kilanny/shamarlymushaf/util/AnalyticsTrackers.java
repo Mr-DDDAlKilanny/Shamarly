@@ -7,6 +7,8 @@ import android.util.Log;
 import com.crashlytics.android.Crashlytics;
 import com.google.firebase.analytics.FirebaseAnalytics;
 
+import kilanny.shamarlymushaf.data.alarms.Alarm;
+
 public final class AnalyticsTrackers {
 
     private static AnalyticsTrackers instance;
@@ -198,17 +200,6 @@ public final class AnalyticsTrackers {
         }
     }
 
-    public void sendImportRecites(String reciter) {
-        if (!canMakeAnalytics()) return;
-        try {
-            Bundle bundle = new Bundle();
-            bundle.putString("reciter", reciter);
-            mFirebaseAnalytics.logEvent("ImportRecites", bundle);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-    }
-
     public void sendDeleteRecites(String reciter) {
         if (!canMakeAnalytics()) return;
         try {
@@ -248,6 +239,81 @@ public final class AnalyticsTrackers {
             Bundle bundle = new Bundle();
             bundle.putInt("value", value);
             mFirebaseAnalytics.logEvent("MaqraahResponse", bundle);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public void logVideoOpened(String videoId, int source) {
+        if (!canMakeAnalytics()) return;
+        try {
+            Bundle bundle = new Bundle();
+            bundle.putString("id", videoId);
+            bundle.putInt("source", source);
+            mFirebaseAnalytics.logEvent("VideoOpened", bundle);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public void logTopicSubscribed(String topic) {
+        if (!canMakeAnalytics()) return;
+        try {
+            Bundle bundle = new Bundle();
+            bundle.putString("topic", topic);
+            mFirebaseAnalytics.logEvent("TopicSubscribed", bundle);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public void logMessagesRead(String topic, int readCount) {
+        if (!canMakeAnalytics()) return;
+        try {
+            Bundle bundle = new Bundle();
+            bundle.putString("topic", topic);
+            bundle.putInt("readCount", readCount);
+            mFirebaseAnalytics.logEvent("MessagesRead", bundle);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public void logTopicUnsubscribed(String topic) {
+        if (!canMakeAnalytics()) return;
+        try {
+            Bundle bundle = new Bundle();
+            bundle.putString("topic", topic);
+            mFirebaseAnalytics.logEvent("TopicUnsubscribed", bundle);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public void logAlarmDeleted(Alarm alarm) {
+        if (!canMakeAnalytics()) return;
+        try {
+            Bundle bundle = new Bundle();
+            putAlarm(alarm, bundle);
+            mFirebaseAnalytics.logEvent("AlarmDeleted", bundle);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private void putAlarm(Alarm alarm, Bundle bundle) {
+        bundle.putBoolean("alarm_enabled", alarm.enabled);
+        bundle.putInt("alarm_id", alarm.id);
+        bundle.putInt("alarm_weekDayFlags", alarm.weekDayFlags);
+    }
+
+    public void logModifyAlarm(Alarm alarm, boolean isNew) {
+        if (!canMakeAnalytics()) return;
+        try {
+            Bundle bundle = new Bundle();
+            putAlarm(alarm, bundle);
+            bundle.putBoolean("isNew", isNew);
+            mFirebaseAnalytics.logEvent("AlarmModified", bundle);
         } catch (Exception ex) {
             ex.printStackTrace();
         }

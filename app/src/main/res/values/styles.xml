@@ -48,6 +48,23 @@
 
     <style name="AlertDialogTheme" parent="Theme.MaterialComponents.Light.Dialog.Alert">
     </style>
+
     <style name="Base.Theme.MaterialComponents.App" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+    </style>
+
+    <style name="Base.Theme.MaterialComponents.AppNoActionBar" parent="Theme.MaterialComponents.NoActionBar">
+    </style>
+
+    <style name="Widget.Button.NextPrev" parent="android:Widget">
+        <item name="android:textColor">@color/button_text_light</item>
+        <!--<item nameResId="android:padding">@dimen/space</item>-->
+        <item name="android:layout_height">40dp</item>
+        <item name="android:layout_width">100dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:background">@drawable/bg_button_background</item>
+        <item name="android:layout_margin">8dp</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">12sp</item>
     </style>
 </resources>

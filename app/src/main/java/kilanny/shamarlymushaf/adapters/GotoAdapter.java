@@ -59,6 +59,6 @@ public class GotoAdapter extends FragmentPagerAdapter {
             case 6:
                 return new GotoKhatmahFragement();
         }
-        return null;
+        throw new IllegalArgumentException("position = " + position);
     }
 }

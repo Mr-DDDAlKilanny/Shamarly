@@ -1,11 +1,19 @@
 package kilanny.shamarlymushaf.util;
 
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityManager;
+import android.app.AlarmManager;
 import android.app.AlertDialog;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -19,6 +27,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
+import android.os.Handler;
 import android.os.RecoverySystem;
 import android.provider.DocumentsContract;
 import android.util.Log;
@@ -27,33 +36,50 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
+import androidx.arch.core.util.Function;
+import androidx.core.app.AlarmManagerCompat;
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.view.ViewCompat;
 import androidx.documentfile.provider.DocumentFile;
+import androidx.webkit.WebViewFeature;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.material.shape.MaterialShapeDrawable;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import org.htmlcleaner.CleanerProperties;
 import org.htmlcleaner.HtmlCleaner;
 import org.htmlcleaner.TagNode;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -61,12 +87,16 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.SocketException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.UnknownHostException;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -92,6 +122,7 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
+import kilanny.shamarlymushaf.AlarmRingBroadcastReceiver;
 import kilanny.shamarlymushaf.BuildConfig;
 import kilanny.shamarlymushaf.R;
 import kilanny.shamarlymushaf.data.Ayah;
@@ -100,6 +131,7 @@ import kilanny.shamarlymushaf.data.DownloadedAyat;
 import kilanny.shamarlymushaf.data.QuranData;
 import kilanny.shamarlymushaf.data.Setting;
 import kilanny.shamarlymushaf.data.Shared;
+import kilanny.shamarlymushaf.data.alarms.Alarm;
 import kilanny.shamarlymushaf.views.QuranImageView;
 
 /**
@@ -117,14 +149,46 @@ public class Utils {
     public static final byte CONNECTION_STATUS_CONNECTED = 1,
             CONNECTION_STATUS_NOT_CONNECTED = 2,
             CONNECTION_STATUS_UNKNOWN_STATUS = 3;
-    //https://developer.android.com/topic/performance/threads
-    public static final int MIN_THREAD_MEMORY_ALLOCATION = 64 * 1024;
+
     public static final String NON_DOWNLOADED_QUEUE_FILE_PATH = "nonDownloaded";
 
     private static final int SECOND_MILLIS = 1000;
     private static final int MINUTE_MILLIS = 60 * SECOND_MILLIS;
     private static final int HOUR_MILLIS = 60 * MINUTE_MILLIS;
     private static final int DAY_MILLIS = 24 * HOUR_MILLIS;
+
+    private static final long ANIMATION_DURATION_MILLIS = 2000;
+    private static final long ANIMATION_START_DELAY_MILLIS = 1000;
+
+    private static final String youtubeHtml = "<!DOCTYPE html>\n" +
+            "<html>\n" +
+            "<head>\n" +
+            "<style>body { margin: 0; width:100%%; height:100%%;  background-color:#000; }" +
+            "html { width:100%%; height:100%%; background-color:#000; }" +
+            ".embed-container iframe,.embed-container object,   .embed-container embed { " +
+            "position: absolute; top: 0; left: 0; width: 100%% !important; height: 100%% !important; }   " +
+            "</style>\n" +
+            "</head>\n" +
+            "  <body>\n" +
+            "    <div class=\"embed-container\" ><div id=\"player\"></div></div>\n" +
+            "    <script>\n" +
+            "      var tag = document.createElement('script');\n" +
+            "      tag.src = \"https://www.youtube.com/iframe_api\";\n" +
+            "      var firstScriptTag = document.getElementsByTagName('script')[0];\n" +
+            "      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);\n" +
+            "      var player;\n" +
+            "      function onYouTubeIframeAPIReady() {\n" +
+            "        player = new YT.Player('player', {\n" +
+            "          height: '100%%',\n" +
+            "          width: '100%%',\n" +
+            "          videoId: '%1$s',\n" +
+            "          events: { 'onReady': onPlayerReady }\n" +
+            "        });\n" +
+            "      }\n" +
+            "      function onPlayerReady(event) { event.target.playVideo(); Android.hideSpinner(); } \n" +
+            "    </script>\n" +
+            "  </body>\n" +
+            "</html>";
 
     public static int getCpuCoreCount(boolean forceReadFromSysFile) {
         if(!forceReadFromSysFile && Build.VERSION.SDK_INT >= 17) {
@@ -191,6 +255,137 @@ public class Utils {
         }
     }
 
+    @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
+    public static void showYoutubeVideoPopup(Context context, String youtubeVideoId) {
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_PORT_POST_MESSAGE)) {
+            LinearLayout linearLayout = new LinearLayout(context.getApplicationContext());
+            linearLayout.setOrientation(LinearLayout.HORIZONTAL);
+            linearLayout.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT));
+            float density = context.getResources().getDisplayMetrics().density;
+            linearLayout.setMinimumHeight((int) Math.ceil(density * 250));
+
+            FrameLayout frameLayout = new FrameLayout(context.getApplicationContext());
+            frameLayout.setLayoutParams(new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+
+            WebView webView = new WebView(context.getApplicationContext());
+            webView.setLayoutParams(new WebView.LayoutParams(
+                    WebView.LayoutParams.MATCH_PARENT, WebView.LayoutParams.MATCH_PARENT, 0, 0));
+            webView.getSettings().setJavaScriptEnabled(true);
+            webView.getSettings().setDomStorageEnabled(true);
+            frameLayout.addView(webView);
+
+            ProgressBar progressBar = new ProgressBar(context);
+            progressBar.setIndeterminate(true);
+            progressBar.setPadding(0, 0, 0, 0);
+            LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT);
+            layoutParams.gravity = Gravity.CENTER;
+            progressBar.setLayoutParams(layoutParams);
+            frameLayout.addView(progressBar);
+
+            linearLayout.addView(frameLayout);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    webView.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                    CookieManager cookieManager = CookieManager.getInstance();
+                    cookieManager.setAcceptThirdPartyCookies(webView, true);
+                }
+            }
+
+            androidx.appcompat.app.AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(context)
+                    .setOnDismissListener(d -> webView.destroy())
+                    .create();
+            dialog.getWindow().setSoftInputMode(
+                    WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+            dialog.setView(linearLayout, 5, 5, 5, 5);
+            dialog.setCanceledOnTouchOutside(true);
+            dialog.setCancelable(true);
+            WindowManager.LayoutParams wlmp = dialog.getWindow().getAttributes();
+            wlmp.gravity = Gravity.BOTTOM;
+            wlmp.flags |= WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON;
+            dialog.show();
+
+            webView.addJavascriptInterface(new Object() {
+
+                @JavascriptInterface
+                public void hideSpinner() {
+                    new Handler(context.getMainLooper()).post(() ->
+                            progressBar.setVisibility(View.GONE));
+                }
+            }, "Android");
+            webView.loadDataWithBaseURL("https://www.youtube.com",
+                    String.format(Locale.US, youtubeHtml, youtubeVideoId),
+                    "text/html", "UTF-8", "http://youtube.com");
+        } else {
+            try {
+                context.startActivity(new Intent(Intent.ACTION_VIEW,
+                        Uri.parse("vnd.youtube:" + youtubeVideoId)));
+            } catch (ActivityNotFoundException ex) {
+                try {
+                    context.startActivity(new Intent(Intent.ACTION_VIEW,
+                            Uri.parse("http://www.youtube.com/watch?v=" + youtubeVideoId)));
+                } catch (ActivityNotFoundException ex2) {
+                    ex2.printStackTrace();
+                }
+            }
+        }
+    }
+
+    public static Bitmap downloadYoutubeVideoThumb(String youtubeVideoId) {
+        byte[] buf = new byte[1024];
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        int res = downloadFile(buf,
+                String.format("https://img.youtube.com/vi/%s/2.jpg", youtubeVideoId),
+                outputStream);
+        if (res != DOWNLOAD_OK) return null;
+        byte[] bytes = outputStream.toByteArray();
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+    }
+
+    public static String getYoutubeVideoTitle(String youtubeVideoId) {
+        String url = String.format(
+                "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=%s&format=json",
+                youtubeVideoId);
+        byte[] buf = new byte[1024];
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        int res = downloadFile(buf, url, outputStream);
+        if (res != DOWNLOAD_OK) return null;
+        try {
+            String s = new String(outputStream.toByteArray(), "UTF-8");
+            JSONObject jsonObject = new JSONObject(s);
+            return jsonObject.getString("title");
+        } catch (UnsupportedEncodingException | JSONException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public static void animateView(@NonNull Context context, @NonNull View view) {
+        float maxTranslationZ = context.getResources().getDimension(R.dimen.cat_elevation_max_translation_z);
+        MaterialShapeDrawable materialShapeDrawable = MaterialShapeDrawable.createWithElevationOverlay(context);
+        ViewCompat.setBackground(view, materialShapeDrawable);
+
+        setTranslationZ(view, materialShapeDrawable, maxTranslationZ);
+
+        ValueAnimator animator = ValueAnimator.ofFloat(0, maxTranslationZ);
+        animator.setDuration(ANIMATION_DURATION_MILLIS);
+        animator.setStartDelay(ANIMATION_START_DELAY_MILLIS);
+        animator.setRepeatMode(ValueAnimator.RESTART);
+        animator.setRepeatCount(ValueAnimator.INFINITE);
+        animator.addUpdateListener(animation ->
+                setTranslationZ(view, materialShapeDrawable, (float) animation.getAnimatedValue()));
+        animator.start();
+    }
+
+    private static void setTranslationZ(View view, MaterialShapeDrawable materialShapeDrawable, float translationZ) {
+        materialShapeDrawable.setTranslationZ(translationZ);
+        ViewCompat.setTranslationZ(view, translationZ);
+    }
+
     public static File getDatabaseDir(Context context) {
         File filesDir;
         // Make sure it's available
@@ -230,7 +425,7 @@ public class Utils {
     }
 
     @Nullable
-    public static DocumentFile findOrCreateDir(DocumentFile parent, String name, boolean createIfNotExists) {
+    public static DocumentFile findOrCreateDir(DocumentFile parent, @NonNull String name, boolean createIfNotExists) {
         DocumentFile file = parent.findFile(name);
         if (file == null && createIfNotExists)
             file = parent.createDirectory(name);
@@ -319,6 +514,10 @@ public class Utils {
         if (reciter == null)
             return null;
         if (numAttempt == 1) {
+            return Uri.parse(String.format(Locale.ENGLISH,
+                    "https://archive.org/download/quran_%s_%03d/%03d.mp3", reciter, surah, ayah));
+        }
+        if (numAttempt == 2) {
             if (!reciter.startsWith("null"))
                 return Uri.parse(String.format(Locale.ENGLISH,
                         "http://www.everyayah.com/data/%s/%03d%03d.mp3",
@@ -330,6 +529,14 @@ public class Utils {
             return null;
         return Uri.parse(String.format(Locale.ENGLISH, alt.replace("%%", "%"),
                 surah, ayah));
+    }
+
+    public static void setDataSource(MediaPlayer mediaPlayer, Context context, Uri uri) throws IOException {
+        String s = uri.toString();
+        if (s.startsWith("http"))
+            mediaPlayer.setDataSource(s);
+        else
+            mediaPlayer.setDataSource(context, uri);
     }
 
     public static Uri getAyahPath(Context context, String reciter, int surah, int ayah,
@@ -505,6 +712,12 @@ public class Utils {
         return -1;
     }
 
+    public static int findReciteZipItemByName(@NonNull Context context, @NonNull String name) {
+        String[] r = context.getResources().getStringArray(R.array.reciter_names);
+        for (int i = 0; i < r.length; ++i) if (name.contains(r[i])) return i;
+        return -1;
+    }
+
     public static boolean extractReciteZipFile(@NonNull Context context, @NonNull File zipFile,
                                                RecoverySystem.ProgressListener listener) throws IOException {
         FileInputStream fis = new FileInputStream(zipFile);
@@ -639,13 +852,13 @@ public class Utils {
         return dialog;
     }
 
-    private static int downloadFile(byte[] buffer, Uri fromUrl, OutputStream output) {
+    private static int downloadFile(byte[] buffer, String fromUrl, OutputStream output) {
         if (fromUrl == null)
             return DOWNLOAD_MALFORMED_URL;
         URL url;
         boolean conn = true;
         try {
-            url = new URL(fromUrl.toString());
+            url = new URL(fromUrl);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestProperty("connection", "close");
             connection.connect();
@@ -690,7 +903,7 @@ public class Utils {
     }
 
     private static int _downloadAyah(Context context, Uri ayahUri,
-                                     byte[] buffer, Object ayahFile) throws IOException {
+                                     byte[] buffer, Object ayahFile, boolean shouldIncQuota) throws IOException {
         DownloadQuota q = DownloadQuota.getInstance(context);
         if (!q.canDownloadNow()) return DOWNLOAD_QUOTA_EXCEEDED;
         int res = -1;
@@ -712,11 +925,11 @@ public class Utils {
                 fos = context.getContentResolver().openOutputStream(
                         ((AyahFile) ayahFile).getOrCreate().getUri());
             }
-            res = downloadFile(buffer, ayahUri, fos);
+            res = downloadFile(buffer, ayahUri.toString(), fos);
             fos.close();
             return res;
         } finally {
-            if (res == DOWNLOAD_OK) {
+            if (res == DOWNLOAD_OK && shouldIncQuota) {
                 long length;
                 if (ayahFile instanceof File) {
                     length = ((File) ayahFile).length();
@@ -773,7 +986,7 @@ public class Utils {
         }
         try {
             res = _downloadAyah(context, getAyahUrl(reciter, surah, ayah, data, 1),
-                    buffer, ayahFile);
+                    buffer, ayahFile, false);
         } catch (IOException ex) {
             ex.printStackTrace();
             res = DOWNLOAD_IO_EXCEPTION;
@@ -783,11 +996,25 @@ public class Utils {
             downloadedAyat.save(context);
             return res;
         } else deleteIfFailed(context, res, ayahFile);
+
         Uri next = getAyahUrl(reciter, surah, ayah, data, 2);
         if (next == null) return res;
         try {
-            res = _downloadAyah(context, getAyahUrl(reciter, surah, ayah, data, 1),
-                    buffer, ayahFile);
+            res = _downloadAyah(context, next, buffer, ayahFile, true);
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            res = DOWNLOAD_IO_EXCEPTION;
+        }
+        if (res == DOWNLOAD_OK) {
+            downloadedAyat.set(reciter, surah, ayah, true);
+            downloadedAyat.save(context);
+            return res;
+        } else deleteIfFailed(context, res, ayahFile);
+
+        next = getAyahUrl(reciter, surah, ayah, data, 3);
+        if (next == null) return res;
+        try {
+            res = _downloadAyah(context, next, buffer, ayahFile, true);
         } catch (IOException ex) {
             ex.printStackTrace();
             res = DOWNLOAD_IO_EXCEPTION;
@@ -935,7 +1162,7 @@ public class Utils {
             e.printStackTrace();
             return DOWNLOAD_IO_EXCEPTION;
         }
-        int res = downloadFile(buffer, Uri.parse(pageUrl), fos);
+        int res = downloadFile(buffer, pageUrl, fos);
         try {
             fos.close();
         } catch (IOException ex) {
@@ -1428,11 +1655,12 @@ public class Utils {
         }
     }
 
+    @NonNull
     public static String newUid() {
         return UUID.randomUUID().toString();
     }
 
-    public static long hash(String s) {
+    public static long hash(@NonNull String s) {
         long hash = 7;
         for (int i = 0; i < s.length(); i++) {
             hash = hash * 31 + s.charAt(i);
@@ -1550,6 +1778,14 @@ public class Utils {
         return false;
     }
 
+    public static void startForegroundService(Context context, Intent serviceIntent) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(serviceIntent);
+        } else {
+            context.startService(serviceIntent);
+        }
+    }
+
     public static void openUrlInChromeOrDefault(Context context, String urlString) {
         Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(urlString));
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -1559,7 +1795,17 @@ public class Utils {
         } catch (ActivityNotFoundException ex) {
             // Chrome browser presumably not installed so allow user to choose instead
             intent.setPackage(null);
-            context.startActivity(intent);
+            try {
+                context.startActivity(intent);
+            } catch (ActivityNotFoundException ex2) {
+                ClipboardManager clipboardManager = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+                if (clipboardManager != null) {
+                    clipboardManager.setPrimaryClip(ClipData.newPlainText("مصحف الشمرلي", urlString));
+                    Toast.makeText(context,
+                            "لم يتم العثور على متصفح في جهازك. تم نسخ الرابط اذهب للمتصفح واعمل له لصق",
+                            Toast.LENGTH_LONG).show();
+                }
+            }
         }
     }
 
@@ -1623,6 +1869,153 @@ public class Utils {
                 Build.PRODUCT,          // Product,
                 recomendHeap, freeMemory, processors, vmHead, totalMem
         );
+    }
+
+    @Nullable
+    public static FirebaseUser getOrCreateAnonymousFirebaseUser(Function<FirebaseUser, Void> result) {
+        FirebaseAuth auth = FirebaseAuth.getInstance();
+        FirebaseUser currentUser = auth.getCurrentUser();
+        if (currentUser != null) {
+            return currentUser;
+        }
+        auth.signInAnonymously().addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                result.apply(auth.getCurrentUser());
+            } else {
+                Log.w("signInAnonymously", "failure", task.getException());
+                result.apply(null);
+            }
+        });
+        return null;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public static void createNotificationChannel(Context context, String channelId, String channelName) {
+        NotificationChannel notificationChannel = new NotificationChannel(channelId, channelName,
+                NotificationManager.IMPORTANCE_DEFAULT);
+        notificationChannel.setLightColor(R.color.color_preloader_center);
+        notificationChannel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+        NotificationManagerCompat.from(context).createNotificationChannel(notificationChannel);
+    }
+
+    public static int getDayOfWeek(Calendar calendar) {
+/*
+1 -> 1 << 4
+2 -> 1 << 3
+3 -> 1 << 2
+4 -> 1 << 1
+5 -> 1 << 0
+6 -> 1 << 6
+7 -> 1 << 5
+        */
+        int dw = calendar.get(Calendar.DAY_OF_WEEK);
+        return 1 << (dw <= 5 ? 5 - dw : dw == 6 ? 6 : 5);
+    }
+
+    public static NextAlarmInfo getNextAlarmDate(Alarm alarm) {
+        if (!alarm.enabled) {
+            throw new IllegalArgumentException("alarm is not enabled");
+        }
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(new Date());
+        int dw = getDayOfWeek(calendar);
+        int ct = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE);
+
+        // loop until the same dayOfWeek in the next week
+        // for example, alarm at Jumaah prayer only, and now is Jumaah after prayer
+        int idw = (int) (Math.log(dw) / Math.log(2));
+        for (int j = 0; j < 7 + 1; ++j) {
+            int jdw = idw - j;
+            if (jdw < 0) jdw += 7;
+            if ((alarm.weekDayFlags & (1 << jdw)) != 0
+                    && (j > 0 || ct < alarm.timeInMins)) {
+                DateFormat formatter = new SimpleDateFormat("dd/MM/yyyy", Locale.ENGLISH);
+                try {
+                    Date today = formatter.parse(formatter.format(new Date()));
+                    calendar.setTime(today);
+                    calendar.add(Calendar.DATE, j);
+                    calendar.add(Calendar.HOUR_OF_DAY, alarm.timeInMins / 60);
+                    calendar.add(Calendar.MINUTE, alarm.timeInMins % 60);
+                    return new NextAlarmInfo(alarm, calendar.getTime());
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                    throw new RuntimeException("ParseException", e);
+                }
+            }
+        }
+        // we should never get here ?
+        throw new UnsupportedOperationException();
+    }
+
+    private static PendingIntent getAlarmPendingIntent(Context context) {
+        Intent intentToFire = new Intent(context, AlarmRingBroadcastReceiver.class);
+        return PendingIntent.getBroadcast(context, 671,
+                intentToFire, 0);
+    }
+
+    public static void scheduleAndDeletePrevious(Context context, Alarm... alarms) {
+        NextAlarmInfo nearestAlarm = null;
+        for (Alarm alarm : alarms) {
+            if (alarm.enabled) {
+                NextAlarmInfo nextAlarm = getNextAlarmDate(alarm);
+                if (nearestAlarm == null || nextAlarm.date.getTime() < nearestAlarm.date.getTime())
+                    nearestAlarm = nextAlarm;
+            }
+        }
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        alarmManager.cancel(getAlarmPendingIntent(context));
+        if (nearestAlarm == null) {
+            Log.v("schNext", "No alarm enabled; skipping.");
+            return;
+        }
+        AlarmManagerCompat.setExactAndAllowWhileIdle(alarmManager,
+                AlarmManager.RTC_WAKEUP, nearestAlarm.date.getTime(),
+                getAlarmPendingIntent(context));
+        Log.v("schNext", "Scheduled next alarm at " + nearestAlarm.date);
+    }
+
+    public static String getAlarmDays(Context context, Alarm alarm) {
+        String[] days = context.getResources().getStringArray(R.array.days);
+        StringBuilder b = new StringBuilder();
+        if (alarm.weekDayFlags == 127)
+            b.append("كل يوم");
+        else {
+            ArrayList<Integer> not = new ArrayList<>();
+            for (int i = 0; i < days.length; ++i) {
+                int f = 1 << i;
+                if ((alarm.weekDayFlags & f) == 0)
+                    not.add(6 - i);
+            }
+            if (not.size() >= 3) {
+                for (int i = 0; i < days.length; ++i) {
+                    int f = 1 << i;
+                    if ((alarm.weekDayFlags & f) != 0)
+                        b.append(days[6 - i]).append(',');
+                }
+                b.delete(b.length() - 1, b.length());
+            } else if (not.size() == 2) {
+                b.append(context.getString(R.string.allDaysExpect2Days,
+                        days[not.get(0)],
+                        days[not.get(1)]));
+            } else {
+                b.append(context.getString(R.string.allDaysExpect1Day,
+                        days[not.get(0)]));
+            }
+        }
+        return b.toString();
+    }
+
+    public static class NextAlarmInfo {
+        public Alarm alarm;
+        public Date date;
+
+        public NextAlarmInfo() {
+        }
+
+        public NextAlarmInfo(Alarm alarm, Date date) {
+            this.alarm = alarm;
+            this.date = date;
+        }
     }
 }
 

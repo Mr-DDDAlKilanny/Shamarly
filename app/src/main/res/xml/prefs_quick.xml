@@ -1,0 +1,107 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+    <PreferenceCategory
+        app:summary="إعدادات التلاوة والتظليل"
+        app:title="التلاوة والتظليل">
+        <Preference
+            app:key="alarms"
+            app:title="تنبيهات ورد القرآن الكريم"
+            app:summary="إعداد تذكير لتلاوة ورد يومي" />
+        <ListPreference
+            app:defaultValue="@string/defaultReciter"
+            app:dialogTitle="اختيار القارئ لتشغيل التلاوات"
+            app:title="القارئ للتلاوات"
+            app:entries="@array/reciter_names"
+            app:entryValues="@array/reciter_values"
+            app:key="listReciters"
+            app:useSimpleSummaryProvider="true" />
+        <ListPreference
+            app:defaultValue="@string/yellow"
+            app:entries="@array/listOptions"
+            app:entryValues="@array/listValues"
+            app:key="listSelectionColor"
+            app:title="لون تظليل الآية المحددة"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:key="playContinues"
+            app:summary="عدم التوقف بعد تشغيل تلاوة الآية المحددة"
+            app:title="التشغيل المستمر" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:key="backToBegin"
+            app:summary="بعد تلاوة سورة الناس لا تقف بل عد إلى الفاتحة"
+            app:title="العودة إلى سورة الفاتحة" />
+    </PreferenceCategory>
+    <PreferenceCategory
+        app:summary="إعدادات شاشة المصحف"
+        app:title="المصحف">
+        <ListPreference
+            app:defaultValue="@string/defaultBoldSize"
+            app:entries="@array/boldSizeTitles"
+            app:entryValues="@array/boldSizeValues"
+            app:key="boldSize"
+            app:title="غمق رسم المصحف"
+            app:dialogTitle="تحديد مدى غمق رسم المصحف"
+            app:useSimpleSummaryProvider="true" />
+        <ListPreference
+            app:defaultValue="@string/defaultDisplayPageMode"
+            app:entries="@array/displayPageModeTitles"
+            app:entryValues="@array/displayPageModeValues"
+            app:key="displayPageMode"
+            app:dialogTitle="تحديد طريقة عرض خلفية المصحف"
+            app:title="خلفية الصفحة"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:key="showPageLeftRightIndicator"
+            app:summary="عرض ما يميز الصفحة اليمنى عن اليسرى"
+            app:title="توضيح اتجاه الصفحة" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:key="showHizbToast"
+            app:summary="عرض تنبيه سريع عند الوصول لصفحة بها حزب أو جزء"
+            app:title="عرض تنبيه الأحزاب والأجزاء" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:dependency="showHizbToast"
+            app:key="showRob3Toast"
+            app:summary="عرض تنبيه سريع لربع ونصف وثلاثة أرباع الأحزاب"
+            app:title="عرض تنبيه الأرباع" />
+        <ListPreference
+            app:defaultValue="@string/defaultAutoCloseScreenValue"
+            app:entries="@array/autoCloseScreenValues"
+            app:entryValues="@array/autoCloseScreenValues"
+            app:key="autoCloseScreenMinutes"
+            app:summary="إغلاق شاشة المصحف بعد عدم النشاط لمدة معينة بالدقائق"
+            app:title="إغلاق الشاشة آليا" />
+    </PreferenceCategory>
+    <PreferenceCategory
+        app:summary="إعدادات التفسير"
+        app:title="التفسير">
+        <ListPreference
+            app:defaultValue="20"
+            app:entries="@array/fontSizes"
+            app:entryValues="@array/fontSizes"
+            app:key="fontSize"
+            app:summary="تحديد حجم الخط المستخدم في التفسير"
+            app:title="حجم الخط" />
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:key="fontBold"
+            app:summary="استخدام خط غامق"
+            app:title="خط غامق" />
+        <ListPreference
+            app:defaultValue="@string/defaultTafseerTheme"
+            app:entries="@array/tafseerThemeTitles"
+            app:entryValues="@array/tafseerThemeValues"
+            app:key="tafseerTheme"
+            app:summary="تحديد الألوان المستخدمة في عرض شاشة التفسير"
+            app:title="لون الخلفية والخط" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:key="showTafseerNavigation"
+            app:summary="عرض أزرار تصفح الآيات السابقة واللاحقة في شاشة التفسير"
+            app:title="عرض أزرار الانتقال السريع" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

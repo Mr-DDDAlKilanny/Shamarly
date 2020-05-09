@@ -12,7 +12,7 @@ public class DownloadedAyat {
 
     private static DownloadedAyat instance;
 
-    public static DownloadedAyat getInstance(Context context) {
+    public static synchronized DownloadedAyat getInstance(Context context) {
         if (instance == null)
             instance = new DownloadedAyat(context);
         return instance;

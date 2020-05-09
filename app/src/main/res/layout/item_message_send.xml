@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_margin="8dp"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <RelativeLayout
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        android:background="@drawable/bg_receive_message"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:layout_height="wrap_content"
+            android:maxWidth="250dp"
+            android:gravity="right"
+            android:layout_width="wrap_content"
+            android:padding="16dp"
+            android:id="@+id/msgTxt"
+            tools:text="Salut les amis j'espere que vous aller bien, mois ca je cerhcuer comprendre"
+            android:textColor="@android:color/white"
+            android:textSize="19sp" />
+
+        <TextView
+            android:layout_height="wrap_content"
+            android:maxWidth="250dp"
+            android:paddingLeft="8dp"
+            android:layout_width="wrap_content"
+            android:id="@+id/msgTime"
+            tools:text="27 April 2020"
+            android:layout_below="@id/msgTxt"
+            android:textColor="@android:color/white" />
+    </RelativeLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

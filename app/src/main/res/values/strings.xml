@@ -35,7 +35,18 @@
     </string>
     <string name="auto_caller">الرنان الآلي</string>
     <string name="title_activity_external_recites_download">ExternalRecitesDownloadActivity</string>
-
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="dayAyahTopic">DayAyah</string>
+    <string name="title_messagetopic_list">واحة تطبيق مصحف الشمرلي</string>
+    <string name="title_messagetopic_detail"> </string>
+    <string name="intro_day_msg">بسم الله الرحمن الرحيم\nالحمد لله رب العالمين\nاللهم صل على محمد وآله وصحبه أجمعين</string>
+    <string name="title_activity_videos">المرئيات</string>
+    <string name="allDaysExpect1Day">جميع الأيام عدا %1$s</string>
+    <string name="allDaysExpect2Days">كل يوم عدا %1$s و %2$s</string>
+    <string name="friday">الجمعة</string>
+    <string name="saturday">السبت</string>
+    <string name="sunday">الأحد</string>
+    <string name="monday">الاثنين</string>
+    <string name="tuesday">الثلاثاء</string>
+    <string name="wednesday">الأربعاء</string>
+    <string name="thursday">الخميس</string>
 </resources>

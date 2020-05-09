@@ -1,15 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
     android:layout_height="match_parent" android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
     android:paddingBottom="@dimen/activity_vertical_margin"
-    tools:context="kilanny.shamarlymushaf.activities.WelcomeActivity">
+    tools:context=".activities.WelcomeActivity">
 <LinearLayout
     android:weightSum="3"
     android:orientation="horizontal"
     android:alpha="0.8"
+    android:layout_above="@id/playServicesLayout"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent">
     <LinearLayout
@@ -74,5 +76,75 @@
             android:layout_height="fill_parent" />
     </LinearLayout>
 </LinearLayout>
+
+    <LinearLayout
+        android:visibility="gone"
+        android:id="@+id/playServicesLayout"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+        <FrameLayout
+            style="?attr/actionButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clipToPadding="false"
+            android:focusable="true">
+
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:background="@drawable/play_button_shape"
+                app:srcCompat="@drawable/outline_message_24"
+                android:id="@+id/btnShowMessages"
+                android:layout_gravity="center"
+                android:layout_width="48dp"
+                android:layout_height="48dp"/>
+
+            <TextView
+                android:id="@+id/messages_badge"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="right|end|top"
+                android:layout_marginEnd="-5dp"
+                android:layout_marginRight="-5dp"
+                android:layout_marginTop="3dp"
+                android:background="@drawable/badge_background"
+                android:gravity="center"
+                android:padding="3dp"
+                android:textColor="@android:color/white"
+                android:text="0"
+                android:textSize="10sp"/>
+
+        </FrameLayout>
+
+        <FrameLayout
+            style="?attr/actionButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clipToPadding="false"
+            android:focusable="true">
+            <androidx.appcompat.widget.AppCompatImageButton
+                app:srcCompat="@drawable/outline_video_library_24"
+                android:id="@+id/btnShowChoocenVideos"
+                android:layout_gravity="center"
+                android:background="@drawable/play_button_shape"
+                android:layout_width="48dp"
+                android:layout_height="48dp"/>
+
+            <TextView
+                android:id="@+id/videos_badge"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="right|end|top"
+                android:layout_marginEnd="-5dp"
+                android:layout_marginRight="-5dp"
+                android:layout_marginTop="3dp"
+                android:background="@drawable/badge_background"
+                android:gravity="center"
+                android:textColor="@android:color/white"
+                android:text="!"
+                android:textSize="15sp"/>
+        </FrameLayout>
+
+    </LinearLayout>
 
 </RelativeLayout>

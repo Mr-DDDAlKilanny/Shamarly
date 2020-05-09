@@ -244,7 +244,7 @@ class MyDbContext extends ContextWrapper {
     }
 
     private void createDbIfNotExists(File dbFile) {
-        if (!dbFile.exists() || dbFile.length() < 5000) {
+        if (!dbFile.exists() || dbFile.length() < 9000) {
             if (dbFile.exists())
                 dbFile.delete();
             try {

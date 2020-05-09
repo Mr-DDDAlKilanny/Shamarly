@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:icon="@drawable/baseline_delete_forever_24"
+        android:id="@+id/mnuDeleteAlarm"
+        android:orderInCategory="100"
+        android:title="حذف" />
+</menu>

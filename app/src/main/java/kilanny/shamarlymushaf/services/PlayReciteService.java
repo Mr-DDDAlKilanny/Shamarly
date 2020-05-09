@@ -53,7 +53,6 @@ import kilanny.shamarlymushaf.util.Utils;
 public class PlayReciteService extends Service {
 
     private static final int NOTIFICATION_ID = 6236 + 114;
-    private static final int RELEASE_WAKELOCK = 0;
     private static final String ARG_IS_PAUSE_CLICK = "isPauseClick";
     private static final String ACTION_CLICK = "clickAction";
     public static final String ARG_AUTO_STOP_PERIOD_MINUTES_EXTRA = "autoStopPeriodMinutes";
@@ -209,7 +208,11 @@ public class PlayReciteService extends Service {
         }
         if (finish) {
             mIsStopped = true;
-            unregisterReceiver(mNotificationBroadcastReceiver);
+            try {
+                unregisterReceiver(mNotificationBroadcastReceiver);
+            } catch (IllegalArgumentException ex) {
+                ex.printStackTrace();
+            }
             if (mPhoneStateListener != null) {
                 TelephonyManager telephony = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
                 if (telephony != null)
@@ -233,7 +236,7 @@ public class PlayReciteService extends Service {
         return null;
     }
 
-    public void onClick(boolean isPauseClick) {
+    public synchronized void onClick(boolean isPauseClick) {
         if (isPauseClick) {
             pauseRecite(false);
         } else {
@@ -326,7 +329,7 @@ public class PlayReciteService extends Service {
                 if (path == null || path.toString().startsWith("http") &&
                         Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
                     throw new IllegalStateException();
-                mMediaPlayer.setDataSource(this, path);
+                Utils.setDataSource(mMediaPlayer, this, path);
                 Runnable tmpRunnable = () -> {
                     if (mMediaPlayer == null) //stopPlayback() was called
                         return;
@@ -350,17 +353,17 @@ public class PlayReciteService extends Service {
         });
         mMediaPlayer.setOnErrorListener((mp, what, extra) -> {
             attempt.increment();
-            if (!mPaused && attempt.getData() == 2) {
+            if (!mPaused && (attempt.getData() == 2 || attempt.getData() == 3)) {
                 QuranData quranData = QuranData.getInstance(this);
                 Uri path = Utils.getAyahPath(this, getSelectedSound(),
-                        mSurah, mAyah, quranData, 2);
+                        mSurah, mAyah, quranData, attempt.getData());
                 if (path != null) {
                     try {
                         if (path.toString().startsWith("http")
                                 && Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
                             throw new IllegalStateException();
                         mMediaPlayer.reset();
-                        mMediaPlayer.setDataSource(this, path);
+                        Utils.setDataSource(mMediaPlayer, this, path);
                         mMediaPlayer.prepareAsync();
                         lastRecitedAyahWasFile = !path.toString().startsWith("http");
                         return true;
@@ -394,7 +397,7 @@ public class PlayReciteService extends Service {
             if (path == null || path.toString().startsWith("http") &&
                     Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
                 throw new IllegalStateException();
-            mMediaPlayer.setDataSource(this, path);
+            Utils.setDataSource(mMediaPlayer, this, path);
             Runnable tmpRunnable = () -> {
                 if (mMediaPlayer == null) //stopPlayback() was called
                     return;

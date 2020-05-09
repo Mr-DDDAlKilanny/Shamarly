@@ -9,6 +9,8 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.ProgressBar;
 
+import kilanny.shamarlymushaf.data.DownloadedAyat;
+import kilanny.shamarlymushaf.data.alarms.AlarmDb;
 import kilanny.shamarlymushaf.util.AnalyticsTrackers;
 import kilanny.shamarlymushaf.adapters.FullScreenImageAdapter;
 import kilanny.shamarlymushaf.R;
@@ -69,6 +71,10 @@ public class SplashScreenActivity extends Activity {
                             "getNonExistPages", throwable);
                     return throwable;
                 }
+                DownloadedAyat.getInstance(SplashScreenActivity.this); // init here
+
+                Utils.scheduleAndDeletePrevious(SplashScreenActivity.this,
+                        AlarmDb.getInstance(SplashScreenActivity.this).alarmDao().getAllEnabled());
                 return null;
             }
 

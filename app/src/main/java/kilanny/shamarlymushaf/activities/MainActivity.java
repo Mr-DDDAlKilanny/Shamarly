@@ -45,15 +45,18 @@ import android.util.TypedValue;
 import android.view.Display;
 import android.view.GestureDetector;
 import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -67,6 +70,8 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatDrawableManager;
 import androidx.core.content.FileProvider;
 import androidx.core.content.res.ResourcesCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.ViewPropertyAnimatorListenerAdapter;
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager.widget.ViewPager;
 
@@ -100,6 +105,7 @@ import kilanny.shamarlymushaf.data.SerializableInFile;
 import kilanny.shamarlymushaf.data.Setting;
 import kilanny.shamarlymushaf.data.Shared;
 import kilanny.shamarlymushaf.data.TafseerDbManager;
+import kilanny.shamarlymushaf.fragments.QuickSettingsFragment;
 import kilanny.shamarlymushaf.services.PlayReciteService;
 import kilanny.shamarlymushaf.util.AnalyticsTrackers;
 import kilanny.shamarlymushaf.util.AppExecutors;
@@ -115,7 +121,7 @@ import kilanny.shamarlymushaf.views.QuranImageView;
  *
  * @see SystemUiHider
  */
-public class MainActivity extends FragmentActivity {
+public class MainActivity extends FragmentActivity implements QuickSettingsFragment.Callbacks {
 
     private class FindPageSelectionResult {
         QuranImageView image;
@@ -158,13 +164,12 @@ public class MainActivity extends FragmentActivity {
     public static final String EXTRA_KHATMAH_NAME = "EXTRA_KHATMAH_NAME";
 
     private static final ColorMatrixColorFilter nightFilter = new ColorMatrixColorFilter(
-            new ColorMatrix(new float[]
-        {
+            new ColorMatrix(new float[] {
                 -1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
                 0.0f, -1.0f, 0.0f, 1.0f, 1.0f,
                 0.0f, 0.0f, -1.0f, 1.0f, 1.0f,
                 0.0f, 0.0f, 0.0f, 1.0f, 0.0f
-        }));
+            }));
 
     private static final ColorMatrixColorFilter grayScaleFilter = new ColorMatrixColorFilter(
             new ColorMatrix(new float[] {
@@ -189,6 +194,8 @@ public class MainActivity extends FragmentActivity {
 
 
     public FullScreenImageAdapter adapter;
+    private ImageButton mQuickSettingsButton;
+    private boolean mQuickSettingsButtonVisible;
     private ViewPager viewPager;
     private Setting setting;
     public SharedPreferences pref;
@@ -359,6 +366,8 @@ public class MainActivity extends FragmentActivity {
                         if (pageInfo != null)
                             showAndSchedulePageInfoHide(pageInfo);
                     }
+                    if (mQuickSettingsButton != null && !adapter.isNotAllDownloaded())
+                        showAndScheduleSettingButtonHide(true);
                 }
                 return false;
             }
@@ -491,27 +500,49 @@ public class MainActivity extends FragmentActivity {
 
     private void showAndSchedulePageInfoHide(@NonNull final View pageInfo) {
         final int duration = getResources().getInteger(android.R.integer.config_mediumAnimTime);
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                pageInfo.setVisibility(View.VISIBLE);
-                pageInfo.animate().translationY(0).setDuration(duration)
-                        .setListener(null);
-            }
+        runOnUiThread(() -> {
+            pageInfo.setVisibility(View.VISIBLE);
+            pageInfo.animate().translationY(0).setDuration(duration)
+                    .setListener(null);
         });
-        Runnable delayDone = () -> {
-            runOnUiThread(() -> pageInfo.animate()
-                    .translationY(-pageInfo.getHeight())
-                    .setDuration(duration)
-                    .setListener(new AnimatorListenerAdapter() {
-                        @Override
-                        public void onAnimationEnd(Animator animation) {
-                            super.onAnimationEnd(animation);
-                            pageInfo.setVisibility(View.GONE);
-                        }
-                    }));
-        };
-        mHideHandler.postDelayed(delayDone, AUTO_HIDE_DELAY_MILLIS * 2);
+        mHideHandler.postDelayed(() -> runOnUiThread(() ->
+                pageInfo.animate().translationY(-pageInfo.getHeight()).setDuration(duration)
+                .setListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        super.onAnimationEnd(animation);
+                        pageInfo.setVisibility(View.GONE);
+                    }
+                })), AUTO_HIDE_DELAY_MILLIS * 2);
+    }
+
+    private void showAndScheduleSettingButtonHide(boolean show) {
+        if (show && mQuickSettingsButtonVisible) {
+            delayedHide(mHideSettingButtonRunnable, 1);
+            return;
+        }
+        if (show) {
+            runOnUiThread(() -> {
+                mQuickSettingsButton.setVisibility(View.VISIBLE);
+                mQuickSettingsButton.setRotation(0);
+                ViewCompat.animate(mQuickSettingsButton)
+                        .rotation(360)
+                        .translationX(0)
+                        .alpha(1)
+                        .withLayer()
+                        .setDuration(getResources().getInteger(android.R.integer.config_mediumAnimTime))
+                        .setInterpolator(new AccelerateDecelerateInterpolator())
+                        .setListener(new ViewPropertyAnimatorListenerAdapter() {
+                            @Override
+                            public void onAnimationEnd(View view) {
+                                super.onAnimationEnd(view);
+                                mQuickSettingsButtonVisible = true;
+                            }
+                        })
+                        .start();
+            });
+        }
+        delayedHide(mHideSettingButtonRunnable, AUTO_HIDE_DELAY_MILLIS);
     }
 
     private void configOrientation(int orientation, boolean right) {
@@ -742,7 +773,7 @@ public class MainActivity extends FragmentActivity {
         }
         final Dialog dialog = new Dialog(this, android.R.style.Theme_DeviceDefault_Dialog);
         dialog.setContentView(R.layout.fragment_recite_inbackground);
-        final Spinner stopPeriod = (Spinner) dialog.findViewById(R.id.spinnerAutostopBackgroundRecite);
+        final Spinner stopPeriod = dialog.findViewById(R.id.spinnerAutostopBackgroundRecite);
         stopPeriod.setAdapter(new ArrayAdapter<>(this, R.layout.spinner_item,
                 R.id.text1,
                 new ListItem[] {
@@ -758,14 +789,14 @@ public class MainActivity extends FragmentActivity {
                         new ListItem("ثلاث ساعات", 180),
                         new ListItem("خمس ساعات", 300)
         }));
-        final Spinner spinner1 = (Spinner) dialog.findViewById(R.id.fromSurahR);
+        final Spinner spinner1 = dialog.findViewById(R.id.fromSurahR);
         spinner1.setAdapter(new ArrayAdapter<>(this, R.layout.spinner_item,
                 R.id.text1, quranData.surahs2));
-        final Spinner spinner2 = (Spinner) dialog.findViewById(R.id.toSurahR);
+        final Spinner spinner2 = dialog.findViewById(R.id.toSurahR);
         spinner2.setAdapter(new ArrayAdapter<>(this, R.layout.spinner_item,
                 R.id.text1, quranData.surahs2));
-        final EditText from = (EditText) dialog.findViewById(R.id.fromAyahR);
-        final EditText to = (EditText) dialog.findViewById(R.id.toAyahR);
+        final EditText from = dialog.findViewById(R.id.fromAyahR);
+        final EditText to = dialog.findViewById(R.id.toAyahR);
         if (image.currentPage != null && image.currentPage.ayahs != null
                 && image.currentPage.ayahs.size() > 0) {
             spinner1.setSelection(image.currentPage.ayahs.get(0).sura);
@@ -775,7 +806,7 @@ public class MainActivity extends FragmentActivity {
             to.setText(Math.max(1, image.currentPage.ayahs.get(image.currentPage.ayahs.size() - 1)
                     .ayah) + "");
         }
-        final CheckBox checkBoxRepeat = (CheckBox) dialog.findViewById(R.id.checkBoxRepeat);
+        final CheckBox checkBoxRepeat = dialog.findViewById(R.id.checkBoxRepeat);
         final LinearLayout repeatReciteLayout = dialog.findViewById(R.id.repeatReciteLayout);
         checkBoxRepeat.setOnCheckedChangeListener((buttonView, isChecked) -> {
             repeatReciteLayout.setVisibility(isChecked ? View.VISIBLE : View.GONE);
@@ -827,7 +858,7 @@ public class MainActivity extends FragmentActivity {
             intent.putExtra(PlayReciteService.ARG_AUTO_STOP_PERIOD_MINUTES_EXTRA, autoStop);
             intent.putExtra(PlayReciteService.ARG_REPEAT_STRING_EXTRA,
                     String.format(Locale.ENGLISH, "%d:%d-%d:%d", sf, f, st, t));
-            startService(intent);
+            Utils.startForegroundService(this, intent);
             dialog.dismiss();
             finish();
         });
@@ -845,33 +876,33 @@ public class MainActivity extends FragmentActivity {
     }
 
     private void setBookmarkMenuItem(boolean add) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        //if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Button btn = findViewById(R.id.bookmarkBtn);
             setButtonBackground(btn, add ? R.drawable.baseline_star_48
                     : R.drawable.baseline_star_outline_48);
-        } else {
-            if (add) {
-                findViewById(R.id.bookmarkBtn)
-                        .setBackgroundResource(android.R.drawable.star_big_on);
-            }
-            else {
-                findViewById(R.id.bookmarkBtn)
-                        .setBackgroundResource(android.R.drawable.star_big_off);
-            }
-        }
+//        } else {
+//            if (add) {
+//                findViewById(R.id.bookmarkBtn)
+//                        .setBackgroundResource(android.R.drawable.star_big_on);
+//            }
+//            else {
+//                findViewById(R.id.bookmarkBtn)
+//                        .setBackgroundResource(android.R.drawable.star_big_off);
+//            }
+//        }
     }
 
     private void togglePlayButton(boolean playing) {
         Button btn = findViewById(R.id.listen);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        //if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             setButtonBackground(btn, playing ? R.drawable.baseline_pause_circle_outline_48 :
                     R.drawable.baseline_play_circle_outline_48);
-        } else {
-            if (playing)
-                btn.setBackgroundResource(android.R.drawable.ic_media_pause);
-            else
-                btn.setBackgroundResource(android.R.drawable.ic_media_play);
-        }
+//        } else {
+//            if (playing)
+//                btn.setBackgroundResource(android.R.drawable.ic_media_pause);
+//            else
+//                btn.setBackgroundResource(android.R.drawable.ic_media_play);
+//        }
     }
 
     private String getSelectedSound() {
@@ -898,7 +929,7 @@ public class MainActivity extends FragmentActivity {
             }
             final MediaPlayer player = new MediaPlayer();
             player1 = player;
-            player.setDataSource(context, path);
+            Utils.setDataSource(player, context, path);
             player.setOnPreparedListener(mp -> player.start());
             player.setOnCompletionListener(mp -> {
                 player.release();
@@ -907,7 +938,7 @@ public class MainActivity extends FragmentActivity {
             player.setOnErrorListener((mp, what, extra) -> {
                 attempt.increment();
                 int num = attempt.getData();
-                if (num == 2) {
+                if (num == 2 || num == 3) {
                     Uri path1 = Utils.getAyahPath(context, selectedSound, 1, 1,
                             quranData, num);
                     if (path1 == null || path1.toString().startsWith("http")
@@ -918,7 +949,7 @@ public class MainActivity extends FragmentActivity {
                     }
                     try {
                         player.reset();
-                        player.setDataSource(context, path1);
+                        Utils.setDataSource(player, context, path1);
                         player.prepareAsync();
                         lastRecitedAyahWasFile = !path1.toString().startsWith("http");
                     } catch (IOException | IllegalStateException e) {
@@ -1132,7 +1163,7 @@ public class MainActivity extends FragmentActivity {
                             if (path == null || path.toString().startsWith("http") &&
                                     Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
                                 throw new IllegalStateException();
-                            player.setDataSource(this, path);
+                            Utils.setDataSource(player, this, path);
                             player.prepareAsync();
                             lastRecitedAyahWasFile = !path.toString().startsWith("http");
                         } catch (IOException | IllegalStateException e) {
@@ -1160,9 +1191,9 @@ public class MainActivity extends FragmentActivity {
             });
             player.setOnErrorListener((mp, what, extra) -> {
                 attempt.increment();
-                if (attempt.getData() == 2) {
+                if (attempt.getData() == 2 || attempt.getData() == 3) {
                     Uri path = Utils.getAyahPath(MainActivity.this, getSelectedSound(),
-                            sura, ayah, quranData, 2);
+                            sura, ayah, quranData, attempt.getData());
                     if (path != null) {
                         try {
                             if (path.toString().startsWith("http") &&
@@ -1170,7 +1201,7 @@ public class MainActivity extends FragmentActivity {
                                             == Utils.CONNECTION_STATUS_NOT_CONNECTED)
                                 throw new IllegalStateException();
                             player.reset();
-                            player.setDataSource(this, path);
+                            Utils.setDataSource(player, this, path);
                             player.prepareAsync();
                             lastRecitedAyahWasFile = !path.toString().startsWith("http");
                             return true;
@@ -1196,7 +1227,7 @@ public class MainActivity extends FragmentActivity {
                     if (path == null || path.toString().startsWith("http") &&
                             Utils.isConnected(getApplicationContext()) == Utils.CONNECTION_STATUS_NOT_CONNECTED)
                         throw new IllegalStateException();
-                    player.setDataSource(this, path);
+                    Utils.setDataSource(player, this, path);
                     player.prepareAsync();
                     lastRecitedAyahWasFile = !path.toString().startsWith("http");
                 } catch (IOException | IllegalStateException ignored) {
@@ -1255,7 +1286,7 @@ public class MainActivity extends FragmentActivity {
             builder.setNegativeButton("حسنا", (dialog, id) -> {
                 dialog.cancel();
             });
-            builder.create().show();
+            builder.show();
         }
     }
 
@@ -1273,7 +1304,7 @@ public class MainActivity extends FragmentActivity {
         });
         final int minPage = isDualPage() ? 1 : 2;
         btn = findViewById(R.id.listenBackground);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+        //if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
             setButtonBackground(btn, R.drawable.baseline_radio_48);
         btn.setOnClickListener(v -> {
             if (adapter.isNotAllDownloaded() || setting.page < minPage) {
@@ -1304,7 +1335,7 @@ public class MainActivity extends FragmentActivity {
             playRecite(-1, -1, -1, -1);
         });
         btn = findViewById(R.id.tafseer);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+        //if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
             setButtonBackground(btn, R.drawable.baseline_menu_book_48);
         btn.setOnClickListener(v -> {
             final FindPageSelectionResult result = getCurrentPageSelected();
@@ -1419,7 +1450,7 @@ public class MainActivity extends FragmentActivity {
             builder.show();
         });
         btn = findViewById(R.id.repeat);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+        //if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
             setButtonBackground(btn, R.drawable.baseline_repeat_48);
         btn.setOnClickListener(v -> {
             if (adapter.isNotAllDownloaded()) {
@@ -1430,7 +1461,7 @@ public class MainActivity extends FragmentActivity {
             displayRepeatDlg();
         });
         btn = findViewById(R.id.shareAyat);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+        //if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
             setButtonBackground(btn, R.drawable.baseline_share_48);
         btn.setOnClickListener(v -> {
             if (adapter.isNotAllDownloaded() || setting.page <= 1) {
@@ -1440,6 +1471,21 @@ public class MainActivity extends FragmentActivity {
             }
             displayShareDlg();
         });
+
+        ImageButton btn2 = findViewById(R.id.fabQuickSettings);
+        boolean enabled = pref.getBoolean("showSettingButton", false);
+        btn2.setVisibility(enabled ? View.VISIBLE : View.GONE);
+        mQuickSettingsButton = enabled ? btn2 : null;
+        mQuickSettingsButtonVisible = enabled;
+        if (enabled) {
+            btn2.setOnClickListener(v -> {
+                new androidx.appcompat.app.AlertDialog.Builder(this, R.style.PreferenceThemeOverlay)
+                        .setTitle("")
+                        .setView(LayoutInflater.from(this).inflate(R.layout.dlg_quick_settings, null))
+                        .show();
+            });
+            showAndScheduleSettingButtonHide(false);
+        }
     }
 
     private void displayAyahTafseerHelper(TafseerDbManager db2, int id, String name,
@@ -1701,7 +1747,7 @@ public class MainActivity extends FragmentActivity {
                 showError("فضلا حدد آية أو أكثر");
         });
         dialog.findViewById(R.id.buttonShareText).setOnClickListener(v -> {
-            if (shareImageView.mutliSelectList.size() > 0) {
+            if (shareImageView != null && shareImageView.mutliSelectList.size() > 0) {
                 String text = Utils.getAllAyahText(MainActivity.this,
                         shareImageView.mutliSelectList, quranData);
                 dialog.dismiss();
@@ -1792,6 +1838,7 @@ public class MainActivity extends FragmentActivity {
         }, 60000, 60000);
     }
 
+    @SuppressLint("SourceLockedOrientationActivity")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -1957,11 +2004,35 @@ public class MainActivity extends FragmentActivity {
         delayedHide(100);
     }
 
-    Handler mHideHandler = new Handler();
-    Runnable mHideRunnable = new Runnable() {
+    private final Handler mHideHandler = new Handler();
+    private final Runnable mHideRunnable = new Runnable() {
         @Override
         public void run() {
             mSystemUiHider.hide();
+        }
+    };
+    private final Runnable mHideSettingButtonRunnable = new Runnable() {
+        @Override
+        public void run() {
+            runOnUiThread(() -> {
+                mQuickSettingsButton.setRotation(360);
+                ViewCompat.animate(mQuickSettingsButton)
+                        .rotation(-360)
+                        .translationX(-mQuickSettingsButton.getWidth())
+                        .withLayer()
+                        .alpha(0)
+                        .setDuration(getResources().getInteger(android.R.integer.config_mediumAnimTime))
+                        .setInterpolator(new AccelerateDecelerateInterpolator())
+                        .setListener(new ViewPropertyAnimatorListenerAdapter() {
+                            @Override
+                            public void onAnimationEnd(View view) {
+                                super.onAnimationEnd(view);
+                                mQuickSettingsButtonVisible = false;
+                                mQuickSettingsButton.setVisibility(View.GONE);
+                            }
+                        })
+                        .start();
+            });
         }
     };
 
@@ -1970,6 +2041,11 @@ public class MainActivity extends FragmentActivity {
      * previously scheduled calls.
      */
     private void delayedHide(int delayMillis) {
+        mHideHandler.removeCallbacks(mHideRunnable);
+        mHideHandler.postDelayed(mHideRunnable, delayMillis);
+    }
+
+    private void delayedHide(Runnable mHideRunnable, int delayMillis) {
         mHideHandler.removeCallbacks(mHideRunnable);
         mHideHandler.postDelayed(mHideRunnable, delayMillis);
     }
@@ -2051,7 +2127,7 @@ public class MainActivity extends FragmentActivity {
             for (int idx = 0; idx < nThreads; ++idx) {
                 final int myStart = threadWork * idx,
                         myEnd = idx == nThreads - 1 ? height : (idx + 1) * threadWork;
-                AppExecutors.getInstance().executeOnCpuCoresExecutor((Runnable) () -> {
+                AppExecutors.getInstance().executeOnCachedExecutor(() -> {
                     for (int i = myStart; i < myEnd; ++i) {
                         lock2.lock();
                         tmp.getPixels(dilationBuffer[i], 0, width, 0, i, width, 1);
@@ -2093,7 +2169,7 @@ public class MainActivity extends FragmentActivity {
         for (int idx = 0; idx < nThreads; ++idx) {
             final int myStart = threadWork * idx,
                     myEnd = idx == nThreads - 1 ? height : (idx + 1) * threadWork;
-            AppExecutors.getInstance().executeOnCpuCoresExecutor(() -> {
+            AppExecutors.getInstance().executeOnCachedExecutor(() -> {
                 for (int i = myStart; i < myEnd; ++i) {
                     lock2.lock();
                     tmp.getPixels(dilationBuffer[i], 0, width, 0, i, width, 1);
@@ -2134,7 +2210,7 @@ public class MainActivity extends FragmentActivity {
         for (int idx = 0; idx < nThreads; ++idx) {
             final int myStart = threadWork * idx,
                     myEnd = idx == nThreads - 1 ? height : (idx + 1) * threadWork;
-            AppExecutors.getInstance().executeOnCpuCoresExecutor(() -> {
+            AppExecutors.getInstance().executeOnCachedExecutor(() -> {
                 for (int i = myStart; i < myEnd; ++i) {
                     for (int j = 0; j < width; ++j)
                         if (dilationBuffer[i][j] <= k)
@@ -2360,6 +2436,10 @@ Page number (561, 1528, 75, 38)
         } finally {
             readPageLock.unlock();
         }
+    }
+
+    @Override
+    public void onSettingChanged(String keyName, Object newValue) {
     }
 
     private void downloadAll() {

@@ -23,6 +23,7 @@ import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.documentfile.provider.DocumentFile;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
@@ -49,10 +50,15 @@ public class ExternalRecitesDownloadActivity extends AppCompatActivity {
     private ListView listViewReciters;
     private ProgressDialog mImportProgressDlg;
     private SerializableInFile<String> lastIncompleteImport;
+    private SerializableInFile<String> lastIncompleteImportName;
     private String lastImportFileName, lastImportName;
 
     public static SerializableInFile<String> getLastIncompleteImportFile(Context context) {
         return new SerializableInFile<>(context, "__lastReciteImportFileName");
+    }
+
+    public static SerializableInFile<String> getLastIncompleteImportFileName(Context context) {
+        return new SerializableInFile<>(context, "__lastReciteImportName");
     }
 
     @Override
@@ -73,6 +79,7 @@ public class ExternalRecitesDownloadActivity extends AppCompatActivity {
                 "من خلال هذه الشاشة، يمكن تحميل تلاوات قارئ بشكل غير محدود.\nيتم تحميل التلاوات بشكل ملف، وبعد تحميل الملف يجب الضغط على زر استيراد لإضافة التلاوات إلى التطبيق.\nالرجاء التأكد من توفر المساحة قبل التحميل، حيث تم توضيح المساحة المطلوبة لكل عنصر تحت اسم القارئ.",
                 null));
         lastIncompleteImport = getLastIncompleteImportFile(this);
+        lastIncompleteImportName = getLastIncompleteImportFileName(this);
         listViewReciters.setOnScrollListener(new AutoHideFabScrollListener(listViewReciters, fab));
 
         if (savedInstanceState != null) {
@@ -94,16 +101,37 @@ public class ExternalRecitesDownloadActivity extends AppCompatActivity {
         boolean c = ReciterListActivity.checkStoragePermission(this, true,
                 () -> ReciterListActivity.checkStoragePermission(this, false, null));
         if (c && lastIncompleteImport.getData() != null) {
-            File zipFile = new File(lastIncompleteImport.getData());
-            if (zipFile.exists()) {
-                int idx = Utils.findReciteZipItemByFileName(this, zipFile.getName());
-                if (idx >= 0) {
-                    Utils.showConfirm(this,
-                            "استيراد تلاوة",
-                            "هناك عملية استيراد لم يتم إكمالها بنجاح. هل تود إكمالها الآن",
-                            (dialogInterface, i) -> AppExecutors.getInstance().executeOnCachedExecutor(
-                                    () -> doImport(zipFile, ReciteZipItem.getAll(this)[idx].name)),
-                            null);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP &&
+                    lastIncompleteImport.getData().startsWith("content://")) {
+                Uri uri = Uri.parse(lastIncompleteImport.getData());
+                DocumentFile file = DocumentFile.fromSingleUri(this, uri);
+                if (file != null && file.exists() && file.isFile()) {
+                    int idx = Utils.findReciteZipItemByName(this, lastIncompleteImportName.getData());
+                    if (idx >= 0) {
+                        Utils.showConfirm(this,
+                                "استيراد تلاوة",
+                                "هناك عملية استيراد لم يتم إكمالها بنجاح. هل تود إكمالها الآن",
+                                (dialogInterface, i) -> {
+                                    showProgressDlg(lastIncompleteImportName.getData());
+                                    String name = ReciteZipItem.getAll(this)[idx].fileName;
+                                    doImport(uri, name, lastIncompleteImportName.getData());
+                                }, null);
+                    }
+                }
+            } else {
+                File zipFile = new File(lastIncompleteImport.getData());
+                if (zipFile.exists()) {
+                    int idx = Utils.findReciteZipItemByFileName(this, zipFile.getName());
+                    if (idx >= 0) {
+                        Utils.showConfirm(this,
+                                "استيراد تلاوة",
+                                "هناك عملية استيراد لم يتم إكمالها بنجاح. هل تود إكمالها الآن",
+                                (dialogInterface, i) -> {
+                                    String name = ReciteZipItem.getAll(this)[idx].name;
+                                    showProgressDlg(name);
+                                    AppExecutors.getInstance().executeOnCachedExecutor(() -> doImport(zipFile, name));
+                                }, null);
+                    }
                 }
             }
         }
@@ -154,7 +182,8 @@ public class ExternalRecitesDownloadActivity extends AppCompatActivity {
                             intent.addCategory(Intent.CATEGORY_OPENABLE);
                             intent.setType("application/zip");
                             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
-                                    | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                                    | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                                    | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
 
                             intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI,
                                     MediaStore.Downloads.EXTERNAL_CONTENT_URI);
@@ -226,6 +255,7 @@ public class ExternalRecitesDownloadActivity extends AppCompatActivity {
         boolean ok;
         try {
             lastIncompleteImport.setData(zipFile.getAbsolutePath(), this);
+            lastIncompleteImportName.setData(reciteName, this);
             ok = Utils.extractReciteZipFile(this, zipFile, mImportProgressDlg::setProgress);
         } catch (Exception e) {
             e.printStackTrace();
@@ -239,6 +269,7 @@ public class ExternalRecitesDownloadActivity extends AppCompatActivity {
             if (isOk) {
                 AnalyticsTrackers.getInstance(this).sendImportRecite(reciteName, false);
                 lastIncompleteImport.setData(null, this);
+                lastIncompleteImportName.setData(null, this);
                 Utils.showConfirm(this, "نجاح الاستيراد",
                         "تم استيراد " + reciteName + "\nلم يعد البرنامج بحاجة إلى الملف الذي قمت بتحميله فقد تم استيراده بالفعل. هل تريد حذفه الآن لتوفير المساحة؟",
                         (dialogInterface, i) -> zipFile.delete(),
@@ -264,7 +295,8 @@ public class ExternalRecitesDownloadActivity extends AppCompatActivity {
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     private void doImport(Uri uri, String fileName, String reciteName) {
-        showProgressDlg(reciteName);
+        lastIncompleteImport.setData(uri.toString(), this);
+        lastIncompleteImportName.setData(fileName, this);
         AppExecutors.getInstance().executeOnCachedExecutor(() -> {
             boolean ok;
             InputStream inputStream = null;
@@ -296,6 +328,7 @@ public class ExternalRecitesDownloadActivity extends AppCompatActivity {
                 if (isOk) {
                     AnalyticsTrackers.getInstance(this).sendImportRecite(reciteName, true);
                     lastIncompleteImport.setData(null, this);
+                    lastIncompleteImportName.setData(null, this);
                     Utils.showConfirm(this, "نجاح الاستيراد",
                             "تم استيراد " + reciteName + "\nلم يعد البرنامج بحاجة إلى الملف الذي قمت بتحميله فقد تم استيراده بالفعل. هل تريد حذفه الآن لتوفير المساحة؟",
                             (dialogInterface, i) -> {
@@ -354,6 +387,7 @@ public class ExternalRecitesDownloadActivity extends AppCompatActivity {
                         .show();
                 return;
             }
+            showProgressDlg(lastImportName);
             doImport(uri, displayName, lastImportName);
         }
     }

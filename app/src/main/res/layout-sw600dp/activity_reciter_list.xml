@@ -1,24 +1,40 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
-    android:layout_height="match_parent" android:layout_marginLeft="16dp"
-    android:layout_marginRight="16dp" android:baselineAligned="false"
-    android:divider="?android:attr/dividerHorizontal" android:orientation="horizontal"
-    android:keepScreenOn="true"
-    android:showDividers="middle" tools:context="kilanny.shamarlymushaf.activities.ReciterListActivity">
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_marginLeft="16dp"
+    android:layout_marginRight="16dp"
+    android:keepScreenOn="true">
 
-    <!--
-    This layout is a two-pane layout for the Reciters
-    master/detail flow.
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:baselineAligned="false"
+        android:divider="?android:attr/dividerHorizontal"
+        android:orientation="horizontal"
+        android:showDividers="middle"
+        tools:context=".activities.ReciterListActivity">
 
-    -->
+        <FrameLayout
+            android:id="@+id/reciter_detail_container"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="5" />
 
-    <FrameLayout android:id="@+id/reciter_detail_container" android:layout_width="0dp"
-        android:layout_height="match_parent" android:layout_weight="5" />
+        <fragment
+            android:id="@+id/reciter_list"
+            android:name="kilanny.shamarlymushaf.fragments.ReciterListFragment"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="2"
+            tools:layout="@android:layout/list_content" />
+    </LinearLayout>
 
-    <fragment android:id="@+id/reciter_list"
-        android:name="kilanny.shamarlymushaf.fragments.ReciterListFragment" android:layout_width="0dp"
-        android:layout_height="match_parent" android:layout_weight="2"
-        tools:layout="@android:layout/list_content" />
+    <TextView
+        android:id="@+id/txtSlowWarning"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:text="تحذير: يتم استخدام الذاكرة خارج التطبيق لتحميل التلاوات، فضلا غير الإعدادات من القائمة أعلاه إلى ذاكرة التطبيق لجعل التحميل أسرع" />
 
-
-</LinearLayout>
+</RelativeLayout>

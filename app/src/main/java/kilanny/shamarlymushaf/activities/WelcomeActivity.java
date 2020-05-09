@@ -1,20 +1,26 @@
 package kilanny.shamarlymushaf.activities;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.ImageButton;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.FragmentManager;
+import androidx.preference.PreferenceManager;
 
 import java.util.Date;
+import java.util.Locale;
 
 import kilanny.shamarlymushaf.BuildConfig;
 import kilanny.shamarlymushaf.R;
 import kilanny.shamarlymushaf.data.SerializableInFile;
+import kilanny.shamarlymushaf.data.msgs.FirebaseMessagingDb;
 import kilanny.shamarlymushaf.fragments.AdsFragment;
 import kilanny.shamarlymushaf.util.AnalyticsTrackers;
 import kilanny.shamarlymushaf.util.AppExecutors;
@@ -27,8 +33,6 @@ public class WelcomeActivity extends AppCompatActivity {
     private void checkForUpdates() {
         if (hasCheckedForUpdates) return;
         if (Utils.isConnected(this) != Utils.CONNECTION_STATUS_NOT_CONNECTED) {
-            if (!Utils.haveAvailableMemory(Utils.MIN_THREAD_MEMORY_ALLOCATION * 4))
-                return;
             AppExecutors.getInstance().executeOnCachedExecutor(() -> {
                 final String[] info = Utils.getAppVersionInfo("kilanny.shamarlymushaf");
                 if (info != null && info[0] != null && !info[0].isEmpty()) {
@@ -36,7 +40,7 @@ public class WelcomeActivity extends AppCompatActivity {
                     if (!info[0].equals(BuildConfig.VERSION_NAME)) {
                         runOnUiThread(() -> {
                             try {
-                                Utils.showConfirm(WelcomeActivity.this, "إصدار أحدث " + info[0],
+                                Utils.showConfirm(this, "إصدار أحدث " + info[0],
                                         "قم بتحديث التطبيق من المتجر الآن"
                                                 + "\nمالجديد:\n" + info[1], (dialog, which) -> {
                                                     final String appPackageName = getPackageName(); // getPackageName() from Context or Activity object
@@ -62,12 +66,20 @@ public class WelcomeActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         checkForUpdates();
-        try {
-            java.io.File files[] = android.os.Environment.getExternalStoragePublicDirectory(
-                    android.os.Environment.DIRECTORY_DOWNLOADS).listFiles();
-            android.util.Log.d("files", java.util.Arrays.toString(files));
-        } catch (Exception ex) {
-            ex.printStackTrace();
+        if (Utils.isGooglePlayServicesAvailable(this)) {
+            AppExecutors.getInstance().executeOnCachedExecutor(() -> {
+                FirebaseMessagingDb messagingDb = FirebaseMessagingDb.getInstance(this);
+                int count = Math.min(messagingDb.receivedTopicMessageDao().unreadCount(), 99);
+                runOnUiThread(() -> {
+                    TextView textView = findViewById(R.id.messages_badge);
+                    textView.setVisibility(count > 0 ? View.VISIBLE : View.INVISIBLE);
+                    textView.setText(String.format(Locale.ENGLISH, "%d", count));
+                });
+            });
+            TextView textView = findViewById(R.id.videos_badge);
+            SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
+            textView.setVisibility(preferences.getBoolean("hasUnseenVideos", true) ?
+                    View.VISIBLE : View.INVISIBLE);
         }
         if (!maqraahAd() && Utils.isConnected(this) != Utils.CONNECTION_STATUS_NOT_CONNECTED
                 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1) {
@@ -85,7 +97,7 @@ public class WelcomeActivity extends AppCompatActivity {
                 appResponse.setData(appResponse.getData() + 1, getApplicationContext());
                 FragmentManager fm = getSupportFragmentManager();
                 AdsFragment fragment = AdsFragment.newInstance(appResponse.getData() % 2 == 1);
-                fragment.show(fm, "fragment_edit_name");
+                fragment.show(fm, "fragment_ads");
             }
         }
     }
@@ -154,29 +166,53 @@ public class WelcomeActivity extends AppCompatActivity {
             maqraahResponse.setData(-1, getApplicationContext());
             AnalyticsTrackers.getInstance(this).sendMaqraahResponse(-1);
         });
-        builder.create().show();
+        builder.show();
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_welcome);
-        ImageButton btn = (ImageButton) findViewById(R.id.openQuran);
+        boolean googlePlayServicesAvailable = Utils.isGooglePlayServicesAvailable(this);
+        findViewById(R.id.playServicesLayout).setVisibility(
+                googlePlayServicesAvailable ? View.VISIBLE : View.GONE);
+        if (googlePlayServicesAvailable) {
+            findViewById(R.id.btnShowMessages).setOnClickListener(v ->
+                    startActivity(new Intent(this, MessageTopicListActivity.class)));
+
+            //Utils.animateView(this, findViewById(R.id.btnShowChoocenVideosLayout));
+
+            findViewById(R.id.btnShowChoocenVideos).setOnClickListener(v -> {
+                startActivity(new Intent(this, VideosActivity.class));
+//                String[] array = getResources().getStringArray(R.array.topic_names);
+//                Random random = new Random();
+//                for (int i = 0; i < 1; ++i) {
+//                    int t = random.nextInt(array.length + 1);
+//                    String topic = t >= array.length ? getString(R.string.dayAyahTopic) : array[t];
+//                    FirebaseMessagingDb.getInstance(this).receivedTopicMessageDao().insert(
+//                            new ReceivedTopicMessage(topic, "https://youtu.be/dZ72i0Gnx_w", new Date()));
+//                }
+//                Log.i("insertRandom", "Ok");
+            });
+        }
+
+        ImageButton btn = findViewById(R.id.openQuran);
         btn.setOnClickListener(v ->
-                startActivity(new Intent(WelcomeActivity.this, MainActivity.class)));
-        btn = (ImageButton) findViewById(R.id.openSearch);
+                startActivity(new Intent(this, MainActivity.class)));
+        btn = findViewById(R.id.openSearch);
         btn.setOnClickListener(v ->
-                startActivity(new Intent(WelcomeActivity.this, GotoActivity.class)));
-        btn = (ImageButton) findViewById(R.id.openSettings);
+                startActivity(new Intent(this, GotoActivity.class)));
+        btn = findViewById(R.id.openSettings);
         btn.setOnClickListener(v ->
-                startActivity(new Intent(WelcomeActivity.this, SettingsActivity.class)));
-        btn = (ImageButton) findViewById(R.id.openHelp);
+                startActivity(new Intent(this, SettingsActivity.class)));
+        btn = findViewById(R.id.openHelp);
         btn.setOnClickListener(v ->
-                startActivity(new Intent(WelcomeActivity.this, HelpActivity.class)));
-        btn = (ImageButton) findViewById(R.id.reciter_download);
+                startActivity(new Intent(this, HelpActivity.class)));
+        btn = findViewById(R.id.reciter_download);
         btn.setOnClickListener(v ->
-                startActivity(new Intent(WelcomeActivity.this, ReciterListActivity.class)));
+                startActivity(new Intent(this, ReciterListActivity.class)));
         findViewById(R.id.sendComments).setOnClickListener(v ->
-                startActivity(new Intent(WelcomeActivity.this, ReportIssueActivity.class)));
+                startActivity(new Intent(this, ReportIssueActivity.class)));
     }
 }

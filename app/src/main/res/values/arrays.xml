@@ -416,4 +416,39 @@
         <item>0.8 G.B.</item>
         <item>1.7 G.B.</item>
     </string-array>
+
+    <string-array name="topic_names">
+        <item>Aqeedah</item>
+        <item>Feqh</item>
+        <item>Salah</item>
+        <item>Ma3asi</item>
+        <item>Zohd</item>
+    </string-array>
+
+    <string-array name="topic_display_names">
+        <item>العقيدة</item>
+        <item>الفقه</item>
+        <item>الصلاة</item>
+        <item>التوبة</item>
+        <item>الرقائق</item>
+    </string-array>
+
+    <string-array name="topic_descriptions">
+        <item>زود إيمانك كل يوم بآية من كتاب الله!\nمحتوى قصير ومفيد بإذن الله تعالى!</item>
+        <item>اشترك في العقيدة من خلال الزر أدناه!\nأسماء الله تعالى وصفاته\nأمور الغيب\nالنصارى والملاحدة، وغيرها!</item>
+        <item>اشترك في الفقه من خلال الزر أدناه\nما يحتاجه المسلم\nعبادات - بيوع - ربا - وفتاوى متنوعة!</item>
+        <item>شجع نفسك للمحافظة على الصلاة\nاشترك الآن من خلال الزر أدناه!\nمواعظ - طرق عملية - وغيرها!</item>
+        <item>شجع نفسك للتوبة من كل المعاصي\nاشترك من خلال الزر أدناه لتساعدك بإذن الله!\nمواعظ مختلفة - طرق عملية وغيرها!</item>
+        <item>اغتنم عمرك!\nاشترك من خلال الزر أدناه\nرسائل عن الجنة ونعيمها - وغيرها!</item>
+    </string-array>
+
+    <string-array name="days">
+        <item>الجمعة</item>
+        <item>السبت</item>
+        <item>الأحد</item>
+        <item>الاثنين</item>
+        <item>الثلاثاء</item>
+        <item>الأربعاء</item>
+        <item>الخميس</item>
+    </string-array>
 </resources>
