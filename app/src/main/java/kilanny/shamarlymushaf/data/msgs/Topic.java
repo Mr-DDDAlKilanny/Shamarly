@@ -21,6 +21,9 @@ public class Topic {
     @Nullable
     public Date subscribedDate;
 
+    @ColumnInfo(name = "notify")
+    public boolean notify;
+
     public Topic() {
     }
 

@@ -21,6 +21,12 @@ public interface TopicDao {
     @Query("SELECT * FROM topic")
     Topic[] getAll();
 
+    @Query("SELECT notify FROM topic WHERE name = :topic")
+    boolean getNotify(String topic);
+
+    @Query("UPDATE topic SET notify = :notify WHERE name = :topic")
+    int setNotify(String topic, boolean notify);
+
     @Insert
     long[] insert(Topic... topics);
 }

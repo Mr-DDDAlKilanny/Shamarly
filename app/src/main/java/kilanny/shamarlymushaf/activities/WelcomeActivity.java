@@ -81,8 +81,7 @@ public class WelcomeActivity extends AppCompatActivity {
             textView.setVisibility(preferences.getBoolean("hasUnseenVideos", true) ?
                     View.VISIBLE : View.INVISIBLE);
         }
-        if (!maqraahAd() && Utils.isConnected(this) != Utils.CONNECTION_STATUS_NOT_CONNECTED
-                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1) {
+        if (!maqraahAd() && Utils.isConnected(this) != Utils.CONNECTION_STATUS_NOT_CONNECTED) {
             SerializableInFile<Integer> appResponse = new SerializableInFile<>(
                     getApplicationContext(), "app__st", 0);
             Date date = appResponse.getFileLastModifiedDate(getApplicationContext());

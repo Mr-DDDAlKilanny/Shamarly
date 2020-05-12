@@ -984,46 +984,51 @@ public class Utils {
             }
             return DOWNLOAD_OK;
         }
-        try {
-            res = _downloadAyah(context, getAyahUrl(reciter, surah, ayah, data, 1),
-                    buffer, ayahFile, false);
-        } catch (IOException ex) {
-            ex.printStackTrace();
-            res = DOWNLOAD_IO_EXCEPTION;
+        Uri next = getAyahUrl(reciter, surah, ayah, data, 1);
+        if (next != null) {
+            try {
+                res = _downloadAyah(context, next,
+                        buffer, ayahFile, false);
+            } catch (IOException ex) {
+                ex.printStackTrace();
+                res = DOWNLOAD_IO_EXCEPTION;
+            }
+            if (res == DOWNLOAD_OK) {
+                downloadedAyat.set(reciter, surah, ayah, true);
+                downloadedAyat.save(context);
+                return res;
+            } else deleteIfFailed(context, res, ayahFile);
         }
-        if (res == DOWNLOAD_OK) {
-            downloadedAyat.set(reciter, surah, ayah, true);
-            downloadedAyat.save(context);
-            return res;
-        } else deleteIfFailed(context, res, ayahFile);
-
-        Uri next = getAyahUrl(reciter, surah, ayah, data, 2);
-        if (next == null) return res;
-        try {
-            res = _downloadAyah(context, next, buffer, ayahFile, true);
-        } catch (IOException ex) {
-            ex.printStackTrace();
-            res = DOWNLOAD_IO_EXCEPTION;
+        next = getAyahUrl(reciter, surah, ayah, data, 2);
+        if (next != null) {
+            try {
+                res = _downloadAyah(context, next, buffer, ayahFile, true);
+            } catch (IOException ex) {
+                ex.printStackTrace();
+                res = DOWNLOAD_IO_EXCEPTION;
+            }
+            if (res == DOWNLOAD_OK) {
+                downloadedAyat.set(reciter, surah, ayah, true);
+                downloadedAyat.save(context);
+                return res;
+            } else deleteIfFailed(context, res, ayahFile);
         }
-        if (res == DOWNLOAD_OK) {
-            downloadedAyat.set(reciter, surah, ayah, true);
-            downloadedAyat.save(context);
-            return res;
-        } else deleteIfFailed(context, res, ayahFile);
 
         next = getAyahUrl(reciter, surah, ayah, data, 3);
-        if (next == null) return res;
-        try {
-            res = _downloadAyah(context, next, buffer, ayahFile, true);
-        } catch (IOException ex) {
-            ex.printStackTrace();
-            res = DOWNLOAD_IO_EXCEPTION;
+        if (next != null) {
+            try {
+                res = _downloadAyah(context, next, buffer, ayahFile, true);
+            } catch (IOException ex) {
+                ex.printStackTrace();
+                res = DOWNLOAD_IO_EXCEPTION;
+            }
+            downloadedAyat.set(reciter, surah, ayah, res == DOWNLOAD_OK);
+            downloadedAyat.save(context);
+            if (res == DOWNLOAD_OK) return res;
+            else deleteIfFailed(context, res, ayahFile);
+            return res;
         }
-        downloadedAyat.set(reciter, surah, ayah, res == DOWNLOAD_OK);
-        downloadedAyat.save(context);
-        if (res == DOWNLOAD_OK) return res;
-        else deleteIfFailed(context, res, ayahFile);
-        return res;
+        return DOWNLOAD_IO_EXCEPTION;
     }
 
     private static Object[] listAyahs(Context context, String reciter, int surah) {
@@ -1810,34 +1815,32 @@ public class Utils {
     }
 
     public static boolean isGooglePlayServicesAvailable(Context context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            try {
-                int errorCode = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context);
-                switch (errorCode) {
-                    case ConnectionResult.SUCCESS:
-                        Log.d("isGmsAvailable", "SUCCESS");
-                        // Google Play Services installed and up to date
-                        return true;
-                    case ConnectionResult.SERVICE_MISSING:
-                        Log.d("isGmsAvailable", "MISSING");
-                        // Google Play services is missing on this device.
-                        break;
-                    case ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED:
-                        Log.d("isGmsAvailable", "VERSION_UPDATE_REQUIRED");
-                        // The installed version of Google Play services is out of date.
-                        break;
-                    case ConnectionResult.SERVICE_DISABLED:
-                        Log.d("isGmsAvailable", "DISABLED");
-                        // The installed version of Google Play services has been disabled on this device.
-                        break;
-                    case ConnectionResult.SERVICE_INVALID:
-                        Log.d("isGmsAvailable", "INVALID");
-                        // The version of the Google Play services installed on this device is not authentic.
-                        break;
-                }
-            } catch (Exception ex) {
-                ex.printStackTrace();
+        try {
+            int errorCode = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context);
+            switch (errorCode) {
+                case ConnectionResult.SUCCESS:
+                    Log.d("isGmsAvailable", "SUCCESS");
+                    // Google Play Services installed and up to date
+                    return true;
+                case ConnectionResult.SERVICE_MISSING:
+                    Log.d("isGmsAvailable", "MISSING");
+                    // Google Play services is missing on this device.
+                    break;
+                case ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED:
+                    Log.d("isGmsAvailable", "VERSION_UPDATE_REQUIRED");
+                    // The installed version of Google Play services is out of date.
+                    break;
+                case ConnectionResult.SERVICE_DISABLED:
+                    Log.d("isGmsAvailable", "DISABLED");
+                    // The installed version of Google Play services has been disabled on this device.
+                    break;
+                case ConnectionResult.SERVICE_INVALID:
+                    Log.d("isGmsAvailable", "INVALID");
+                    // The version of the Google Play services installed on this device is not authentic.
+                    break;
             }
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
         return false;
     }

@@ -15,6 +15,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.documentfile.provider.DocumentFile;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
@@ -104,6 +105,14 @@ public class ReciterDetailFragment extends Fragment {
             // to load content from a content provider.
             mItem = getArguments().getString(ARG_ITEM_ID);
         }
+        if (savedInstanceState != null && mItem == null)
+            mItem = savedInstanceState.getString("reciter");
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        outState.putString("reciter", mItem);
+        super.onSaveInstanceState(outState);
     }
 
     public void setSurahProgress(int surah, int prog, boolean isCurrentDownload) {

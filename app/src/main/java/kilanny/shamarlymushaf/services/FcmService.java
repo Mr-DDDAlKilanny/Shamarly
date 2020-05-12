@@ -65,36 +65,17 @@ public class FcmService extends FirebaseMessagingService {
         String text = remoteMessage.getData().get("text");
         String from = remoteMessage.getFrom();
         if (from != null && text != null) {
-            String topic = null;
+            String topic = null, topicDisplay = null;
             if (from.endsWith(getString(R.string.dayAyahTopic))) {
                 topic = getString(R.string.dayAyahTopic);
+                topicDisplay = "آية اليوم";
             } else {
                 String[] topics = getResources().getStringArray(R.array.topic_names);
                 String[] names = getResources().getStringArray(R.array.topic_display_names);
                 for (int i = 0; i < topics.length; ++i) {
                     if (from.endsWith(topics[i])) {
-                        String channelId = "kilanny.shamarlymushaf.services.FcmService";
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            Utils.createNotificationChannel(this, channelId,
-                                    "إشعارات مصحف الشمرلي");
-                        }
-
-                        Intent intent = new Intent(this, MessageTopicListActivity.class);
-                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                        final int code = 2;
-                        PendingIntent pendingIntent = PendingIntent.getActivity(this,
-                                code, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-                        String line = text.length() > 10 ? text.substring(0, 10) : text;
-                        String large = text.length() > 300 ? text.substring(0, 300) : text;
-                        Notification notification = new NotificationCompat.Builder(this, channelId)
-                                .setSmallIcon(R.mipmap.ic_launcher)
-                                .setContentTitle("واحة الشمرلي - " + names[i])
-                                .setContentText(line)
-                                .setStyle(new NotificationCompat.BigTextStyle().bigText(large))
-                                .setContentIntent(pendingIntent)
-                                .build();
-                        NotificationManagerCompat.from(this).notify(code, notification);
                         topic = topics[i];
+                        topicDisplay = names[i];
                         break;
                     }
                 }
@@ -102,14 +83,41 @@ public class FcmService extends FirebaseMessagingService {
             if (topic != null) {
                 Log.d(TAG, "Storing a message from topic " + topic + ": " + text);
                 try {
-                    FirebaseMessagingDb.getInstance(this).receivedTopicMessageDao()
-                            .insert(new ReceivedTopicMessage(topic, text, new Date()));
+                    FirebaseMessagingDb db = FirebaseMessagingDb.getInstance(this);
+                    db.receivedTopicMessageDao().insert(
+                            new ReceivedTopicMessage(topic, text, new Date()));
+                    if (db.topicDao().getNotify(topic))
+                        notifyMessageReceived(topicDisplay, text);
                 } catch (Throwable ex) {
                     ex.printStackTrace();
                     AnalyticsTrackers.getInstance(this).sendException("topic msg insertDb", ex);
                 }
             }
         }
+    }
+
+    private void notifyMessageReceived(String topic, String text) {
+        String channelId = "kilanny.shamarlymushaf.services.FcmService";
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Utils.createNotificationChannel(this, channelId,
+                    "إشعارات مصحف الشمرلي");
+        }
+
+        Intent intent = new Intent(this, MessageTopicListActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        final int code = 2;
+        PendingIntent pendingIntent = PendingIntent.getActivity(this,
+                code, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        String line = text.length() > 10 ? text.substring(0, 10) : text;
+        String large = text.length() > 300 ? text.substring(0, 300) : text;
+        Notification notification = new NotificationCompat.Builder(this, channelId)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle("واحة الشمرلي - " + topic)
+                .setContentText(line)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(large))
+                .setContentIntent(pendingIntent)
+                .build();
+        NotificationManagerCompat.from(this).notify(code, notification);
     }
 
 //    @Override

@@ -50,7 +50,7 @@ public class SystemUiHiderHoneycomb extends SystemUiHiderBase {
         mHideFlags = View.SYSTEM_UI_FLAG_LOW_PROFILE;
         mTestFlags = View.SYSTEM_UI_FLAG_LOW_PROFILE;
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && (mFlags & FLAG_FULLSCREEN) != 0) {
+        if ((mFlags & FLAG_FULLSCREEN) != 0) {
             // If the client requested fullscreen, add flags relevant to hiding
             // the status bar. Note that some of these constants are new as of
             // API 16 (Jelly Bean). It is safe to use them, as they are inlined
@@ -62,10 +62,8 @@ public class SystemUiHiderHoneycomb extends SystemUiHiderBase {
 
         if ((mFlags & FLAG_HIDE_NAVIGATION) != 0) {
             // If the client requested hiding navigation, add relevant flags.
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-                mShowFlags |= View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
-                mHideFlags |= View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
-            }
+            mShowFlags |= View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
+            mHideFlags |= View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
             mHideFlags |= View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
             mTestFlags |= View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
         }

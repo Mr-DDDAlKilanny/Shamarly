@@ -30,14 +30,12 @@ import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.Shader;
 import android.graphics.Typeface;
-import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.util.Log;
@@ -123,13 +121,13 @@ import kilanny.shamarlymushaf.views.QuranImageView;
  */
 public class MainActivity extends FragmentActivity implements QuickSettingsFragment.Callbacks {
 
-    private class FindPageSelectionResult {
+    private static class FindPageSelectionResult {
         QuranImageView image;
         int selectionIndex;
         boolean isRight;
     }
 
-    private class MyGestureDetector extends GestureDetector.SimpleOnGestureListener {
+    private static class MyGestureDetector extends GestureDetector.SimpleOnGestureListener {
         WeakReference<QuranImageView> currentImageView;
     }
 
@@ -373,35 +371,31 @@ public class MainActivity extends FragmentActivity implements QuickSettingsFragm
             }
         };
         final GestureDetector tapGestureDetector = new GestureDetector(this, listener);
-        adapter.setInstantiateQuranImageViewListener(new FullScreenImageAdapter.OnInstantiateQuranImageViewListener() {
-            @SuppressLint("ClickableViewAccessibility")
-            @Override
-            public void onInstantiate(final WeakReference<QuranImageView> image, View parent) {
-                image.get().setOnTouchListener((v, event) -> {
-                    listener.currentImageView = image;
-                    tapGestureDetector.onTouchEvent(event);
-                    return false;
-                });
-                if (image.get().currentPage != null)
-                    Log.d("onInstantiate", "at page " + image.get().currentPage.page);
-                // this is not called at onPageSelected
-                // when activity starts in landscape, so call here
-                configOrientation(image.get());
+        adapter.setInstantiateQuranImageViewListener((image, parent) -> {
+            image.get().setOnTouchListener((v, event) -> {
+                listener.currentImageView = image;
+                tapGestureDetector.onTouchEvent(event);
+                return false;
+            });
+            if (image.get().currentPage != null)
+                Log.d("onInstantiate", "at page " + image.get().currentPage.page);
+            // this is not called at onPageSelected
+            // when activity starts in landscape, so call here
+            configOrientation(image.get());
 
-                initCurrentPageInfo(image.get(), parent);
-                if (initialHighlightAyah != null && image.get().currentPage != null
-                        && image.get().currentPage.ayahs != null) {
-                    String strs[] = initialHighlightAyah.split(",");
-                    int ss = Integer.parseInt(strs[0]),
-                            aa = Integer.parseInt(strs[1]);
-                    for (int i = 0; i < image.get().currentPage.ayahs.size(); ++i) {
-                        Ayah a = image.get().currentPage.ayahs.get(i);
-                        if (a.sura == ss && a.ayah == aa) {
-                            image.get().selectedAyahIndex = i;
-                            image.get().invalidate();
-                            initialHighlightAyah = null;
-                            break;
-                        }
+            initCurrentPageInfo(image.get(), parent);
+            if (initialHighlightAyah != null && image.get().currentPage != null
+                    && image.get().currentPage.ayahs != null) {
+                String strs[] = initialHighlightAyah.split(",");
+                int ss = Integer.parseInt(strs[0]),
+                        aa = Integer.parseInt(strs[1]);
+                for (int i = 0; i < image.get().currentPage.ayahs.size(); ++i) {
+                    Ayah a = image.get().currentPage.ayahs.get(i);
+                    if (a.sura == ss && a.ayah == aa) {
+                        image.get().selectedAyahIndex = i;
+                        image.get().invalidate();
+                        initialHighlightAyah = null;
+                        break;
                     }
                 }
             }
@@ -702,7 +696,7 @@ public class MainActivity extends FragmentActivity implements QuickSettingsFragm
                         else if ((mid - 1) % 4 == 0)
                             txt = quranData.hizbs[(mid - 1) / 4 + 1].name;
                         else
-                            txt = quranData.arba3[mid].name;
+                            txt = quranData.arba3[mid].name + " " + ((mid - 1) / 4 + 1);
                         Utils.createToast(MainActivity.this, txt, Toast.LENGTH_LONG, Gravity.CENTER).show();
                         break;
                     } else if (val < p)
@@ -868,41 +862,19 @@ public class MainActivity extends FragmentActivity implements QuickSettingsFragm
 
     @SuppressLint("RestrictedApi")
     private void setButtonBackground(Button btn, @DrawableRes int resId) {
-        Drawable v = AppCompatDrawableManager.get().getDrawable(this, resId);
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN)
-            btn.setBackgroundDrawable(v);
-        else
-            btn.setBackground(v);
+        btn.setBackground(AppCompatDrawableManager.get().getDrawable(this, resId));
     }
 
     private void setBookmarkMenuItem(boolean add) {
-        //if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            Button btn = findViewById(R.id.bookmarkBtn);
-            setButtonBackground(btn, add ? R.drawable.baseline_star_48
-                    : R.drawable.baseline_star_outline_48);
-//        } else {
-//            if (add) {
-//                findViewById(R.id.bookmarkBtn)
-//                        .setBackgroundResource(android.R.drawable.star_big_on);
-//            }
-//            else {
-//                findViewById(R.id.bookmarkBtn)
-//                        .setBackgroundResource(android.R.drawable.star_big_off);
-//            }
-//        }
+        Button btn = findViewById(R.id.bookmarkBtn);
+        setButtonBackground(btn, add ? R.drawable.baseline_star_48
+                : R.drawable.baseline_star_outline_48);
     }
 
     private void togglePlayButton(boolean playing) {
         Button btn = findViewById(R.id.listen);
-        //if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            setButtonBackground(btn, playing ? R.drawable.baseline_pause_circle_outline_48 :
-                    R.drawable.baseline_play_circle_outline_48);
-//        } else {
-//            if (playing)
-//                btn.setBackgroundResource(android.R.drawable.ic_media_pause);
-//            else
-//                btn.setBackgroundResource(android.R.drawable.ic_media_play);
-//        }
+        setButtonBackground(btn, playing ? R.drawable.baseline_pause_circle_outline_48 :
+                R.drawable.baseline_play_circle_outline_48);
     }
 
     private String getSelectedSound() {
@@ -1335,8 +1307,7 @@ public class MainActivity extends FragmentActivity implements QuickSettingsFragm
             playRecite(-1, -1, -1, -1);
         });
         btn = findViewById(R.id.tafseer);
-        //if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
-            setButtonBackground(btn, R.drawable.baseline_menu_book_48);
+        setButtonBackground(btn, R.drawable.baseline_menu_book_48);
         btn.setOnClickListener(v -> {
             final FindPageSelectionResult result = getCurrentPageSelected();
             if (result == null) {
@@ -1450,8 +1421,7 @@ public class MainActivity extends FragmentActivity implements QuickSettingsFragm
             builder.show();
         });
         btn = findViewById(R.id.repeat);
-        //if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
-            setButtonBackground(btn, R.drawable.baseline_repeat_48);
+        setButtonBackground(btn, R.drawable.baseline_repeat_48);
         btn.setOnClickListener(v -> {
             if (adapter.isNotAllDownloaded()) {
                 Toast.makeText(MainActivity.this, "يستخدم هذا الزر لتكرار تلاوة الآيات",
@@ -1461,8 +1431,7 @@ public class MainActivity extends FragmentActivity implements QuickSettingsFragm
             displayRepeatDlg();
         });
         btn = findViewById(R.id.shareAyat);
-        //if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
-            setButtonBackground(btn, R.drawable.baseline_share_48);
+        setButtonBackground(btn, R.drawable.baseline_share_48);
         btn.setOnClickListener(v -> {
             if (adapter.isNotAllDownloaded() || setting.page <= 1) {
                 Toast.makeText(MainActivity.this, "يستخدم هذا الزر لمشاركة الآيات",
@@ -1563,7 +1532,7 @@ public class MainActivity extends FragmentActivity implements QuickSettingsFragm
                         textView, titleTextView);
             }
         });
-        Spinner s = (Spinner) tafseerDialog.findViewById(R.id.spinnerTafseer);
+        Spinner s = tafseerDialog.findViewById(R.id.spinnerTafseer);
         s.setAdapter(new ArrayAdapter<>(this, R.layout.spinner_item, R.id.text1, items));
         s.setSelection(hasDownloadedTafaseer ? tafseer : 0);
         s.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -1593,10 +1562,10 @@ public class MainActivity extends FragmentActivity implements QuickSettingsFragm
     private void displayRepeatDlg() {
         final Dialog dialog = new Dialog(this, android.R.style.Theme_DeviceDefault_Dialog);
         dialog.setContentView(R.layout.fragment_repeat_recite);
-        final Spinner spinner1 = (Spinner) dialog.findViewById(R.id.fromSurah);
+        final Spinner spinner1 = dialog.findViewById(R.id.fromSurah);
         spinner1.setAdapter(new ArrayAdapter<>(this, R.layout.spinner_item,
                 R.id.text1, quranData.surahs2));
-        final Spinner spinner2 = (Spinner) dialog.findViewById(R.id.toSurah);
+        final Spinner spinner2 = dialog.findViewById(R.id.toSurah);
         spinner2.setAdapter(new ArrayAdapter<>(this, R.layout.spinner_item,
                 R.id.text1, quranData.surahs2));
         FindPageSelectionResult result = getCurrentPageSelected();
@@ -1611,8 +1580,8 @@ public class MainActivity extends FragmentActivity implements QuickSettingsFragm
             Toast.makeText(this, "حدث خطأ ما.", Toast.LENGTH_LONG).show();
             return;
         }
-        final EditText from = (EditText) dialog.findViewById(R.id.fromAyah);
-        final EditText to = (EditText) dialog.findViewById(R.id.toAyah);
+        final EditText from = dialog.findViewById(R.id.fromAyah);
+        final EditText to = dialog.findViewById(R.id.toAyah);
         if (image.currentPage != null && image.currentPage.ayahs != null
                 && image.currentPage.ayahs.size() > 0) {
             spinner1.setSelection(image.currentPage.ayahs.get(0).sura);
@@ -1669,7 +1638,7 @@ public class MainActivity extends FragmentActivity implements QuickSettingsFragm
         }
         final Dialog dialog = new Dialog(this, android.R.style.Theme_DeviceDefault_Dialog);
         dialog.setContentView(R.layout.fragment_share_ayat_dlg);
-        shareImageView = (QuranImageView) dialog.findViewById(R.id.shareQuranImageView);
+        shareImageView = dialog.findViewById(R.id.shareQuranImageView);
         shareImageView.isMultiSelectMode = true;
         shareImageView.setImageBitmap(image.myBitmap);
         shareImageView.pref = pref;
@@ -1870,14 +1839,13 @@ public class MainActivity extends FragmentActivity implements QuickSettingsFragm
         try {
             db = DbManager.getInstanceWithTest(this);
             pref = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-            deleteAll();
             quranData = QuranData.getInstance(this);
             // Hiding the title bar has to happen before the view is created
             requestWindowFeature(Window.FEATURE_NO_TITLE);
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
             setContentView(R.layout.activity_main);
             currentKhatmahName = getIntent().getStringExtra(EXTRA_KHATMAH_NAME);
-            bar = (ProgressBar) this.findViewById(R.id.progressBar);
+            bar = findViewById(R.id.progressBar);
             tradionalArabicFont = Typeface.createFromAsset(getAssets(), "DroidNaskh-Regular.ttf");
             tradionalArabicBoldFont = Typeface.createFromAsset(getAssets(), "DroidNaskh-Bold.ttf");
             autoHidePageInfo = pref.getBoolean("showPageInfo", true) &&
@@ -1955,42 +1923,6 @@ public class MainActivity extends FragmentActivity implements QuickSettingsFragm
             Utils.showConfirm(this, "تحميل المصحف",
                     "مرحبا بك في تطبيق مصحف الشمرلي.\n نحتاج أولا قبل بدء استخدام التطبيق لتحميل المصحف على جهازك، وذلك حتى يمكنك استخدام التطبيق دون اتصال فيما بعد. البدء بالتحميل الآن؟",
                     (dialog, which) -> downloadAll(), null);
-        }
-    }
-
-    /**
-     * Used for cleaning up old app version data
-     * TODO: remove in later versions
-     */
-    private void deleteAll() {
-        try {
-            if (pref.getBoolean("hasDeletedOld", false))
-                return;
-            File file;
-            if (Utils.isExternalStorageWritable()) {
-                file = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES),
-                        "quran_Images");
-            } else {
-                file = new File(getFilesDir(), "quran_Images");
-            }
-            if (!file.exists()) {
-                pref.edit().putBoolean("hasDeletedOld", true).apply();
-                return;
-            }
-            File[] files = file.listFiles();
-            if (files == null) {
-                file.delete();
-                pref.edit().putBoolean("hasDeletedOld", true).apply();
-                return;
-            }
-            for (File fileName : files) {
-                System.out.println(fileName.getAbsolutePath());
-                fileName.delete();
-            }
-            file.delete();
-            pref.edit().putBoolean("hasDeletedOld", true).apply();
-        } catch (Exception ex) {
-            ex.printStackTrace();
         }
     }
 

@@ -1,6 +1,8 @@
 package kilanny.shamarlymushaf.activities;
 
 import android.os.AsyncTask;
+
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import android.content.Intent;
 import android.os.Bundle;
@@ -82,9 +84,16 @@ public class ReciterDetailActivity extends AppCompatActivity {
         } else {
             fragment = (ReciterDetailFragment) getSupportFragmentManager()
                     .findFragmentById(R.id.reciter_detail_container);
+            myReciter = savedInstanceState.getString("reciter");
             //if (fragment.mItem == null)
             //    fragment.mItem = myReciter;
         }
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        outState.putString("reciter", myReciter);
+        super.onSaveInstanceState(outState);
     }
 
     @Override

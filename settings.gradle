@@ -1,1 +1,2 @@
 include ':app'
+include ':android-auto-scroll-view-pager'
