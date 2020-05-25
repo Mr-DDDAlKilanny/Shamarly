@@ -30,7 +30,7 @@ public class SerializableInFile<T extends Serializable> implements Serializable 
             is.close();
             fis.close();
             saved = true;
-        } catch (IOException | ClassNotFoundException ex) {
+        } catch (Exception ex) {
             ex.printStackTrace();
         }
     }

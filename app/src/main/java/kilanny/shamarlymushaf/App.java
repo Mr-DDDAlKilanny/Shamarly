@@ -36,7 +36,7 @@ public class App extends Application {
                 mFirebaseRemoteConfig.setConfigSettingsAsync(configSettings);
 
                 WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-                        "FetchRemoteConfig", ExistingPeriodicWorkPolicy.KEEP,
+                        "FetchRemoteConfig", ExistingPeriodicWorkPolicy.REPLACE,
                         new PeriodicWorkRequest.Builder(FetchRemoteConfigWorker.class, 12, TimeUnit.HOURS)
                         .setConstraints(new Constraints.Builder()
                                 .setRequiredNetworkType(NetworkType.CONNECTED).build())

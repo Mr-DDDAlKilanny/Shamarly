@@ -21,6 +21,9 @@ public interface TopicDao {
     @Query("SELECT * FROM topic")
     Topic[] getAll();
 
+    @Query("SELECT * FROM topic WHERE name = 'DayAyah' OR subscribed_date IS NOT NULL")
+    Topic[] getAllSubscribed();
+
     @Query("SELECT notify FROM topic WHERE name = :topic")
     boolean getNotify(String topic);
 

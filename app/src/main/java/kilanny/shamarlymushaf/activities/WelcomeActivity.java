@@ -3,7 +3,6 @@ package kilanny.shamarlymushaf.activities;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageButton;
@@ -28,7 +27,7 @@ import kilanny.shamarlymushaf.util.Utils;
 
 public class WelcomeActivity extends AppCompatActivity {
 
-    private static boolean hasCheckedForUpdates = false, hasLaterForMaqraah = false;
+    private static boolean hasCheckedForUpdates = false, hasLaterForMaqraah = false, hasSeenWerd = false;
 
     private void checkForUpdates() {
         if (hasCheckedForUpdates) return;
@@ -81,11 +80,11 @@ public class WelcomeActivity extends AppCompatActivity {
             textView.setVisibility(preferences.getBoolean("hasUnseenVideos", true) ?
                     View.VISIBLE : View.INVISIBLE);
         }
-        if (!maqraahAd() && Utils.isConnected(this) != Utils.CONNECTION_STATUS_NOT_CONNECTED) {
+        boolean display = !maqraahAd();
+        if (display && Utils.isConnected(this) != Utils.CONNECTION_STATUS_NOT_CONNECTED) {
             SerializableInFile<Integer> appResponse = new SerializableInFile<>(
                     getApplicationContext(), "app__st", 0);
             Date date = appResponse.getFileLastModifiedDate(getApplicationContext());
-            boolean display;
             if (date != null) {
                 long diffTime = new Date().getTime() - date.getTime();
                 long diffDays = diffTime / (1000 * 60 * 60 * 24);
@@ -97,6 +96,20 @@ public class WelcomeActivity extends AppCompatActivity {
                 FragmentManager fm = getSupportFragmentManager();
                 AdsFragment fragment = AdsFragment.newInstance(appResponse.getData() % 2 == 1);
                 fragment.show(fm, "fragment_ads");
+            }
+            display = !display;
+        }
+        if (display && !hasSeenWerd) {
+            SerializableInFile<Boolean> appResponse = new SerializableInFile<>(
+                    getApplicationContext(), "app__wrd", false);
+            hasSeenWerd = true;
+            if (!appResponse.getData()) {
+                Utils.showConfirm(this, "تنبيهات الورد",
+                        "هل تعلم؟\nتم إضافة ميزة تنبيه قراءة الورد. انقر على زر المفك لعرض الإعدادات",
+                        "حسنا",
+                        "لا تخبرني مرة أخرى",
+                        null,
+                        (dialog, which) -> appResponse.setData(true, this));
             }
         }
     }

@@ -9,6 +9,7 @@ import androidx.preference.PreferenceManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
+import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -16,6 +17,8 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import kilanny.shamarlymushaf.data.msgs.FirebaseMessagingDb;
+import kilanny.shamarlymushaf.data.msgs.Topic;
 import kilanny.shamarlymushaf.util.AppExecutors;
 import kilanny.shamarlymushaf.util.Utils;
 
@@ -36,8 +39,28 @@ public class FetchRemoteConfigWorker extends Worker {
 
         final Lock lock = new ReentrantLock(true);
         final Condition condition = lock.newCondition();
+        FirebaseMessagingDb db = FirebaseMessagingDb.getInstance(getApplicationContext());
+        Topic[] allSubscribed = db.topicDao().getAllSubscribed();
+        for (Topic topic : allSubscribed) {
+            lock.lock();
+            FirebaseMessaging.getInstance().subscribeToTopic(topic.name).addOnCompleteListener(command -> {
+                lock.lock();
+                condition.signalAll();
+                lock.unlock();
+            });
+            try {
+                condition.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                return Result.retry();
+            } finally {
+                lock.unlock();
+            }
+        }
+
         AtomicBoolean success = new AtomicBoolean(false);
         FirebaseRemoteConfig instance = FirebaseRemoteConfig.getInstance();
+        lock.lock();
         AppExecutors.getInstance().executeOnCachedExecutor(() ->
             instance.fetchAndActivate().addOnCompleteListener(command -> {
                 if (command.isSuccessful()) {
@@ -59,7 +82,6 @@ public class FetchRemoteConfigWorker extends Worker {
                 lock.unlock();
             }));
         try {
-            lock.lock();
             condition.await();
         } catch (InterruptedException e) {
             e.printStackTrace();

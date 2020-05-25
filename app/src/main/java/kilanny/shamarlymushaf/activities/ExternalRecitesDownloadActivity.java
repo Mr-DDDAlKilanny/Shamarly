@@ -120,7 +120,7 @@ public class ExternalRecitesDownloadActivity extends AppCompatActivity {
                 }
             } else {
                 File zipFile = new File(lastIncompleteImport.getData());
-                if (zipFile.exists()) {
+                if (zipFile.exists() && zipFile.getAbsolutePath().toLowerCase().endsWith(".zip")) {
                     int idx = Utils.findReciteZipItemByFileName(this, zipFile.getName());
                     if (idx >= 0) {
                         Utils.showConfirm(this,

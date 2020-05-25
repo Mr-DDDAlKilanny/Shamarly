@@ -10,6 +10,7 @@ import androidx.work.WorkerParameters;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,6 +21,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import kilanny.shamarlymushaf.data.User;
+import kilanny.shamarlymushaf.data.msgs.FirebaseMessagingDb;
+import kilanny.shamarlymushaf.data.msgs.Topic;
 import kilanny.shamarlymushaf.util.Utils;
 
 public class UploadUserWorker extends Worker {
@@ -34,9 +37,28 @@ public class UploadUserWorker extends Worker {
         if (Utils.isConnected(getApplicationContext()) != Utils.CONNECTION_STATUS_CONNECTED)
             return Result.retry();
 
-        final AtomicReference<FirebaseUser> currentUser = new AtomicReference<>(null);
+        FirebaseMessagingDb db = FirebaseMessagingDb.getInstance(getApplicationContext());
+        Topic[] allSubscribed = db.topicDao().getAllSubscribed();
         final Lock lock = new ReentrantLock(true);
         final Condition condition = lock.newCondition();
+        for (Topic topic : allSubscribed) {
+            lock.lock();
+            FirebaseMessaging.getInstance().subscribeToTopic(topic.name).addOnCompleteListener(command -> {
+                lock.lock();
+                condition.signalAll();
+                lock.unlock();
+            });
+            try {
+                condition.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                return Result.retry();
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        final AtomicReference<FirebaseUser> currentUser = new AtomicReference<>(null);
 
         lock.lock();
         FirebaseUser tmp = Utils.getOrCreateAnonymousFirebaseUser(input -> {
