@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/ShamarlyMushaf.iml" filepath="$PROJECT_DIR$/ShamarlyMushaf.iml" group="ShamarlyMushaf" />
+      <module fileurl="file://$PROJECT_DIR$/android-auto-scroll-view-pager/android-auto-scroll-view-pager.iml" filepath="$PROJECT_DIR$/android-auto-scroll-view-pager/android-auto-scroll-view-pager.iml" group="ShamarlyMushaf/android-auto-scroll-view-pager" />
+      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" group="ShamarlyMushaf/app" />
+    </modules>
+  </component>
+</project>

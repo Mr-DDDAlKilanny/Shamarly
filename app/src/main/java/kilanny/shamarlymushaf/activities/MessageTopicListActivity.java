@@ -1,5 +1,6 @@
 package kilanny.shamarlymushaf.activities;
 
+import android.database.sqlite.SQLiteConstraintException;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -19,6 +20,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import kilanny.shamarlymushaf.R;
 import kilanny.shamarlymushaf.adapters.MessagingTopicAdapter;
@@ -41,6 +44,7 @@ import kilanny.shamarlymushaf.util.Utils;
 public class MessageTopicListActivity extends AppCompatActivity
         implements MessageTopicDetailFragment.OnFragmentEventListener {
 
+    private static final Lock lock = new ReentrantLock(true);
     /**
      * Whether or not the activity is in two-pane mode, i.e. running on a tablet
      * device.
@@ -165,22 +169,27 @@ public class MessageTopicListActivity extends AppCompatActivity
             FirebaseMessagingDb db = FirebaseMessagingDb.getInstance(this);
             String[] topicNames = getResources().getStringArray(R.array.topic_names);
             String[] topicDisplayNames = getResources().getStringArray(R.array.topic_display_names);
-            Topic[] all = db.topicDao().getAll();
+            lock.lock(); // prevent fast close and open activity problems
             String dayAyahTopic = getString(R.string.dayAyahTopic);
-            Function<String, Date> insertTopicIfNotExists = input -> {
-                for (Topic t : all) {
-                    if (t.name.equals(input)) {
-                        mTopicSubscribedDate.put(input, t.subscribedDate);
-                        return t.subscribedDate;
+            try {
+                Topic[] all = db.topicDao().getAll();
+                Function<String, Date> insertTopicIfNotExists = input -> {
+                    for (Topic t : all) {
+                        if (t.name.equals(input)) {
+                            mTopicSubscribedDate.put(input, t.subscribedDate);
+                            return t.subscribedDate;
+                        }
                     }
+                    db.topicDao().insert(new Topic(input, null));
+                    mTopicSubscribedDate.put(input, null);
+                    return null;
+                };
+                insertTopicIfNotExists.apply(dayAyahTopic);
+                for (String topic : topicNames) {
+                    insertTopicIfNotExists.apply(topic);
                 }
-                db.topicDao().insert(new Topic(input, null));
-                mTopicSubscribedDate.put(input, null);
-                return null;
-            };
-            insertTopicIfNotExists.apply(dayAyahTopic);
-            for (String topic : topicNames) {
-                insertTopicIfNotExists.apply(topic);
+            } finally {
+                lock.unlock();
             }
 
             UnreadTopicsResult[] unreadTopics = db.receivedTopicMessageDao().getUnreadTopics();
