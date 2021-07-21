@@ -98,7 +98,8 @@ public class ExternalRecitesDownloadActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        boolean c = ReciterListActivity.checkStoragePermission(this, true,
+        boolean c = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ||
+                ReciterListActivity.checkStoragePermission(this, true,
                 () -> ReciterListActivity.checkStoragePermission(this, false, null));
         if (c && lastIncompleteImport.getData() != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP &&

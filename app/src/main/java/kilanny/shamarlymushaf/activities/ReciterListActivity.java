@@ -46,7 +46,6 @@ import kilanny.shamarlymushaf.util.AnalyticsTrackers;
 import kilanny.shamarlymushaf.util.AppExecutors;
 import kilanny.shamarlymushaf.util.Utils;
 
-
 /**
  * An activity representing a list of Reciters. This activity
  * has different presentations for handset and tablet-size devices. On
@@ -92,10 +91,12 @@ public class ReciterListActivity extends AppCompatActivity
     private void chooseDir(boolean force, boolean forceSaf) {
         forceDialogSelection = force;
         Boolean saveSoundsUri = Utils.isSaveSoundsUri(this);
-        Utils.showConfirm(this, "تحميل التلاوات",
-                "فضلا اضغط موافق، ثم اختر الحافظة التي سيتم التحميل فيها",
-                "موافق", "ليس الآن",
-                (dialog, which) -> {
+        new AlertDialog.Builder(this)
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .setTitle("تحميل التلاوات")
+                .setMessage("فضلا اضغط موافق، ثم اختر الحافظة التي سيتم التحميل فيها")
+                .setCancelable(false)
+                .setPositiveButton("موافق", (dialog, which) -> {
                     if ((!forceSaf && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q)
                             || Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
                         new ChooserDialog(ReciterListActivity.this)
@@ -117,13 +118,17 @@ public class ReciterListActivity extends AppCompatActivity
                         //intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, uriToLoad);
                         startActivityForResult(intent, SELECT_DIR_REQUEST_CODE);
                     }
-        }, (dialog, which) -> {
-            if (force) {
-                Utils.showConfirm(this, "حافظة التحميل", "لا بد من اختيار حافظة للتحميل. اختيار الآن؟",
-                        "اختيار", "خروج",
-                        (dialog1, which1) -> chooseDir(force, forceSaf), (dialog1, which1) -> finish());
-            }
-        });
+                })
+                .setNegativeButton("ليس الآن", (dialog, which) -> {
+                    if (force) {
+                        Utils.showConfirm(this, "حافظة التحميل", "لا بد من اختيار حافظة للتحميل. اختيار الآن؟",
+                                "اختيار", "خروج",
+                                (dialog1, which1) -> chooseDir(force, forceSaf), (dialog1, which1) -> finish());
+                    }
+                })
+                .setNeutralButton("مساعدة",
+                        (dialog, which) -> startActivity(new Intent(this, ReportIssueActivity.class)))
+                .show();
     }
 
     private void updateSlowWarning() {
@@ -162,6 +167,7 @@ public class ReciterListActivity extends AppCompatActivity
                     .setActivateOnItemClick(true);
         }
 
+        setting = Setting.getInstance(this);
         initWithPermissionCheck(true);
     }
 
@@ -262,7 +268,9 @@ public class ReciterListActivity extends AppCompatActivity
     }
 
     private void initWithPermissionCheck(boolean shouldShowExplainDlg) {
-        if (checkStoragePermission(this, shouldShowExplainDlg,
+        //https://developer.android.com/about/versions/11/privacy/storage#app-specific-external
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ||
+                checkStoragePermission(this, shouldShowExplainDlg,
                 () -> initWithPermissionCheck(false))) {
             init();
         }
@@ -302,6 +310,8 @@ public class ReciterListActivity extends AppCompatActivity
                         updateSlowWarning();
                     })
                     .setNegativeButton("تحميل في ذاكرة أخرى (بطيء)", (dialog, which) -> ifNot.run())
+                    .setNeutralButton("مساعدة",
+                            (dialog, which) -> startActivity(new Intent(this, ReportIssueActivity.class)))
                     .show();
         } else ifNot.run();
     }
@@ -340,7 +350,6 @@ public class ReciterListActivity extends AppCompatActivity
     }
 
     private void init() {
-        setting = Setting.getInstance(this);
         if (Utils.isSaveSoundsUri(this) == null) {
             initAndroidQ(() -> chooseDir(true, false));
         } else if (testPreAndroidQAccess(true)) {
@@ -353,7 +362,7 @@ public class ReciterListActivity extends AppCompatActivity
                         .setMessage("تم فتح إمكانية تحميل القارئ بالكامل بدون كمية يومية!")
                         .setPositiveButton("أرني كيف", (dialogInterface, i) -> {
                             Toast.makeText(this,
-                                    "اضغط على علامة القائمة (النقاط الثلاث الرأسية) لفتح هذه الخاصية",
+                                    "اضغط على علامة القائمة (النقاط الثلاث الرأسية) أو الزر أعلاه لفتح هذه الخاصية",
                                     Toast.LENGTH_LONG).show();
                         })
                         .setNegativeButton("لا تخبرني ثانية", (dialogInterface, i) -> {

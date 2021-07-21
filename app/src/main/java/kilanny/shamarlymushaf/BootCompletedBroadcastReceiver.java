@@ -1,5 +1,6 @@
 package kilanny.shamarlymushaf;
 
+import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -13,13 +14,12 @@ import kilanny.shamarlymushaf.util.Utils;
 
 public class BootCompletedBroadcastReceiver extends BroadcastReceiver {
 
+    @SuppressLint("UnsafeProtectedBroadcastReceiver")
     @Override
     public void onReceive(Context context, Intent intent) {
-        if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
-            PendingResult pendingResult = goAsync();
-            Task asyncTask = new Task(pendingResult, context);
-            asyncTask.execute();
-        }
+        PendingResult pendingResult = goAsync();
+        Task asyncTask = new Task(pendingResult, context);
+        asyncTask.execute();
     }
 
     private static class Task extends AsyncTask<Void, Void, Void> {

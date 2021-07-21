@@ -129,6 +129,9 @@ public class ReciterDetailActivity extends AppCompatActivity {
             return true;
         }
         switch (item.getItemId()) {
+            case R.id.unlimitedDownload:
+                startActivity(new Intent(this, ExternalRecitesDownloadActivity.class));
+                break;
             case R.id.downloadAll:
                 if (downloadAll != null) {
                     if (!downloadAll.isCancelled())

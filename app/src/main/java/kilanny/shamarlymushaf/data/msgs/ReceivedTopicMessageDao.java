@@ -10,7 +10,7 @@ import java.util.Date;
 @Dao
 public interface ReceivedTopicMessageDao {
 
-    @Query("SELECT * FROM r_t_msg WHERE topic = :topic AND add_date ORDER BY add_date LIMIT :skip, :count")
+    @Query("SELECT * FROM r_t_msg WHERE topic = :topic AND add_date ORDER BY read_date IS NULL, add_date LIMIT :skip, :count")
     ReceivedTopicMessage[] getRange(String topic, int skip, int count);
 
     @Query("SELECT COUNT(*) FROM r_t_msg WHERE topic = :topic AND id < :msgId ORDER BY add_date")

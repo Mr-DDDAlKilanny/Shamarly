@@ -89,13 +89,14 @@ public class UploadUserWorker extends Worker {
         lock.lock();
         AtomicBoolean success = new AtomicBoolean(false);
         FirebaseAnalytics analytics = FirebaseAnalytics.getInstance(getApplicationContext());
+        String instanceId = analytics.getFirebaseInstanceId();
         analytics.getAppInstanceId().addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
                 String pseudoUserId = task.getResult();
                 Log.i("FCM/onNewToken", "User: " + pseudoUserId);
                 User user = User.getInstance(getApplicationContext());
                 user.analyticsUserId = pseudoUserId;
-                user.appInstanceId = analytics.getFirebaseInstanceId();
+                user.appInstanceId = instanceId;
                 user.save(getApplicationContext());
             } else Log.w("FCM/onNewToken", "Cannot get User", task.getException());
             lock.lock();

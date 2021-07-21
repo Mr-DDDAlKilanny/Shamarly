@@ -12,7 +12,7 @@
     <TextView
         android:layout_below="@id/txtName"
         android:id="@+id/txtHelp"
-        android:text="فضلا اضغط الزر الأخضر عندما تظهر الصفحة لبدء التحميل\nبعد اكتمال التحميل، الرجاء الضغط على استيراد بجوار زر التحميل لإضافة التلاوات لمصحف الشمرلى"
+        android:text="فضلا اضغط الزر الأزرق عندما تظهر الصفحة لبدء التحميل\nبعد اكتمال التحميل، الرجاء الضغط على استيراد بجوار زر التحميل لإضافة التلاوات لمصحف الشمرلى"
         android:layout_centerHorizontal="true"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />

@@ -161,10 +161,24 @@ public class MessageTopicDetailFragment extends Fragment {
     }
 
     private void setupRecyclerView(RecyclerView recyclerView) {
-        recyclerView.setHasFixedSize(true);
-
         mLinearLayoutManager = new LinearLayoutManager(getActivity());
         recyclerView.setLayoutManager(mLinearLayoutManager);
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+
+            private boolean hasFixedLastItemNotVisible = false;
+
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+
+                if (!hasFixedLastItemNotVisible &&
+                        !recyclerView.canScrollVertically(10) &&
+                        newState==RecyclerView.SCROLL_STATE_IDLE) {
+                    hasFixedLastItemNotVisible = true;
+                    recyclerView.getAdapter().notifyDataSetChanged();
+                }
+            }
+        });
 
         AppExecutors.getInstance().executeOnCachedExecutor(() -> {
             FirebaseMessagingDb db = FirebaseMessagingDb.getInstance(getActivity());

@@ -2,10 +2,9 @@ package kilanny.shamarlymushaf.util;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.util.Log;
 
-import com.crashlytics.android.Crashlytics;
 import com.google.firebase.analytics.FirebaseAnalytics;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import kilanny.shamarlymushaf.data.alarms.Alarm;
 
@@ -25,7 +24,6 @@ public final class AnalyticsTrackers {
         if (Utils.isGooglePlayServicesAvailable(context)) {
             try {
                 mFirebaseAnalytics = FirebaseAnalytics.getInstance(context);
-                mFirebaseAnalytics.setUserProperty("appVer", "");
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
@@ -37,21 +35,22 @@ public final class AnalyticsTrackers {
     }
 
     public void sendException(String title, Throwable throwable) {
-        //if (!canMakeAnalytics()) return;
+        if (!canMakeAnalytics()) return;
         try {
-            Crashlytics.setString("title", title);
-            Crashlytics.setString("thr", Thread.currentThread().getName());
-            Crashlytics.logException(throwable);
+            FirebaseCrashlytics.getInstance().log("Non-Fatal: " + title + " - "
+                    + Thread.currentThread().getName());
+            FirebaseCrashlytics.getInstance().recordException(throwable);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
     }
 
     public void sendFatalError(String title, String message) {
-        //if (!canMakeAnalytics()) return;
+        if (!canMakeAnalytics()) return;
         try {
-            Crashlytics.log(Log.ERROR, title, "FatalError: " + Thread.currentThread().getName()
-                    + " - " + message);
+            FirebaseCrashlytics.getInstance().log("Fatal: " + title + " - "
+                    + Thread.currentThread().getName() + " - " + message);
+            FirebaseCrashlytics.getInstance().recordException(new Exception(message));
         } catch (Exception ex) {
             ex.printStackTrace();
         }

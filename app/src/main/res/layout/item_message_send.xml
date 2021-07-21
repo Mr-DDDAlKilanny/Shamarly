@@ -7,7 +7,19 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
+    <androidx.appcompat.widget.AppCompatImageButton
+        app:layout_constraintRight_toLeftOf="@id/layout"
+        app:layout_constraintTop_toTopOf="@id/layout"
+        app:layout_constraintBottom_toBottomOf="@id/layout"
+        android:id="@+id/btnShare"
+        app:srcCompat="@drawable/ic_menu_share"
+        android:scaleType="fitCenter"
+        android:background="@color/cardview_dark_background"
+        android:layout_width="24dp"
+        android:layout_height="24dp" />
+
     <RelativeLayout
+        android:id="@+id/layout"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         android:background="@drawable/bg_receive_message"

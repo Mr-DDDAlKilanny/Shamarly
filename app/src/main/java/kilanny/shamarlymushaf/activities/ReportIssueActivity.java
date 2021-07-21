@@ -62,16 +62,18 @@ public class ReportIssueActivity extends AppCompatActivity {
         XmlResourceParser parser = getResources().getXml(R.xml.helpdisk_articles);
         try {
             int eventType = parser.getEventType();
+            String head = null;
             while (eventType != XmlPullParser.END_DOCUMENT){
                 if (eventType == XmlPullParser.START_TAG) {
                     String name = parser.getName();
                     if (name.equals("article")) {
-                        String head = parser.getAttributeValue(null, "subject").trim();
+                        head = parser.getAttributeValue(null, "subject").trim();
                         listDataHeader.add(head);
-                        ArrayList<String> childs = new ArrayList<>();
-                        childs.add(parser.getAttributeValue(null, "text").trim());
-                        listDataChild.put(head, childs);
                     }
+                } else if (eventType == XmlPullParser.TEXT) {
+                    ArrayList<String> childs = new ArrayList<>();
+                    childs.add(parser.getText().trim());
+                    listDataChild.put(head, childs);
                 }
                 eventType = parser.next();
             }

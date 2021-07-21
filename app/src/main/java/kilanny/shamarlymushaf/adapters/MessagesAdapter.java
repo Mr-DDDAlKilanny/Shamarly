@@ -168,7 +168,10 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessageViewHolder> {
     }
 
     private void markRead(int startPos, int endPos) {
-        if (startPos < 0 || endPos < 0) return;
+        Log.d("markAsRead", "" + startPos + "," + endPos);
+        if (startPos < 0) return;
+        if (endPos == -1)
+            endPos = startPos;
         ReceivedTopicMessageDao dao = FirebaseMessagingDb.getInstance(mActivity)
                 .receivedTopicMessageDao();
         for (int i = startPos; i <= endPos; ++i) {
@@ -182,7 +185,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessageViewHolder> {
                     dao.markAsRead(new Date(), msg.id);
                     mUnreadCountUpdated.apply(--mNewCount);
                     ++mReadCount;
-                    Log.d("markAsRead", msg.msg);
+                    Log.d("markAsRead_done", msg.msg);
                 }
             }
         }

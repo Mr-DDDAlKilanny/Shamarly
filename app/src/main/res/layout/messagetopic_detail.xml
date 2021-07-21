@@ -5,8 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    tools:context=".activities.MessageTopicDetailActivity"
-    tools:ignore="MergeRootFrame">
+    tools:context=".activities.MessageTopicDetailActivity">
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/app_bar"
@@ -19,8 +18,7 @@
             android:id="@+id/toolbar_layout"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:fitsSystemWindows="true"
-            app:expandedTitleGravity="bottom"
+            app:expandedTitleGravity="bottom|right"
             app:contentScrim="?attr/colorPrimary"
             app:layout_scrollFlags="scroll|exitUntilCollapsed|snap"
             app:toolbarId="@+id/toolbar">
@@ -39,7 +37,6 @@
                 android:id="@+id/detail_toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
-                app:layout_collapseMode="pin"
                 app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -48,7 +45,6 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical|start"
                 android:layout_margin="@dimen/fab_margin"
-                app:layout_collapseMode="pin"
                 app:srcCompat="@android:drawable/stat_notify_chat" />
 
         </com.google.android.material.appbar.CollapsingToolbarLayout>

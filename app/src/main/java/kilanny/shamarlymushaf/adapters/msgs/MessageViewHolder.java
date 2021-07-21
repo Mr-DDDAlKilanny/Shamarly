@@ -12,6 +12,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatImageButton;
+import androidx.core.app.ShareCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.text.DateFormat;
@@ -29,7 +30,7 @@ import kilanny.shamarlymushaf.util.Utils;
 public class MessageViewHolder extends RecyclerView.ViewHolder {
 
     public final TextView textView, msgTime, videoTitle;
-    public final AppCompatImageButton imgThumb;
+    public final AppCompatImageButton imgThumb, btnShare;
     public final MessageItemDetails details;
     public final int viewType;
     private static final int selectedItemMarginInPx = 5;
@@ -45,6 +46,7 @@ public class MessageViewHolder extends RecyclerView.ViewHolder {
         details = viewType == 2 ? null : new MessageItemDetails();
         videoTitle = viewType != 3 ? null : itemView.findViewById(R.id.videoTitle);
         imgThumb = viewType != 3 ? null : itemView.findViewById(R.id.imgThumb);
+        btnShare = viewType == 2 ? null : itemView.findViewById(R.id.btnShare);
     }
 
     public void recycle() {
@@ -108,6 +110,12 @@ public class MessageViewHolder extends RecyclerView.ViewHolder {
                 ((ViewGroup.MarginLayoutParams) textView.getLayoutParams()).setMargins(
                         0, 0, 0, 0);
             }
+
+            btnShare.setOnClickListener(v -> new ShareCompat.IntentBuilder(v.getContext())
+                    .setText(data)
+                    .setType("text/plain")
+                    .setChooserTitle("مشاركة على")
+                    .startChooser());
         }
     }
 }
