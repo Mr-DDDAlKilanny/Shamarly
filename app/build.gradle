@@ -11,8 +11,8 @@ android {
         applicationId "kilanny.shamarlymushaf"
         minSdkVersion 16
         targetSdkVersion 30
-        versionName '2.97.2.0.0'
-        versionCode 47
+        versionName '2.97.2.0.0-1'
+        versionCode 48
         // https://developer.android.com/studio/build/shrink-code#unused-alt-resources
         //multiDexEnabled true
         vectorDrawables.useSupportLibrary = true
@@ -38,7 +38,6 @@ android {
 }
 repositories {
     mavenCentral()
-    maven { url 'http://guardian.github.com/maven/repo-releases' }
     google()
 }
 
