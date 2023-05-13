@@ -227,6 +227,7 @@ public class MainActivity extends FragmentActivity implements QuickSettingsFragm
     private final Timer autoCloseTimer = new Timer("autoCloseScreen");
     private final Shared idleUseCounter = new Shared();
     private Dialog tafseerDialog;
+    private AlertDialog page509MistakeDialog;
 
     @Override
     protected void onStop() {
@@ -270,6 +271,7 @@ public class MainActivity extends FragmentActivity implements QuickSettingsFragm
             tafseerDialog.dismiss();
             tafseerDialog = null;
         }
+        closePage509MistakeDlg();
         super.onPause();
     }
 
@@ -727,6 +729,21 @@ public class MainActivity extends FragmentActivity implements QuickSettingsFragm
             View pageInfo = getCurrentPageInfo();
             if (pageInfo != null)
                 showAndSchedulePageInfoHide(pageInfo);
+        }
+
+        if (p == 509 && page509MistakeDialog == null) {
+            page509MistakeDialog = Utils.showAlert(this,
+                    "تنبيه",
+                    "في سورة الغاشية كلمة مصيطر يتم قراءتها بالصاد فقط، أما السين فلا تصح في رواية حفص، وقد تم كتابة السين أسفل كلمة مصيطر بسبب خطأ مطبعي",
+                    null);
+        } else
+            closePage509MistakeDlg();
+    }
+
+    private void closePage509MistakeDlg() {
+        if (page509MistakeDialog != null) {
+            page509MistakeDialog.dismiss();
+            page509MistakeDialog = null;
         }
     }
 

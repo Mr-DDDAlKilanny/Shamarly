@@ -1,14 +1,17 @@
 package kilanny.shamarlymushaf.services;
 
+import android.Manifest;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
 import android.media.RingtoneManager;
 import android.os.Build;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.work.BackoffPolicy;
@@ -103,6 +106,10 @@ public class FcmService extends FirebaseMessagingService {
     }
 
     private void notifyMessageReceived(String topic, String text, boolean isTopicMessage) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
         String channelId = "kilanny.shamarlymushaf.services.FcmService";
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Utils.createNotificationChannel(this, channelId,

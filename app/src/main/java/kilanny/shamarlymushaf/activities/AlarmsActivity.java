@@ -3,12 +3,14 @@ package kilanny.shamarlymushaf.activities;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.ListView;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.view.ViewCompat;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -54,6 +56,18 @@ public class AlarmsActivity extends AppCompatActivity {
                 .setDuration(1000)
                 .setInterpolator(new AccelerateDecelerateInterpolator())
                 .start();
+
+        checkPermission();
+    }
+
+    private void checkPermission() {
+        if (mAdapter.getCount() > 0 && ActivityCompat.checkSelfPermission(this,
+                android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            Utils.showAlert(this, "صلاحيات مطلوبة",
+                    "يرجى منح التطبيق صلاحية الوصول إلى الإشعارات لإرسال التنبيه", (dialog, which) ->
+                            ActivityCompat.requestPermissions(this,
+                                    new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 1));
+        }
     }
 
     @SuppressLint("SourceLockedOrientationActivity")
@@ -119,6 +133,7 @@ public class AlarmsActivity extends AppCompatActivity {
                 Utils.scheduleAndDeletePrevious(this, alarms);
                 mAdapter.addAll(alarms);
                 mAdapter.notifyDataSetChanged();
+                checkPermission();
             });
         });
     }

@@ -1,5 +1,6 @@
 package kilanny.shamarlymushaf.activities;
 
+import android.content.pm.PackageManager;
 import android.database.sqlite.SQLiteConstraintException;
 import android.os.Bundle;
 import android.view.Menu;
@@ -12,6 +13,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.arch.core.util.Function;
+import androidx.core.app.ActivityCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.firebase.messaging.FirebaseMessaging;
@@ -75,6 +77,7 @@ public class MessageTopicListActivity extends AppCompatActivity
         super.onStart();
 
         setupRecyclerView(findViewById(R.id.messagetopic_list));
+        checkPermission();
     }
 
     @Override
@@ -136,6 +139,7 @@ public class MessageTopicListActivity extends AppCompatActivity
                                                 db.topicDao().setSubscribedDate(all[which1].name, new Date());
                                                 AnalyticsTrackers.getInstance(this)
                                                         .logTopicSubscribed(all[which1].name);
+                                                runOnUiThread(this::checkPermission);
                                             } else
                                                 dialog1.dismiss();
                                             mProg.dismiss();
@@ -160,6 +164,14 @@ public class MessageTopicListActivity extends AppCompatActivity
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void checkPermission() {
+        if (ActivityCompat.checkSelfPermission(this,
+                android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                                    new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 1);
+        }
     }
 
     private void setupRecyclerView(@NonNull RecyclerView recyclerView) {

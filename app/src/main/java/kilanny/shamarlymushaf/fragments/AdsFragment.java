@@ -11,7 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import com.smarteist.autoimageslider.IndicatorAnimations;
+import com.smarteist.autoimageslider.IndicatorView.animation.type.IndicatorAnimationType;
 import com.smarteist.autoimageslider.SliderAnimations;
 import com.smarteist.autoimageslider.SliderView;
 
@@ -69,8 +69,7 @@ public class AdsFragment extends DialogFragment {
         SliderView sliderView = view.findViewById(R.id.imageSlider);
         sliderView.setSliderAdapter(mAdsSliderAdapter = new AdsSliderAdapter(mPrayerAlarm));
         sliderView.startAutoCycle();
-        sliderView.setCircularHandlerEnabled(false);
-        sliderView.setIndicatorAnimation(IndicatorAnimations.WORM);
+        sliderView.setIndicatorAnimation(IndicatorAnimationType.WORM);
         sliderView.setSliderTransformAnimation(SliderAnimations.SIMPLETRANSFORMATION);
         sliderView.setAutoCycleDirection(SliderView.AUTO_CYCLE_DIRECTION_RIGHT);
         sliderView.setIndicatorSelectedColor(Color.WHITE);

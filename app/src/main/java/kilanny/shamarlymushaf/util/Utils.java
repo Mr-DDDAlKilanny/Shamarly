@@ -1503,13 +1503,15 @@ public class Utils {
         }.execute();
     }
 
-    public static void showAlert(Context context, String title, String msg, DialogInterface.OnClickListener ok) {
+    public static AlertDialog showAlert(Context context, String title, String msg, DialogInterface.OnClickListener ok) {
         AlertDialog.Builder dlgAlert = new AlertDialog.Builder(context);
         dlgAlert.setMessage(msg);
         dlgAlert.setTitle(title);
         dlgAlert.setPositiveButton("موافق", ok);
         dlgAlert.setCancelable(false);
-        dlgAlert.create().show();
+        AlertDialog dialog = dlgAlert.create();
+        dialog.show();
+        return dialog;
     }
 
     public static String getAyahText(Context context, int sura, int ayah) {
@@ -1953,7 +1955,7 @@ public class Utils {
     private static PendingIntent getAlarmPendingIntent(Context context) {
         Intent intentToFire = new Intent(context, AlarmRingBroadcastReceiver.class);
         return PendingIntent.getBroadcast(context, 671,
-                intentToFire, 0);
+                intentToFire, PendingIntent.FLAG_IMMUTABLE);
     }
 
     public static void scheduleAndDeletePrevious(Context context, Alarm... alarms) {
@@ -1971,8 +1973,7 @@ public class Utils {
             Log.v("schNext", "No alarm enabled; skipping.");
             return;
         }
-        AlarmManagerCompat.setExactAndAllowWhileIdle(alarmManager,
-                AlarmManager.RTC_WAKEUP, nearestAlarm.date.getTime(),
+        alarmManager.set(AlarmManager.RTC, nearestAlarm.date.getTime(),
                 getAlarmPendingIntent(context));
         Log.v("schNext", "Scheduled next alarm at " + nearestAlarm.date);
     }

@@ -5,11 +5,14 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.media.RingtoneManager;
 import android.os.Build;
+import android.util.Log;
 
+import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
@@ -21,10 +24,17 @@ public class AlarmRingBroadcastReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        Log.d("AlarmRingReceiver", intent.toString());
+
+        if (ActivityCompat.checkSelfPermission(context,
+                android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
         intent = new Intent(context, WelcomeActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(context,
-                1, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+                1, intent, PendingIntent.FLAG_IMMUTABLE);
         String channelId = "kilanny.shamarlymushaf.AlarmRingBroadcastReceiver";
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Utils.createNotificationChannel(context, channelId,
